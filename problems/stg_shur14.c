@@ -238,6 +238,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, U
   PetscCall(PetscOptionsBool("-stg_fluctuating_IC", "\"Extrude\" the fluctuations through the domain as an initial condition", NULL,
                              use_fluctuating_IC, &use_fluctuating_IC, NULL));
   PetscCall(PetscOptionsReal("-stg_dx", "Element length in x direction at inflow", NULL, stg_dx, &stg_dx, &given_stg_dx));
+  if (given_stg_dx && use_stgstrong) PetscCall(PetscPrintf(comm, "WARNING: -stg_dx is ignored for -stg_strong\n"));
   PetscCall(PetscOptionsReal("-stg_h_scale_factor", "Scale element size for cutoff frequency calculation", NULL, stg_h_scale_factor,
                              &stg_h_scale_factor, NULL));
   PetscCall(PetscOptionsDeprecated("-stg_dyScale", NULL, "libCEED 0.12.0", "Use -stg_h_scale_factor to scale all the element dimensions"));

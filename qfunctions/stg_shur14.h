@@ -229,14 +229,13 @@ CEED_QFUNCTION_HELPER void StgShur14Calc_PrecompEktot(const CeedScalar X[3], con
 //
 // stg_data[0] = 1 / Ektot (inverse of total spectrum energy)
 CEED_QFUNCTION(StgShur14Preprocess)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  const CeedScalar(*dXdx_q)[3][CEED_Q_VLA] = (const CeedScalar(*)[3][CEED_Q_VLA])in[0];
-  const CeedScalar(*x)[CEED_Q_VLA]         = (const CeedScalar(*)[CEED_Q_VLA])in[1];
+  const CeedScalar *dXdx_q         = in[0];
+  const CeedScalar(*x)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[1];
 
   CeedScalar(*stg_data) = (CeedScalar(*))out[0];
 
   CeedScalar             ubar[3], cij[6], eps, lt;
   const StgShur14Context stg_ctx = (StgShur14Context)ctx;
-  const CeedScalar       dx      = stg_ctx->dx;
   const CeedScalar       mu      = stg_ctx->newtonian_ctx.mu;
   const CeedScalar       theta0  = stg_ctx->theta0;
   const CeedScalar       P0      = stg_ctx->P0;
@@ -249,15 +248,12 @@ CEED_QFUNCTION(StgShur14Preprocess)(void *ctx, CeedInt Q, const CeedScalar *cons
   CeedScalar        hmax, ke, keta, kcut;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    const CeedScalar wall_dist  = x[1][i];
-    const CeedScalar dXdx[2][3] = {
-        {dXdx_q[0][0][i], dXdx_q[0][1][i], dXdx_q[0][2][i]},
-        {dXdx_q[1][0][i], dXdx_q[1][1][i], dXdx_q[1][2][i]},
-    };
+    const CeedScalar wall_dist = x[1][i];
+    CeedScalar       dXdx[3][3];
+    StoredValuesUnpack(Q, i, 0, 9, dXdx_q, (CeedScalar *)dXdx);
 
     CeedScalar h_node_sep[3];
-    h_node_sep[0] = dx;
-    for (CeedInt j = 1; j < 3; j++) h_node_sep[j] = 2 / sqrt(dXdx[0][j] * dXdx[0][j] + dXdx[1][j] * dXdx[1][j]);
+    for (CeedInt j = 0; j < 3; j++) h_node_sep[j] = 2 / sqrt(Square(dXdx[0][j]) + Square(dXdx[1][j]) + Square(dXdx[2][j]));
     ScaleN(h_node_sep, stg_ctx->h_scale_factor, 3);
 
     InterpolateProfile(wall_dist, ubar, cij, &eps, &lt, stg_ctx);
@@ -464,17 +460,16 @@ CEED_QFUNCTION(StgShur14Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar 
  * through the native PETSc `DMAddBoundary` -> `bcFunc` method.
  */
 CEED_QFUNCTION(StgShur14InflowStrongQF)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  const CeedScalar(*dXdx_q)[3][CEED_Q_VLA] = (const CeedScalar(*)[3][CEED_Q_VLA])in[0];
-  const CeedScalar(*coords)[CEED_Q_VLA]    = (const CeedScalar(*)[CEED_Q_VLA])in[1];
-  const CeedScalar(*scale)                 = (const CeedScalar(*))in[2];
-  const CeedScalar(*inv_Ektotal)           = (const CeedScalar(*))in[3];
-  CeedScalar(*bcval)[CEED_Q_VLA]           = (CeedScalar(*)[CEED_Q_VLA])out[0];
+  const CeedScalar *dXdx_q              = in[0];
+  const CeedScalar(*coords)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[1];
+  const CeedScalar(*scale)              = (const CeedScalar(*))in[2];
+  const CeedScalar(*inv_Ektotal)        = (const CeedScalar(*))in[3];
+  CeedScalar(*bcval)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
   const StgShur14Context         stg_ctx = (StgShur14Context)ctx;
   const NewtonianIdealGasContext gas     = &stg_ctx->newtonian_ctx;
   CeedScalar                     u[3], ubar[3], cij[6], eps, lt;
   const bool                     mean_only = stg_ctx->mean_only;
-  const CeedScalar               dx        = stg_ctx->dx;
   const CeedScalar               time      = stg_ctx->time;
   const CeedScalar               theta0    = stg_ctx->theta0;
   const CeedScalar               P0        = stg_ctx->P0;
@@ -482,15 +477,12 @@ CEED_QFUNCTION(StgShur14InflowStrongQF)(void *ctx, CeedInt Q, const CeedScalar *
   const CeedScalar               nu        = gas->mu / rho;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    const CeedScalar x[]        = {coords[0][i], coords[1][i], coords[2][i]};
-    const CeedScalar dXdx[2][3] = {
-        {dXdx_q[0][0][i], dXdx_q[0][1][i], dXdx_q[0][2][i]},
-        {dXdx_q[1][0][i], dXdx_q[1][1][i], dXdx_q[1][2][i]},
-    };
+    const CeedScalar x[] = {coords[0][i], coords[1][i], coords[2][i]};
+    CeedScalar       dXdx[3][3];
+    StoredValuesUnpack(Q, i, 0, 9, dXdx_q, (CeedScalar *)dXdx);
 
     CeedScalar h_node_sep[3];
-    h_node_sep[0] = dx;
-    for (CeedInt j = 1; j < 3; j++) h_node_sep[j] = 2 / sqrt(Square(dXdx[0][j]) + Square(dXdx[1][j]));
+    for (CeedInt j = 0; j < 3; j++) h_node_sep[j] = 2 / sqrt(Square(dXdx[0][j]) + Square(dXdx[1][j]) + Square(dXdx[2][j]));
     ScaleN(h_node_sep, stg_ctx->h_scale_factor, 3);
 
     InterpolateProfile(coords[1][i], ubar, cij, &eps, &lt, stg_ctx);
