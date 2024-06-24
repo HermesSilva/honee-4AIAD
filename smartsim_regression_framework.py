@@ -22,6 +22,7 @@ sys.path.insert(0, (Path(__file__).parents[3] / "tests/junit-xml").as_posix())
 logging.disable(logging.WARNING)
 
 fluids_example_dir = Path(__file__).parent.absolute()
+test_output_dir = Path(__file__).parent.absolute() / 'tests' / 'output'
 
 
 def getOpenSocket():
@@ -112,7 +113,7 @@ class SmartSimTest(object):
     def test(self, ceed_resource) -> Tuple[bool, Exception, str]:
         client = None
         arguments = []
-        exe_path = "../../build/fluids-navierstokes"
+        exe_path = "../../build/navierstokes"
         try:
             arguments = [
                 '-ceed', ceed_resource,
@@ -157,14 +158,14 @@ class SmartSimTest(object):
             assert_equal(client.get_tensor("step")[0], 2)
 
             assert client.poll_tensor("y.0.0", 250, 5)
-            test_data_path = fluids_example_dir / "tests-output/y00_output.npy"
+            test_data_path = test_output_dir / "y00_output.npy"
             assert test_data_path.is_file()
             correct_value = np.load(test_data_path)
             database_value = client.get_tensor("y.0.0")
             verify_training_data(database_value, correct_value, ceed_resource)
 
             assert client.poll_tensor("y.0.1", 250, 5)
-            test_data_path = fluids_example_dir / "tests-output/y01_output.npy"
+            test_data_path = test_output_dir / "y01_output.npy"
             assert test_data_path.is_file()
             correct_value = np.load(test_data_path)
             database_value = client.get_tensor("y.0.1")
@@ -221,7 +222,7 @@ if __name__ == "__main__":
         help='libCEED backend to use with convergence tests')
     args = parser.parse_args()
 
-    test_dir = fluids_example_dir / "test_dir"
+    test_dir = fluids_example_dir / "smartsim_test_dir"
     print("Setting up database...", end='')
     test_framework = SmartSimTest(test_dir)
     test_framework.setup()

@@ -1,7 +1,76 @@
-navierstokes
-*.vtr
-*.vts
+# Build Dir
+build/*
+
+# General
+*.o
+*.so
+*.d
+*.DIR
+config.mk
+.prove
+
+# Mac specific
+.DS_Store
+*.dSYM
+*~
+*.dylib
+
+# Python
+dist
+*egg*
+.pytest_cache
+*cffi.so
+*cffi.dylib
+__pycache__/
+.ipynb_checkpoints/
+
+# Documentation
+xml/*
+doc/html
+doc/sphinx/build/
+# Example docs automatically copied from source tree
+doc/sphinx/source/examples/
+
+# Output files, videos, and compressed archives should not be added accidentally
+*.avi
+*.bin
+*.bin.info
+*.bz2
+*.cgns
+*.gif
+*.gz
+*.mkv
+*.mp4
+*.msh
+*.ogv
+*.pbin
 *.vtu
+*.webm
+*.xmf
+*.xz
+*.zstd
+perf.data
 *.log
-*.png
+*.npy
 *.csv
+tests/smartsim_test_dir
+
+# Editor Misc
+.cache/
+.history
+.vscode
+.ccls-cache
+.vim
+libCEED.cflags
+libCEED.config
+libCEED.creator
+libCEED.creator.*
+libCEED.cxxflags
+libCEED.files
+libCEED.includes
+
+# latex output files
+.auctex-auto/
+*.aux
+*.fdb_latexmk
+*.fls
