@@ -168,6 +168,12 @@ info:
 	$(info )
 	@true
 
+# Get number of processors of the machine
+NPROCS := $(shell getconf _NPROCESSORS_ONLN)
+# prepare make options to run in parallel
+MFLAGS := -j $(NPROCS) --warn-undefined-variables \
+                       --no-print-directory --no-keep-going
+
 all: navierstokes
 
 $(OBJDIR)/navierstokes: $(src.o) | navierstokes
@@ -310,7 +316,7 @@ prove   : $(matched)
 	$(info Running unit tests)
 	$(info - Testing with libCEED backends: $(CEED_BACKENDS))
 	$(info - Testing on $(NPROC_TEST) processes)
-	$(PROVE) $(PROVE_OPTS) --exec '$(PYTHON) tests/junit.py --petsc-arch $(or $(PETSC_ARCH),$(PETSC_DIR)) --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL)' $(matched:$(OBJDIR)/%=%)
+	$(PROVE) $(PROVE_OPTS) --exec '$(PYTHON) tests/junit.py --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL)' $(matched:$(OBJDIR)/%=%)
 
 prv     : ;@$(MAKE) $(MFLAGS) V=$(V) prove
 
@@ -319,7 +325,7 @@ prove-all :
 
 # Test with JUNIT output
 junit-% : $(OBJDIR)/%
-	@printf "  %10s %s\n" TEST $(<:$(OBJDIR)/%=%); $(PYTHON) tests/junit.py --junit-batch $(JUNIT_BATCH) --petsc-arch $(or $(PETSC_ARCH),$(PETSC_DIR)) --ceed-backends $(CEED_BACKENDS) $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) $(<:$(OBJDIR)/%=%)
+	@printf "  %10s %s\n" TEST $(<:$(OBJDIR)/%=%); $(PYTHON) tests/junit.py --junit-batch $(JUNIT_BATCH) --ceed-backends $(CEED_BACKENDS) $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) $(<:$(OBJDIR)/%=%)
 
 junit   : $(matched:$(OBJDIR)/%=junit-%)
 
