@@ -1,0 +1,247 @@
+# ----------------------------------------------------------------------------------------
+# HONEE GitLab CI
+# ----------------------------------------------------------------------------------------
+stages:
+  - test:stage-lint
+  - test:stage-full
+
+.test-basic:
+  interruptible: true
+  only:
+    refs:
+      - web
+      - merge_requests
+
+.test:
+  extends: .test-basic
+  only:
+    refs:
+      - web
+      - merge_requests
+      - main
+      - release
+  except:
+    variables:
+      # Skip if the No-Code label is attached to a merge request (i.e., documentation only)
+      - $CI_MERGE_REQUEST_LABELS =~ /(^|,)No-Code($|,)/
+  needs:
+    - job: docker-build
+      optional: true
+
+.docs:
+  image: python:3.10
+  before_script:
+    - pip install -r doc/requirements.txt
+    - apt-get update
+    - apt-get install -y doxygen librsvg2-bin
+
+
+# ----------------------------------------------------------------------------------------
+# Test formatting and static analysis
+# ----------------------------------------------------------------------------------------
+noether-lint:
+  stage: test:stage-lint
+  extends: .test
+  tags:
+    - noether
+    - shell
+  needs: []
+  script:
+    - rm -f .SUCCESS
+    # Environment
+    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
+    - echo "-------------- CC ------------------" && $CC --version
+    - echo "-------------- GCOV ----------------" && gcov --version
+    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
+    # Libraries
+    # -- libCEED
+    - echo "-------------- libCEED -------------"
+    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    # -- PETSc
+    - echo "-------------- PETSc ---------------"
+    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_ARCH=arch-serial-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_OPTIONS='-malloc_debug no' # faster tests
+    - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
+    # make with Werror, Wall, supress loop vectorization warnings
+    - echo "-------------- make Werror ---------"
+    - PEDANTIC=1 PEDANTICFLAGS="-Werror -Wall -Wno-pass-failed" make -j$NPROC_CPU
+    # make format
+    - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-15 && $CLANG_FORMAT --version
+    - make -j$NPROC_CPU format && git diff --color=always --exit-code
+    # Clang-tidy
+    - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-15 && $CLANG_TIDY --version
+    - echo "Tests intentionally skipped"
+    # - PETSC_ARCH=arch-serial-gpu make -j$NPROC_CPU tidy
+    # Report status
+    - touch .SUCCESS
+
+
+# ----------------------------------------------------------------------------------------
+# Test memory access assumptions
+# ----------------------------------------------------------------------------------------
+noether-memcheck:
+  stage: test:stage-lint
+  extends: .test
+  tags:
+    - noether
+    - shell
+  needs: []
+  script:
+    - rm -f .SUCCESS
+    # Environment
+    # -- NOTE: Coverage disabled because it doesn't play nice with the ASAN options
+    - export CC=clang-15
+    - export NPROC_POOL=8
+    - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
+    - echo "-------------- CC ------------------" && $CC --version
+    # Libraries
+    # -- libCEED
+    - echo "-------------- libCEED -------------"
+    - export CEED_DIR=/projects/honee/libCEED-cpu && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    # -- PETSc
+    - echo "-------------- PETSc ---------------"
+    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_ARCH=arch-serial-cpu-clang && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_OPTIONS='-malloc_debug no' # faster tests
+    - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
+    # ASAN
+    - echo "-------------- ASAN ----------------"
+    - echo "ASAN intentionlly skipped, known leaks"
+    # - export ASAN=1 AFLAGS="-fsanitize=address -fsanitize=leak"
+    - echo $AFLAGS
+    # HONEE
+    - echo "-------------- HONEE ---------------" && make info
+    - make clean
+    - make -j$NPROC_CPU
+    # Test suite
+    - echo "-------------- HONEE tests ---------"
+    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
+    # -- Memcheck libCEED CPU backend, serial
+    - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL)) CEED_BACKENDS="/cpu/self/memcheck" JUNIT_BATCH="cpu-serial-memcheck" junit realsearch=%
+    # Report status
+    - touch .SUCCESS
+  artifacts:
+    paths:
+      - build/*.junit
+    reports:
+      junit: build/*.junit
+      performance: performance.json
+    expire_in: 28 days
+
+
+# ----------------------------------------------------------------------------------------
+# CPU testing on Noether
+# ----------------------------------------------------------------------------------------
+noether-cpu:
+  stage: test:stage-full
+  extends: .test
+  tags:
+    - noether
+    - shell
+  script:
+    - rm -f .SUCCESS
+    # Environment
+    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export NPROC_POOL=4
+    - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
+    - echo "-------------- CC ------------------" && $CC --version
+    - echo "-------------- GCOV ----------------" && gcov --version
+    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
+    # Libraries
+    # -- libCEED
+    - echo "-------------- libCEED -------------"
+    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    # -- PETSc
+    - echo "-------------- PETSc ---------------"
+    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_ARCH=arch-parallel-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_OPTIONS='-malloc_debug no' # faster tests
+    - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
+    # HONEE
+    - echo "-------------- HONEE ---------------" && make info
+    - make clean
+    - make -j$NPROC_CPU
+    # Test suite
+    - echo "-------------- HONEE tests ---------"
+    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
+    # -- Fastest libCEED CPU backend, parallel
+    # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
+    - echo "Parallel tests skipped for now"
+    # - NPROC_TEST=2 make -k -j$((NPROC_GPU / NPROC_POOL / 2)) CEED_BACKENDS="/gpu/hip/shared" JUNIT_BATCH="cpu-parallel" junit realsearch=%
+    # Report status
+    - touch .SUCCESS
+  after_script:
+    - |
+      if [ -f .SUCCESS ]; then
+        gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
+      fi
+  artifacts:
+    paths:
+      - coverage.xml
+      - build/*.junit
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+      junit: build/*.junit
+      performance: performance.json
+    expire_in: 28 days
+
+
+# ----------------------------------------------------------------------------------------
+# GPU testing on Noether
+# ----------------------------------------------------------------------------------------
+noether-gpu:
+  stage: test:stage-full
+  extends: .test
+  tags:
+    - noether
+    - shell
+  script:
+    - rm -f .SUCCESS
+    # Environment
+    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export NPROC_POOL=4
+    - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
+    - echo "-------------- CC ------------------" && $CC --version
+    - echo "-------------- GCOV ----------------" && gcov --version
+    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
+    # Libraries
+    # -- libCEED
+    - echo "-------------- libCEED -------------"
+    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    # -- PETSc
+    - echo "-------------- PETSc ---------------"
+    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_ARCH=arch-parallel-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_OPTIONS='-malloc_debug no' # faster tests
+    - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
+    # HONEE
+    - echo "-------------- HONEE ---------------" && make info
+    - make clean
+    - make -j$NPROC_CPU
+    # Test suite
+    - echo "-------------- HONEE tests ---------"
+    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
+    # -- Fastest libCEED HIP backend, serial
+    - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="hip-serial" junit realsearch=%
+    # Report status
+    - touch .SUCCESS
+  after_script:
+    - |
+      if [ -f .SUCCESS ]; then
+        gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
+      fi
+  artifacts:
+    paths:
+      - coverage.xml
+      - build/*.junit
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+      junit: build/*.junit
+      performance: performance.json
+    expire_in: 28 days

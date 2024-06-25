@@ -16,7 +16,7 @@ petsc.pc := $(call pkgconf-path,$(PETSC_DIR)/$(PETSC_ARCH)/lib/pkgconfig,petsc)
 CEED_DIR ?= $(if $(wildcard $(PETSC_DIR)/$(PETSC_ARCH)/lib/pkgconfig/ceed.pc),$(PETSC_DIR)/$(PETSC_ARCH),../libCEED)
 ceed.pc  := $(call pkgconf-path,$(CEED_DIR)/lib/pkgconfig,ceed)
 
-pkgconf   = $(shell pkg-config $(if $(STATIC),--static) $1 | sed -e 's/^"//g' -e 's/"$$//g')
+pkgconf   = $(shell pkg-config $(if $(STATIC),--static) $1 | $(SED) -e 's/^"//g' -e 's/"$$//g')
 
 # Error checking flags
 PEDANTIC      ?=
@@ -45,25 +45,29 @@ LDFLAGS += $(if $(ASAN),$(AFLAGS))
 
 CPPFLAGS += -I./include
 
+# External tools
+PYTHON   ?= python3
+SED      ?= sed
+
 # LibTorch
 USE_TORCH ?=
 ifeq ($(USE_TORCH),1)
-  libtorch.pc := $(shell python ./pytorch_pkgconfig.py)
-  CPPFLAGS += $(call pkgconf, --cflags-only-I $(libtorch.pc))
-  CXXFLAGS += $(call pkgconf, --cflags-only-other $(libtorch.pc))
-  LDFLAGS += $(call pkgconf, --libs-only-L --libs-only-other $(libtorch.pc))
-  LDFLAGS += $(patsubst -L%, $(call pkgconf, --variable=ldflag_rpath $(petsc.pc))%, $(call pkgconf, --libs-only-L $(libtorch.pc)))
-  LDLIBS += $(call pkgconf, --libs-only-l $(libtorch.pc))
+  libtorch.pc := $(shell $(PYTHON) ./pytorch_pkgconfig.py)
+  CPPFLAGS    += $(call pkgconf, --cflags-only-I $(libtorch.pc))
+  CXXFLAGS    += $(call pkgconf, --cflags-only-other $(libtorch.pc))
+  LDFLAGS     += $(call pkgconf, --libs-only-L --libs-only-other $(libtorch.pc))
+  LDFLAGS     += $(patsubst -L%, $(call pkgconf, --variable=ldflag_rpath $(petsc.pc))%, $(call pkgconf, --libs-only-L $(libtorch.pc)))
+  LDLIBS      += $(call pkgconf, --libs-only-l $(libtorch.pc))
 
   src.cpp += $(sort $(wildcard $(PROBLEMDIR)/torch/*.cpp))
-  src.c += $(sort $(wildcard $(PROBLEMDIR)/torch/*.c))
+  src.c   += $(sort $(wildcard $(PROBLEMDIR)/torch/*.c))
 
   # Intel Pytorch EXtension (IPEX)
   IPEX_DIR ?=
   ifdef IPEX_DIR
       LDFLAGS += -L$(IPEX_DIR)/lib/
       LDFLAGS += -Wl,-rpath,$(IPEX_DIR)/lib/
-      LDLIBS += -lintel-ext-pt-gpu
+      LDLIBS  += -lintel-ext-pt-gpu
   endif
 endif
 
@@ -88,6 +92,87 @@ ifdef SMARTREDIS_DIR
 	LDLIBS += $(call pkgconf, --libs-only-l $(hiredis.pc) $(redis++.pc)) $(lsmartredis)
 	src.c += $(sort $(wildcard $(SRCDIR)/smartsim/*.c))
 endif
+
+
+
+# Diagnostic information
+info-basic:
+	$(info -----------------------------------------)
+	$(info |      __  ______  _   ______________   |)
+	$(info |     / / / / __ \/ | / / ____/ ____/   |)
+	$(info |    / /_/ / / / /  |/ / __/ / __/      |)
+	$(info |   / __  / /_/ / /|  / /___/ /___      |)
+	$(info |  /_/ /_/\____/_/ |_/_____/_____/      |)
+	$(info -----------------------------------------)
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Dependencies:)
+	$(info CEED_DIR       = $(CEED_DIR))
+	$(info PETSC_DIR      = $(PETSC_DIR))
+	$(info PETSC_ARCH     = $(PETSC_ARCH))
+	$(info )
+	$(info Optional Dependencies:)
+	$(info SMARTREDIS_DIR = $(or $(SMARTREDIS_DIR),(not found)))
+	$(info USE_TORCH      = $(USE_TORCH))
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	@true
+
+info:
+	$(info -----------------------------------------)
+	$(info |      __  ______  _   ______________   |)
+	$(info |     / / / / __ \/ | / / ____/ ____/   |)
+	$(info |    / /_/ / / / /  |/ / __/ / __/      |)
+	$(info |   / __  / /_/ / /|  / /___/ /___      |)
+	$(info |  /_/ /_/\____/_/ |_/_____/_____/      |)
+	$(info -----------------------------------------)
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Dependencies:)
+	$(info CEED_DIR        = $(CEED_DIR))
+	$(info PETSC_DIR       = $(PETSC_DIR))
+	$(info PETSC_ARCH      = $(PETSC_ARCH))
+	$(info )
+	$(info Optional Dependencies:)
+	$(info SMARTREDIS_DIR = $(or $(SMARTREDIS_DIR),(not found)))
+	$(info USE_TORCH      = $(USE_TORCH))
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Build Options:)
+	$(info CC              = $(CC))
+	$(info CFLAGS          = $(CFLAGS))
+	$(info CPPFLAGS        = $(CPPFLAGS))
+	$(info LDFLAGS         = $(LDFLAGS))
+	$(info LDLIBS          = $(LDLIBS))
+	$(info AR              = $(AR))
+	$(info ARFLAGS         = $(ARFLAGS))
+	$(info OPT             = $(OPT))
+	$(info AFLAGS          = $(AFLAGS))
+	$(info ASAN            = $(or $(ASAN),(empty)))
+	$(info VERBOSE         = $(or $(V),(empty)) [verbose=$(if $(V),on,off)])
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Format and Style Options:)
+	$(info CLANG_FORMAT    = $(CLANG_FORMAT))
+	$(info FORMAT_OPTS     = $(FORMAT_OPTS))
+	$(info CLANG_TIDY      = $(CLANG_TIDY))
+	$(info TIDY_OPTS       = $(TIDY_OPTS))
+	$(info TIDY_FILE_OPTS  = $(TIDY_FILE_OPTS))
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	@true
+
+# Get number of processors of the machine
+NPROCS := $(shell getconf _NPROCESSORS_ONLN)
+# prepare make options to run in parallel
+MFLAGS := -j $(NPROCS) --warn-undefined-variables \
+                       --no-print-directory --no-keep-going
 
 all: navierstokes
 
@@ -149,6 +234,43 @@ examples := $(fluidsexamples)
 $(examples) : $(libceed)
 $(tests) : $(libceed)
 
+# Tidy
+CLANG_TIDY     ?= clang-tidy
+TIDY_OPTS      ?= --quiet
+TIDY_FILE_OPTS += $(CPPFLAGS) --std=c99
+
+%.c.tidy : %.c
+	$(call quiet,CLANG_TIDY) $(TIDY_OPTS) $^ -- $(TIDY_FILE_OPTS)
+
+tidy-c   : $(src.c:%=%.tidy)
+
+tidy     : tidy-c
+
+# Style
+CLANG_FORMAT  ?= clang-format
+FORMAT_OPTS   += -style=file -i
+AUTOPEP8      ?= autopep8
+AUTOPEP8_OPTS += --in-place --aggressive --max-line-length 120
+SED_FMT_OPTS  += -r 's/\s+$$//' -i
+
+%.format : %
+	$(call quiet,CLANG_FORMAT) $(FORMAT_OPTS) $^
+
+format.ch := $(shell git ls-files *.[ch]pp *.[ch])
+format.py := $(filter-out tests/junit-xml/junit_xml/__init__.py, $(shell git ls-files '*.py'))
+format.ot := $(shell git ls-files *.md)
+
+format-c  :
+	$(call quiet,CLANG_FORMAT) $(FORMAT_OPTS) $(format.ch)
+
+format-py :
+	$(call quiet,AUTOPEP8) $(AUTOPEP8_OPTS) $(format.py)
+
+format-ot :
+	$(call quiet,SED) $(SED_FMT_OPTS) $(format.ot)
+
+format    : format-c format-py format-ot
+
 # Testing
 ifeq ($(COVERAGE), 1)
   CFLAGS  += --coverage
@@ -194,7 +316,7 @@ prove   : $(matched)
 	$(info Running unit tests)
 	$(info - Testing with libCEED backends: $(CEED_BACKENDS))
 	$(info - Testing on $(NPROC_TEST) processes)
-	$(PROVE) $(PROVE_OPTS) --exec '$(PYTHON) tests/junit.py --petsc-arch $(or $(PETSC_ARCH),$(PETSC_DIR)) --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL)' $(matched:$(OBJDIR)/%=%)
+	$(PROVE) $(PROVE_OPTS) --exec '$(PYTHON) tests/junit.py --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL)' $(matched:$(OBJDIR)/%=%)
 
 prv     : ;@$(MAKE) $(MFLAGS) V=$(V) prove
 
@@ -203,7 +325,7 @@ prove-all :
 
 # Test with JUNIT output
 junit-% : $(OBJDIR)/%
-	@printf "  %10s %s\n" TEST $(<:$(OBJDIR)/%=%); $(PYTHON) tests/junit.py --junit-batch $(JUNIT_BATCH) --petsc-arch $(or $(PETSC_ARCH),$(PETSC_DIR)) --ceed-backends $(CEED_BACKENDS) $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) $(<:$(OBJDIR)/%=%)
+	@printf "  %10s %s\n" TEST $(<:$(OBJDIR)/%=%); $(PYTHON) tests/junit.py --junit-batch $(JUNIT_BATCH) --ceed-backends $(CEED_BACKENDS) $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) $(<:$(OBJDIR)/%=%)
 
 junit   : $(matched:$(OBJDIR)/%=junit-%)
 
