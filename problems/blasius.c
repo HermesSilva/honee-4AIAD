@@ -115,7 +115,7 @@ PetscErrorCode ComputeChebyshevCoefficients(BlasiusContext blasius) {
 }
 
 static PetscErrorCode GetYNodeLocs(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], PetscReal **pynodes, PetscInt *nynodes) {
-  int            ndims, dims[2];
+  int            ndims, dims[2] = {0.};
   FILE          *fp;
   const PetscInt char_array_len = 512;
   char           line[char_array_len];

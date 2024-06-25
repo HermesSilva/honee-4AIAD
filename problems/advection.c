@@ -21,7 +21,7 @@
 PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator *op_mass) {
   Ceed                 ceed = user->ceed;
   CeedInt              num_comp_q, q_data_size;
-  CeedQFunction        qf_mass;
+  CeedQFunction        qf_mass = NULL;
   CeedElemRestriction  elem_restr_q, elem_restr_qd_i;
   CeedBasis            basis_q;
   CeedVector           q_data;
@@ -141,7 +141,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   CeedScalar Ctau_t          = 0.;
   PetscReal  wind[3]         = {1., 0, 0};  // m/s
   CeedScalar diffusion_coeff = 0.;
-  PetscReal  domain_min[3], domain_max[3], domain_size[3];
+  PetscReal  domain_min[3], domain_max[3], domain_size[3] = {0.};
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
   for (PetscInt i = 0; i < problem->dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 

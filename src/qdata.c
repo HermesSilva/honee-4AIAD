@@ -72,7 +72,7 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size) {
  */
 PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                         CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
-  CeedQFunction qf_setup;
+  CeedQFunction qf_setup = NULL;
   CeedOperator  op_setup;
   CeedInt       num_comp_x;
   PetscInt      dim, height = 0;
@@ -159,7 +159,7 @@ PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size) {
  */
 PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                                 CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
-  CeedQFunction qf_setup_sur;
+  CeedQFunction qf_setup_sur = NULL;
   CeedOperator  op_setup_sur;
   CeedInt       num_comp_x;
   PetscInt      dim, height = 1;

@@ -155,8 +155,8 @@ PetscErrorCode OperatorApplyContextDestroy(OperatorApplyContext ctx) {
 //@brief Return VecType for the given DM
 VecType DMReturnVecType(DM dm) {
   VecType vec_type;
-  DMGetVecType(dm, &vec_type);
-  return vec_type;
+  PetscInt ierr = DMGetVecType(dm, &vec_type);
+  return ierr ? NULL : vec_type;
 }
 
 /**
