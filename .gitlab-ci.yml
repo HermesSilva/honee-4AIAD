@@ -3,9 +3,7 @@
 # ----------------------------------------------------------------------------------------
 stages:
   - test:stage-lint
-  - test:stage-memcheck
-  - test:stage-cpu
-  - test:stage-gpu
+  - test:stage-full
 
 .test-basic:
   interruptible: true
@@ -83,7 +81,7 @@ noether-lint:
 # Test memory access assumptions
 # ----------------------------------------------------------------------------------------
 noether-memcheck:
-  stage: test:stage-memcheck
+  stage: test:stage-lint
   extends: .test
   tags:
     - noether
@@ -135,7 +133,7 @@ noether-memcheck:
 # CPU testing on Noether
 # ----------------------------------------------------------------------------------------
 noether-cpu:
-  stage: test:stage-cpu
+  stage: test:stage-full
   extends: .test
   tags:
     - noether
@@ -193,7 +191,7 @@ noether-cpu:
 # GPU testing on Noether
 # ----------------------------------------------------------------------------------------
 noether-gpu:
-  stage: test:stage-gpu
+  stage: test:stage-full
   extends: .test
   tags:
     - noether
