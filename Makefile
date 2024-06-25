@@ -53,21 +53,21 @@ SED      ?= sed
 USE_TORCH ?=
 ifeq ($(USE_TORCH),1)
   libtorch.pc := $(shell $(PYTHON) ./pytorch_pkgconfig.py)
-  CPPFLAGS += $(call pkgconf, --cflags-only-I $(libtorch.pc))
-  CXXFLAGS += $(call pkgconf, --cflags-only-other $(libtorch.pc))
-  LDFLAGS += $(call pkgconf, --libs-only-L --libs-only-other $(libtorch.pc))
-  LDFLAGS += $(patsubst -L%, $(call pkgconf, --variable=ldflag_rpath $(petsc.pc))%, $(call pkgconf, --libs-only-L $(libtorch.pc)))
-  LDLIBS += $(call pkgconf, --libs-only-l $(libtorch.pc))
+  CPPFLAGS    += $(call pkgconf, --cflags-only-I $(libtorch.pc))
+  CXXFLAGS    += $(call pkgconf, --cflags-only-other $(libtorch.pc))
+  LDFLAGS     += $(call pkgconf, --libs-only-L --libs-only-other $(libtorch.pc))
+  LDFLAGS     += $(patsubst -L%, $(call pkgconf, --variable=ldflag_rpath $(petsc.pc))%, $(call pkgconf, --libs-only-L $(libtorch.pc)))
+  LDLIBS      += $(call pkgconf, --libs-only-l $(libtorch.pc))
 
   src.cpp += $(sort $(wildcard $(PROBLEMDIR)/torch/*.cpp))
-  src.c += $(sort $(wildcard $(PROBLEMDIR)/torch/*.c))
+  src.c   += $(sort $(wildcard $(PROBLEMDIR)/torch/*.c))
 
   # Intel Pytorch EXtension (IPEX)
   IPEX_DIR ?=
   ifdef IPEX_DIR
       LDFLAGS += -L$(IPEX_DIR)/lib/
       LDFLAGS += -Wl,-rpath,$(IPEX_DIR)/lib/
-      LDLIBS += -lintel-ext-pt-gpu
+      LDLIBS  += -lintel-ext-pt-gpu
   endif
 endif
 
@@ -92,6 +92,81 @@ ifdef SMARTREDIS_DIR
 	LDLIBS += $(call pkgconf, --libs-only-l $(hiredis.pc) $(redis++.pc)) $(lsmartredis)
 	src.c += $(sort $(wildcard $(SRCDIR)/smartsim/*.c))
 endif
+
+
+
+# Diagnostic information
+info-basic:
+	$(info -----------------------------------------)
+	$(info |      __  ______  _   ______________   |)
+	$(info |     / / / / __ \/ | / / ____/ ____/   |)
+	$(info |    / /_/ / / / /  |/ / __/ / __/      |)
+	$(info |   / __  / /_/ / /|  / /___/ /___      |)
+	$(info |  /_/ /_/\____/_/ |_/_____/_____/      |)
+	$(info -----------------------------------------)
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Dependencies:)
+	$(info CEED_DIR       = $(CEED_DIR))
+	$(info PETSC_DIR      = $(PETSC_DIR))
+	$(info PETSC_ARCH     = $(PETSC_ARCH))
+	$(info )
+	$(info Optional Dependencies:)
+	$(info SMARTREDIS_DIR = $(or $(SMARTREDIS_DIR),(not found)))
+	$(info USE_TORCH      = $(USE_TORCH))
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	@true
+
+info:
+	$(info -----------------------------------------)
+	$(info |      __  ______  _   ______________   |)
+	$(info |     / / / / __ \/ | / / ____/ ____/   |)
+	$(info |    / /_/ / / / /  |/ / __/ / __/      |)
+	$(info |   / __  / /_/ / /|  / /___/ /___      |)
+	$(info |  /_/ /_/\____/_/ |_/_____/_____/      |)
+	$(info -----------------------------------------)
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Dependencies:)
+	$(info CEED_DIR        = $(CEED_DIR))
+	$(info PETSC_DIR       = $(PETSC_DIR))
+	$(info PETSC_ARCH      = $(PETSC_ARCH))
+	$(info )
+	$(info Optional Dependencies:)
+	$(info SMARTREDIS_DIR = $(or $(SMARTREDIS_DIR),(not found)))
+	$(info USE_TORCH      = $(USE_TORCH))
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Build Options:)
+	$(info CC              = $(CC))
+	$(info CFLAGS          = $(CFLAGS))
+	$(info CPPFLAGS        = $(CPPFLAGS))
+	$(info LDFLAGS         = $(LDFLAGS))
+	$(info LDLIBS          = $(LDLIBS))
+	$(info AR              = $(AR))
+	$(info ARFLAGS         = $(ARFLAGS))
+	$(info OPT             = $(OPT))
+	$(info AFLAGS          = $(AFLAGS))
+	$(info ASAN            = $(or $(ASAN),(empty)))
+	$(info VERBOSE         = $(or $(V),(empty)) [verbose=$(if $(V),on,off)])
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	$(info Format and Style Options:)
+	$(info CLANG_FORMAT    = $(CLANG_FORMAT))
+	$(info FORMAT_OPTS     = $(FORMAT_OPTS))
+	$(info CLANG_TIDY      = $(CLANG_TIDY))
+	$(info TIDY_OPTS       = $(TIDY_OPTS))
+	$(info TIDY_FILE_OPTS  = $(TIDY_FILE_OPTS))
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
+	@true
 
 all: navierstokes
 
