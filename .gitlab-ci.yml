@@ -72,8 +72,7 @@ noether-lint:
     - make -j$NPROC_CPU format && git diff --color=always --exit-code
     # Clang-tidy
     - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-15 && $CLANG_TIDY --version
-    - echo "Tests intentionally skipped"
-    # - PETSC_ARCH=arch-serial-gpu make -j$NPROC_CPU tidy
+    - PETSC_ARCH=arch-serial-gpu make -j$NPROC_CPU tidy
     # Report status
     - touch .SUCCESS
 

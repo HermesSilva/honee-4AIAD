@@ -807,7 +807,7 @@ PetscErrorCode MatCeedGetContextDouble(Mat mat, const char *name, double *value)
   @return An error code: 0 - success, otherwise - failure
 **/
 PetscErrorCode MatCeedGetContextReal(Mat mat, const char *name, PetscReal *value) {
-  double value_double;
+  double value_double = 0.0;
 
   PetscFunctionBeginUser;
   PetscCall(MatCeedGetContextDouble(mat, name, &value_double));
