@@ -16,7 +16,7 @@ petsc.pc := $(call pkgconf-path,$(PETSC_DIR)/$(PETSC_ARCH)/lib/pkgconfig,petsc)
 CEED_DIR ?= $(if $(wildcard $(PETSC_DIR)/$(PETSC_ARCH)/lib/pkgconfig/ceed.pc),$(PETSC_DIR)/$(PETSC_ARCH),../libCEED)
 ceed.pc  := $(call pkgconf-path,$(CEED_DIR)/lib/pkgconfig,ceed)
 
-pkgconf   = $(shell pkg-config $(if $(STATIC),--static) $1 | sed -e 's/^"//g' -e 's/"$$//g')
+pkgconf   = $(shell pkg-config $(if $(STATIC),--static) $1 | $(SED) -e 's/^"//g' -e 's/"$$//g')
 
 # Error checking flags
 PEDANTIC      ?=
@@ -45,10 +45,14 @@ LDFLAGS += $(if $(ASAN),$(AFLAGS))
 
 CPPFLAGS += -I./include
 
+# External tools
+PYTHON   ?= python3
+SED      ?= sed
+
 # LibTorch
 USE_TORCH ?=
 ifeq ($(USE_TORCH),1)
-  libtorch.pc := $(shell python ./pytorch_pkgconfig.py)
+  libtorch.pc := $(shell $(PYTHON) ./pytorch_pkgconfig.py)
   CPPFLAGS += $(call pkgconf, --cflags-only-I $(libtorch.pc))
   CXXFLAGS += $(call pkgconf, --cflags-only-other $(libtorch.pc))
   LDFLAGS += $(call pkgconf, --libs-only-L --libs-only-other $(libtorch.pc))
@@ -148,6 +152,43 @@ examples := $(fluidsexamples)
 
 $(examples) : $(libceed)
 $(tests) : $(libceed)
+
+# Tidy
+CLANG_TIDY     ?= clang-tidy
+TIDY_OPTS      ?= --quiet
+TIDY_FILE_OPTS += $(CPPFLAGS) --std=c99
+
+%.c.tidy : %.c
+	$(call quiet,CLANG_TIDY) $(TIDY_OPTS) $^ -- $(TIDY_FILE_OPTS)
+
+tidy-c   : $(src.c:%=%.tidy)
+
+tidy     : tidy-c
+
+# Style
+CLANG_FORMAT  ?= clang-format
+FORMAT_OPTS   += -style=file -i
+AUTOPEP8      ?= autopep8
+AUTOPEP8_OPTS += --in-place --aggressive --max-line-length 120
+SED_FMT_OPTS  += -r 's/\s+$$//' -i
+
+%.format : %
+	$(call quiet,CLANG_FORMAT) $(FORMAT_OPTS) $^
+
+format.ch := $(shell git ls-files *.[ch]pp *.[ch])
+format.py := $(filter-out tests/junit-xml/junit_xml/__init__.py, $(shell git ls-files '*.py'))
+format.ot := $(shell git ls-files *.md)
+
+format-c  :
+	$(call quiet,CLANG_FORMAT) $(FORMAT_OPTS) $(format.ch)
+
+format-py :
+	$(call quiet,AUTOPEP8) $(AUTOPEP8_OPTS) $(format.py)
+
+format-ot :
+	$(call quiet,SED) $(SED_FMT_OPTS) $(format.ot)
+
+format    : format-c format-py format-ot
 
 # Testing
 ifeq ($(COVERAGE), 1)
