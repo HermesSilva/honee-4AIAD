@@ -93,7 +93,7 @@ ifdef SMARTREDIS_DIR
 	src.c += $(sort $(wildcard $(SRCDIR)/smartsim/*.c))
 endif
 
-
+all: navierstokes
 
 # Diagnostic information
 info-basic:
@@ -173,8 +173,6 @@ NPROCS := $(shell getconf _NPROCESSORS_ONLN)
 # prepare make options to run in parallel
 MFLAGS := -j $(NPROCS) --warn-undefined-variables \
                        --no-print-directory --no-keep-going
-
-all: navierstokes
 
 $(OBJDIR)/navierstokes: $(src.o) | navierstokes
 navierstokes: $(src.o) | $(petsc.pc) $(ceed.pc)
