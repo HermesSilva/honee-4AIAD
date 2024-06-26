@@ -21,8 +21,8 @@ sys.path.insert(0, (Path(__file__).parents[3] / "tests/junit-xml").as_posix())
 
 logging.disable(logging.WARNING)
 
-fluids_example_dir = Path(__file__).parent.absolute()
-test_output_dir = Path(__file__).parent.absolute() / 'tests' / 'output'
+file_dir = Path(__file__).parent.absolute()
+test_output_dir = Path(__file__).parent.absolute() / 'output'
 
 
 def getOpenSocket():
@@ -117,7 +117,7 @@ class SmartSimTest(object):
         try:
             arguments = [
                 '-ceed', ceed_resource,
-                '-options_file', (fluids_example_dir / 'blasius.yaml').as_posix(),
+                '-options_file', (file_dir / '../blasius.yaml').as_posix(),
                 '-ts_max_steps', '2',
                 '-diff_filter_grid_based_width',
                 '-ts_monitor', '-snes_monitor',
@@ -222,7 +222,7 @@ if __name__ == "__main__":
         help='libCEED backend to use with convergence tests')
     args = parser.parse_args()
 
-    test_dir = fluids_example_dir / "smartsim_test_dir"
+    test_dir = file_dir / "smartsim_test_dir"
     print("Setting up database...", end='')
     test_framework = SmartSimTest(test_dir)
     test_framework.setup()
