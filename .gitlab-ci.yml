@@ -168,7 +168,6 @@ noether-cpu:
     - echo "-------------- HONEE tests ---------"
     - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CPU backend, parallel
-    # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
     - echo "Parallel tests skipped for now"
     - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit realsearch=%
     # Report status
@@ -228,7 +227,8 @@ noether-gpu:
     - echo "-------------- HONEE tests ---------"
     - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED HIP backend, serial
-    - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="hip-serial" junit realsearch=%
+    # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
+    - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/gpu/hip/shared" JUNIT_BATCH="hip-serial" junit realsearch=%
     # Report status
     - touch .SUCCESS
   after_script:
