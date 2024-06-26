@@ -169,7 +169,7 @@ noether-cpu:
     - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CPU backend, parallel
     - echo "Parallel tests skipped for now"
-    - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search=navierstokes
+    - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search=navierstokes
     # Report status
     - touch .SUCCESS
   after_script:
