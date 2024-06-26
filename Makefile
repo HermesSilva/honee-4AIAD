@@ -234,6 +234,29 @@ examples := $(fluidsexamples)
 $(examples) : $(libceed)
 $(tests) : $(libceed)
 
+# Documentation
+DOXYGEN ?= doxygen
+DOXYGENOPTS ?= -q
+doxygen :
+	$(DOXYGEN) $(DOXYGENOPTS) Doxyfile
+
+SPHINXOPTS      =
+SPHINXBUILD     = sphinx-build
+SPHINXAUTOBUILD = sphinx-autobuild
+SPHINXPROJ      = Ratel
+SPHINXBUILDDIR  = doc/build
+
+doc-html doc-dirhtml doc-latexpdf doc-epub doc-help : doc-% : doxygen
+	@$(SPHINXBUILD) -M $* . "$(SPHINXBUILDDIR)" $(SPHINXOPTS)
+
+doc-livehtml : doxygen
+	@$(SPHINXAUTOBUILD) . "$(SPHINXBUILDDIR)" $(SPHINXOPTS)
+
+doc : doc-html
+
+doc-clean:
+	$(RM) -r doc/html doc/build
+
 # Tidy
 CLANG_TIDY     ?= clang-tidy
 TIDY_OPTS      ?= --quiet

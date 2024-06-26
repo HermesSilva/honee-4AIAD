@@ -26,7 +26,6 @@
   @brief Calls a libCEED function and then checks the resulting error code.
   If the error code is non-zero, then a PETSc error is set with the libCEED error message.
 **/
-/// @ingroup RatelInternal
 #ifndef PetscCallCeed
 #define PetscCallCeed(ceed_, ...)                                   \
   do {                                                              \

@@ -4,6 +4,8 @@
 stages:
   - test:stage-lint
   - test:stage-full
+  - test:docs
+  - deploy
 
 .test-basic:
   interruptible: true
@@ -244,3 +246,50 @@ noether-gpu:
       junit: build/*.junit
       performance: performance.json
     expire_in: 28 days
+
+
+# ----------------------------------------------------------------------------------------
+# Build documentation
+# ----------------------------------------------------------------------------------------
+docs-review:
+  stage: test:docs
+  tags:
+    - noether
+    - docker
+  extends:
+    - .docs
+    - .test-basic
+  interruptible: true
+  script:
+    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-gpu CEED_DIR=/projects/honee/libCEED
+    - git submodule update --init
+    - make doc-html pkgconf=true DOXYGENOPTS= SPHINXOPTS=-W
+    - mv doc/build/html public
+  artifacts:
+    paths:
+      - public
+    expire_in: 28 days
+  environment:
+    name: review/$CI_COMMIT_REF_NAME
+    url: https://$CI_PROJECT_NAMESPACE.gitlab.io/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
+
+
+# ----------------------------------------------------------------------------------------
+# Deploy documentation using GitLab pages
+# ----------------------------------------------------------------------------------------
+pages:  # this job name has special meaning to GitLab
+  stage: deploy
+  tags:
+    - noether
+    - docker
+  extends: .docs
+  interruptible: false
+  script:
+    - git submodule update --init
+    - make doc-dirhtml pkgconf=true DOXYGENOPTS=
+    - mv doc/build/dirhtml public
+  only:
+    - main
+  artifacts:
+    paths:
+      - public

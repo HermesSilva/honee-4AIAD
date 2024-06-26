@@ -54,7 +54,6 @@ static inline PetscErrorCode DMReferenceCopy(DM dm, DM *dm_copy) {
 
   @return Equivalent CeedMemType
 **/
-/// @ingroup RatelInternal
 static inline CeedMemType MemTypePetscToCeed(PetscMemType mem_type) { return PetscMemTypeDevice(mem_type) ? CEED_MEM_DEVICE : CEED_MEM_HOST; }
 
 /**
@@ -233,7 +232,6 @@ static inline PetscErrorCode VecCopyPetscToCeed(Vec X_petsc, CeedVector x_ceed) 
   @return The maximum of the two integers
 
 **/
-/// @ingroup RatelInternal
 static inline CeedInt GetCeedQuadratureSize(CeedEvalMode eval_mode, CeedInt dim, CeedInt num_components) {
   switch (eval_mode) {
     case CEED_EVAL_INTERP:

@@ -1,0 +1,13 @@
+altair>=5.0
+breathe>=4.30
+furo>=2023.8.19
+myst-parser[linkify]>=0.14.0,<3.0
+sphinx-design
+sphinx-hoverxref>=0.3b1
+sphinx>=7.2.3,<7.3
+sphinxcontrib-bibtex>=2.1.1
+sphinxcontrib-katex
+sphinxcontrib-mermaid
+sphinxcontrib-svg2pdfconverter
+sphinxext-altair
+docutils
