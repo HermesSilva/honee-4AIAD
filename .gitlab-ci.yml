@@ -178,6 +178,7 @@ noether-cpu:
       if [ -f .SUCCESS ]; then
         gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
       fi
+  coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
     paths:
       - coverage.xml
@@ -235,6 +236,7 @@ noether-gpu:
       if [ -f .SUCCESS ]; then
         gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
       fi
+  coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
     paths:
       - coverage.xml
