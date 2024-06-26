@@ -189,10 +189,9 @@ if __name__ == '__main__':
         if args.mode is RunMode.TAP:
             print(f'1..1')
         if has_smartsim:
-            sys.path.insert(0, str(Path(__file__).parents[1] / "examples" / "fluids"))
             from smartsim_regression_framework import SmartSimTest
 
-            test_framework = SmartSimTest(Path(__file__).parent / 'test_dir')
+            test_framework = SmartSimTest(Path(__file__).parent / 'smartsim_test_dir')
             test_framework.setup()
 
             is_new_subtest = True

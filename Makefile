@@ -219,18 +219,13 @@ $(petsc.pc):
 
 .PHONY: all print clean
 
-# Fluid Dynamics Examples
-fluidsexamples.c  := $(sort $(wildcard *.c))
-fluidsexamples.py := smartsim_regression_framework.py
-fluidsexamples    := $(fluidsexamples.c:%.c=$(OBJDIR)/%)
-fluidsexamples    += $(fluidsexamples.py:%.py=$(OBJDIR)/%)
+# Define test files
+examples.c := $(sort $(wildcard *.c))
+examples   := $(examples.c:%.c=$(OBJDIR)/%)
+tests.py   := $(filter-out $(wildcard tests/junit*.py), $(sort $(wildcard tests/*.py)))
+tests      += $(tests.py:tests/%.py=$(OBJDIR)/test-py-%)
 
-$(OBJDIR)/$(fluidsexamples.py): $(OBJDIR)/navierstokes
-
-examples := $(fluidsexamples)
-
-$(examples) : $(libceed)
-$(tests) : $(libceed)
+$(OBJDIR)/test-py-%: tests/%.py | $(OBJDIR)/navierstokes
 
 # Documentation
 DOXYGEN ?= doxygen
