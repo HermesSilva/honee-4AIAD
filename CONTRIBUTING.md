@@ -44,16 +44,16 @@ By making a contribution to this project, I certify that:
 
 ## Authorship
 
-Ratel contains components authored by many individuals.
+HONEE contains components authored by many individuals.
 It is important that contributors receive appropriate recognition through informal and academically-recognized credit systems such as publications.
-Status as a named author on the users manual and Ratel software publications will be granted for those who
+Status as a named author on the users manual and HONEE software publications will be granted for those who
 
-1. make significant contributions to Ratel (in implementation, documentation, conceptualization, review, etc.) and
+1. make significant contributions to HONEE (in implementation, documentation, conceptualization, review, etc.) and
 2. maintain and support those contributions.
 
 Maintainers will do their best to notice when contributions reach this level and add your name to `AUTHORS`, but please email or create an issue if you believe your contributions have met these criteria and haven't yet been acknowledged.
 
-Authors of publications about Ratel as a whole, including DOI-bearing archives, shall offer co-authorship to all individuals listed in the `AUTHORS` file.
-Authors of publications claiming specific Ratel contributions shall evaluate those listed in `AUTHORS` and offer co-authorship to those who made significant intellectual contributions to the work.
+Authors of publications about HONEE as a whole, including DOI-bearing archives, shall offer co-authorship to all individuals listed in the `AUTHORS` file.
+Authors of publications claiming specific HONEE contributions shall evaluate those listed in `AUTHORS` and offer co-authorship to those who made significant intellectual contributions to the work.
 
-Note that there is no co-authorship expectation for those publishing about use of Ratel (versus creation of new features in Ratel), but see the [citing section](https://ratel.micromorph.org/doc/intro/#how-to-cite) and use your judgment regarding significance of support/advice you may have received in developing your use case and interpreting results.
+Note that there is no co-authorship expectation for those publishing about use of HONEE (versus creation of new features in HONEE), but see the citing section and use your judgment regarding significance of support/advice you may have received in developing your use case and interpreting results.

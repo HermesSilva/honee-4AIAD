@@ -70,10 +70,9 @@ master_doc = 'index'
 # General information about the project.
 project = 'HONEE'
 copyright = '2024, University of Colorado, LLNS, and other authors'
-# with open(Path('AUTHORS')) as f:
-#     authorlist = f.readlines()
-# author = ', '.join(authorlist)
-author = ''
+with open(Path('AUTHORS')) as f:
+    authorlist = f.readlines()
+author = ', '.join(authorlist)
 
 # # The version info for the project you're documenting, acts as replacement for
 # # |version| and |release|, also used in various other places throughout the
@@ -211,8 +210,7 @@ latex_elements = {
 
 # latex_logo = 'doc/img/logo.jpg'
 
-# latexauthorslist = r' \and '.join(authorlist)
-latexauthorslist = ''
+latexauthorslist = r' \and '.join(authorlist)
 
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title,
