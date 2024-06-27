@@ -51,10 +51,9 @@ noether-lint:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export CC=gcc HIPCC=hipcc
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
-    - echo "-------------- GCOV ----------------" && gcov --version
     - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
     # Libraries
     # -- libCEED
@@ -63,7 +62,7 @@ noether-lint:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-serial-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-serial-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
     # make with Werror, Wall, supress loop vectorization warnings
@@ -74,7 +73,7 @@ noether-lint:
     - make -j$NPROC_CPU format && git diff --color=always --exit-code
     # Clang-tidy
     - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-15 && $CLANG_TIDY --version
-    - PETSC_ARCH=arch-serial-gpu make -j$NPROC_CPU tidy
+    - PETSC_ARCH=arch-serial-hip make -j$NPROC_CPU tidy
     # Report status
     - touch .SUCCESS
 
@@ -144,12 +143,11 @@ noether-cpu:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export COVERAGE=1 CC=gcc
     - export NPROC_POOL=4
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
     - echo "-------------- GCOV ----------------" && gcov --version
-    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
@@ -157,7 +155,7 @@ noether-cpu:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-parallel-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-parallel-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
     # HONEE
@@ -208,12 +206,11 @@ noether-cpu-int64:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export COVERAGE=1 CC=gcc
     - export NPROC_POOL=4
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
     - echo "-------------- GCOV ----------------" && gcov --version
-    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
@@ -262,7 +259,7 @@ noether-cpu-int64:
 # ----------------------------------------------------------------------------------------
 # GPU testing on Noether
 # ----------------------------------------------------------------------------------------
-noether-gpu:
+noether-hip:
   stage: test:stage-full
   extends: .test
   tags:
@@ -275,8 +272,8 @@ noether-gpu:
     - export NPROC_POOL=4
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
-    - echo "-------------- GCOV ----------------" && gcov --version
     - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
+    - echo "-------------- GCOV ----------------" && gcov --version
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
@@ -284,7 +281,7 @@ noether-gpu:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-parallel-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-parallel-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
     # HONEE
@@ -297,6 +294,62 @@ noether-gpu:
     # -- Fastest libCEED HIP backend, serial
     # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
     - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/gpu/hip/shared" JUNIT_BATCH="hip-serial" junit search=navierstokes
+    # Report status
+    - touch .SUCCESS
+  after_script:
+    - |
+      if [ -f .SUCCESS ]; then
+        gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
+      fi
+  coverage: '/^lines:\s+(\d+.\d\%)/'
+  artifacts:
+    paths:
+      - coverage.xml
+      - build/*.junit
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+      junit: build/*.junit
+      performance: performance.json
+    expire_in: 28 days
+
+
+noether-cuda:
+  stage: test:stage-full
+  extends: .test
+  tags:
+    - noether
+    - shell
+  script:
+    - rm -f .SUCCESS
+    # Environment
+    - export COVERAGE=1 CC=gcc NVCC=nvcc
+    - export NPROC_POOL=4
+    - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
+    - echo "-------------- CC ------------------" && $CC --version
+    - echo "-------------- NVCC ----------------" && $NVCC --version
+    - echo "-------------- GCOV ----------------" && gcov --version
+    # Libraries
+    # -- libCEED
+    - echo "-------------- libCEED -------------"
+    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    # -- PETSc
+    - echo "-------------- PETSc ---------------"
+    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_ARCH=arch-parallel-cuda && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_OPTIONS='-malloc_debug no -use_gpu_aware_mpi 0' # faster tests
+    - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
+    # HONEE
+    - echo "-------------- HONEE ---------------" && make info
+    - make clean
+    - make -j$NPROC_CPU
+    # Test suite
+    - echo "-------------- HONEE tests ---------"
+    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
+    # -- Fastest libCEED CUDA backend, serial
+    # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
+    - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/gpu/cuda/shared" JUNIT_BATCH="cuda-serial" junit search=navierstokes
     # Report status
     - touch .SUCCESS
   after_script:
@@ -331,7 +384,7 @@ docs-review:
     - .test-basic
   interruptible: true
   script:
-    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-gpu CEED_DIR=/projects/honee/libCEED
+    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-hip CEED_DIR=/projects/honee/libCEED
     - git submodule update --init
     - make doc-html pkgconf=true DOXYGENOPTS= SPHINXOPTS=-W
     - mv doc/build/html public
