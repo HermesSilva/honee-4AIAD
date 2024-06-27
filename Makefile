@@ -186,10 +186,10 @@ navierstokes: $(src.o) | $(petsc.pc) $(ceed.pc)
 # Quiet, color output
 quiet ?= $($(1))
 
-$(OBJDIR)/%.o : %.c  Makefile | $$(@D)/.DIR
+$(OBJDIR)/%.o : %.c | $$(@D)/.DIR
 	$(call quiet,CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(abspath $<)
 
-$(OBJDIR)/%.o : %.cpp Makefile | $$(@D)/.DIR
+$(OBJDIR)/%.o : %.cpp | $$(@D)/.DIR
 	$(call quiet,CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(abspath $<)
 
 print: $(petsc.pc) $(ceed.pc)
@@ -220,12 +220,12 @@ $(petsc.pc):
 .PHONY: all print clean
 
 # Define test files
-examples.c := $(sort $(wildcard *.c))
-examples   := $(examples.c:%.c=$(OBJDIR)/%)
-tests.py   := $(filter-out $(wildcard tests/junit*.py), $(sort $(wildcard tests/*.py)))
-tests      += $(tests.py:tests/%.py=$(OBJDIR)/test-py-%)
+examples.c     := $(sort $(wildcard *.c))
+examples       := $(examples.c:%.c=$(OBJDIR)/%)
+tests.smartsim := test-smartsim
+tests          += $(tests.smartsim:%=$(OBJDIR)/%)
 
-$(OBJDIR)/test-py-%: tests/%.py | $(OBJDIR)/navierstokes
+$(tests.smartsim:%=$(OBJDIR)/%): $(OBJDIR)/navierstokes
 
 # Documentation
 DOXYGEN ?= doxygen
@@ -236,7 +236,7 @@ doxygen :
 SPHINXOPTS      =
 SPHINXBUILD     = sphinx-build
 SPHINXAUTOBUILD = sphinx-autobuild
-SPHINXPROJ      = Ratel
+SPHINXPROJ      = HONEE
 SPHINXBUILDDIR  = doc/build
 
 doc-html doc-dirhtml doc-latexpdf doc-epub doc-help : doc-% : doxygen
