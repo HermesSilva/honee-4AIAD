@@ -1,7 +1,7 @@
 # Runtime options
 
 ## Common Options
-The Navier-Stokes mini-app is controlled via command-line options.
+The Navier-Stokes HONEE app is controlled via command-line options.
 The following options are common among all problem types:
 
 :::{list-table} Common Runtime Options
@@ -14,18 +14,6 @@ The following options are common among all problem types:
 * - `-ceed`
   - CEED resource specifier
   - `/cpu/self/opt/blocked`
-
-* - `-test_type`
-  - Run in test mode and specify whether solution (`solver`) or turbulent statistics (`turb_spanstats`) output should be verified
-  - `none`
-
-* - `-compare_final_state_atol`
-  - Test absolute tolerance
-  - `1E-11`
-
-* - `-compare_final_state_filename`
-  - Test filename
-  -
 
 * - `-problem`
   - Problem to solve (`advection`, `density_current`, `euler_vortex`, `shocktube`, `blasius`, `channel`, `gaussian_wave`, and `taylor_green`)
@@ -158,6 +146,19 @@ The following options are common among all problem types:
 * - `-help`
   - View comprehensive information about run-time options
   -
+
+* - `-test_type`
+  - Run in test mode and specify whether solution (`solver`) or turbulent statistics (`turb_spanstats`) output should be verified
+  - `none`
+
+* - `-compare_final_state_atol`
+  - Test absolute tolerance
+  - `1E-11`
+
+* - `-compare_final_state_filename`
+  - Test filename
+  -
+
 :::
 
 For the case of a square/cubic mesh, the list of face indices to be used with `-bc_wall`, `bc_inflow`, `bc_outflow`, `bc_freestream`  and/or `-bc_symmetry_x`, `-bc_symmetry_y`, and `-bc_symmetry_z` are:
