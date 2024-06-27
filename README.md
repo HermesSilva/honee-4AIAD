@@ -72,3 +72,5 @@ To test the installation, use
 ```console
 $ make test -j8
 ```
+
+<!-- citing -->

@@ -9,6 +9,7 @@
 :caption: Contents
 :maxdepth: 2
 
+doc/intro
 doc/runtime_options
 doc/theory
 Contributing <CONTRIBUTING>
