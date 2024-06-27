@@ -186,10 +186,10 @@ navierstokes: $(src.o) | $(petsc.pc) $(ceed.pc)
 # Quiet, color output
 quiet ?= $($(1))
 
-$(OBJDIR)/%.o : %.c  Makefile | $$(@D)/.DIR
+$(OBJDIR)/%.o : %.c | $$(@D)/.DIR
 	$(call quiet,CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(abspath $<)
 
-$(OBJDIR)/%.o : %.cpp Makefile | $$(@D)/.DIR
+$(OBJDIR)/%.o : %.cpp | $$(@D)/.DIR
 	$(call quiet,CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(abspath $<)
 
 print: $(petsc.pc) $(ceed.pc)
