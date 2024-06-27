@@ -63,7 +63,7 @@ noether-lint:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-serial-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-serial-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
     # make with Werror, Wall, supress loop vectorization warnings
@@ -74,7 +74,7 @@ noether-lint:
     - make -j$NPROC_CPU format && git diff --color=always --exit-code
     # Clang-tidy
     - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-15 && $CLANG_TIDY --version
-    - PETSC_ARCH=arch-serial-gpu make -j$NPROC_CPU tidy
+    - PETSC_ARCH=arch-serial-hip make -j$NPROC_CPU tidy
     # Report status
     - touch .SUCCESS
 
@@ -157,7 +157,7 @@ noether-cpu:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-parallel-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-parallel-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
     # HONEE
@@ -262,7 +262,7 @@ noether-cpu-int64:
 # ----------------------------------------------------------------------------------------
 # GPU testing on Noether
 # ----------------------------------------------------------------------------------------
-noether-gpu:
+noether-hip:
   stage: test:stage-full
   extends: .test
   tags:
@@ -284,7 +284,7 @@ noether-gpu:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-parallel-gpu && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-parallel-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
     # HONEE
@@ -331,7 +331,7 @@ docs-review:
     - .test-basic
   interruptible: true
   script:
-    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-gpu CEED_DIR=/projects/honee/libCEED
+    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-hip CEED_DIR=/projects/honee/libCEED
     - git submodule update --init
     - make doc-html pkgconf=true DOXYGENOPTS= SPHINXOPTS=-W
     - mv doc/build/html public
