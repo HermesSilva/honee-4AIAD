@@ -1,28 +1,76 @@
 # HONEE: High-Order Navier-stokes Equation Evaluator
 
+[![GitLab-CI](https://gitlab.com/phypid/honee/badges/main/pipeline.svg?key_text=GitLab-CI)](https://gitlab.com/phypid/honee/badges/main/pipeline.svg?key_text=GitLab-CI)
+[![BSD-2-Clause](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
+[![Documentation](https://img.shields.io/badge/Documentation-latest-blue.svg)](https://phypid.gitlab.io/honee)
+[![Code Coverage](https://gitlab.com/phypid/honee/badges/main/coverage.svg)](https://gitlab.com/phypid/honee/-/commits/main)
+
 <!-- abstract -->
-This page provides a description of the Navier-Stokes example for the libCEED library, based on PETSc.
+HONEE (prounounced "honey") is a fluids mechanics library based on [libCEED](https://libceed.org) and [PETSc](https://petsc.org) with support for efficient high-order elements and CUDA, ROCm, and Intel GPUs.
 
-The Navier-Stokes problem solves the compressible Navier-Stokes equations in three dimensions using an explicit time integration.
-The state variables are mass density, momentum density, and energy density.
+HONEE uses continuous-Galerkin stabilized finite element methods, namely SUPG, with a focus on scale-resolving simulations.
+Effort is made to maintain flexibility in state variable choice, boundary conditions, time integration scheme (both implicit and explicit), and other solver choices.
+High-order finite elements implemented in a matrix-free fashion with appropriate preconditioning strategies can overcome these inefficiencies.
 
-The main Navier-Stokes solver for libCEED is defined in [`navierstokes.c`](navierstokes.c) with different problem definitions according to the application of interest.
+# Getting Started
+<!-- getting-started -->
 
-## Getting Started
+## Download and Install
 
-Build by using:
+A local build and installation provides greater control over build options and optimization.
+HONEE is open-source and can be downloaded from [the HONEE repository on GitLab](https://gitlab.com/phypid/honee).
 
-`make`
-
-and run with:
-
-```
-./navierstokes -ceed [ceed] -problem [problem type] -degree [degree]
-```
-
-If you want to do *in situ* machine-learning training, specify `SMARTREDIS_DIR` in the make command like:
-
-```
-make SMARTREDIS_DIR=~/software/smartredis/install
+```console
+$ git clone https://gitlab.com/phypid/honee
 ```
 
+### Prerequisites
+
+HONEE is based upon libCEED and PETSc.
+
+#### libCEED
+
+HONEE requires libCEED's `main` development branch, which can be [cloned from Github](https://github.com/CEED/libCEED).
+
+```console
+$ git clone https://github.com/CEED/libCEED
+$ make -C -j8 libCEED
+```
+
+The above will be enough for most simple CPU installations; see the [libCEED documentation](https://libceed.org/en/latest/gettingstarted/#) for details on using GPUs, tuning, and more complicated environments.
+
+#### PETSc
+
+HONEE requires PETSc's `main` development branch, which can be [cloned from GitLab](https://gitlab.com/petsc/petsc).
+
+```console
+$ git clone https://gitlab.com/petsc/petsc
+```
+
+Follow the [PETSc documentation](https://petsc.org/main/install/) to configure and build PETSc.
+It is recommended that you install with [CGNS library](https://cgns.github.io/) support using `--download-hdf5 --download-cgns`.
+
+### Building
+
+The environment variables `CEED_DIR`, `PETSC_DIR`, and `PETSC_ARCH` must be set to build HONEE.
+
+Assuming you have cloned the HONEE repository as above, build using:
+
+```console
+$ export CEED_DIR=[path to libCEED] PETSC_DIR=[path to PETSc] PETSC_ARCH=[PETSc arch] ENZYME_LIB=[path to Enzyme]
+$ make -j8
+```
+
+To run a sample problem, run:
+
+```console
+$ bin/navierstokes -options_file ./gaussianwave.yaml
+```
+
+To test the installation, use
+
+```console
+$ make test -j8
+```
+
+<!-- citing -->
