@@ -51,10 +51,9 @@ noether-lint:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export CC=gcc HIPCC=hipcc
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
-    - echo "-------------- GCOV ----------------" && gcov --version
     - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
     # Libraries
     # -- libCEED
@@ -144,12 +143,11 @@ noether-cpu:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export COVERAGE=1 CC=gcc
     - export NPROC_POOL=4
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
     - echo "-------------- GCOV ----------------" && gcov --version
-    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
@@ -208,12 +206,11 @@ noether-cpu-int64:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export COVERAGE=1 CC=gcc HIPCC=hipcc
+    - export COVERAGE=1 CC=gcc
     - export NPROC_POOL=4
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
     - echo "-------------- GCOV ----------------" && gcov --version
-    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
@@ -275,8 +272,8 @@ noether-hip:
     - export NPROC_POOL=4
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
-    - echo "-------------- GCOV ----------------" && gcov --version
     - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
+    - echo "-------------- GCOV ----------------" && gcov --version
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
