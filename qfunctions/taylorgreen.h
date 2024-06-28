@@ -25,8 +25,8 @@ CEED_QFUNCTION(ICsTaylorGreen)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const CeedScalar               density0  = reference.pressure / (reference.temperature * R);
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar x[]  = {X[0][i], X[1][i], X[2][i]};
-    CeedScalar q[5] = {0}, Y[5];
+    CeedScalar x[] = {X[0][i], X[1][i], X[2][i]};
+    CeedScalar q[5], Y[5];
     ScaleN(x, 2 * M_PI / context->lx, 3);
 
     Y[0] = reference.pressure + (density0 * Square(V0) / 16) * (cos(2 * x[0]) + cos(2 * x[1])) * (cos(2 * x[2] + 2));

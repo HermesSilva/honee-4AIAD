@@ -272,9 +272,9 @@ SED_FMT_OPTS  += -r 's/\s+$$//' -i
 %.format : %
 	$(call quiet,CLANG_FORMAT) $(FORMAT_OPTS) $^
 
-format.ch := $(shell git ls-files *.[ch]pp *.[ch])
+format.ch := $(shell git ls-files '*.[ch]pp' '*.[ch]')
 format.py := $(filter-out tests/junit-xml/junit_xml/__init__.py, $(shell git ls-files '*.py'))
-format.ot := $(shell git ls-files *.md)
+format.ot := $(shell git ls-files '*.md')
 
 format-c  :
 	$(call quiet,CLANG_FORMAT) $(FORMAT_OPTS) $(format.ch)

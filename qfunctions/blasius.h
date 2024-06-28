@@ -116,7 +116,7 @@ CEED_QFUNCTION(ICsBlasius)(void *ctx, CeedInt Q, const CeedScalar *const *in, Ce
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar x[3] = {X[0][i], X[1][i], X[2][i]};
     State            s    = BlasiusSolution(context, x, x0, x_inflow, S_infty.U.density, &t12);
-    CeedScalar       q[5] = {0};
+    CeedScalar       q[5];
 
     StateToQ(gas, s, q, gas->state_var);
     for (CeedInt j = 0; j < 5; j++) q0[j][i] = q[j];

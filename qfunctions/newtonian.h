@@ -35,8 +35,8 @@ CEED_QFUNCTION_HELPER int ICsNewtonianIG(void *ctx, CeedInt Q, const CeedScalar 
   const SetupContext context = (SetupContext)ctx;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar q[5] = {0.};
-    State      s    = StateFromPrimitive(&context->gas, context->reference);
+    CeedScalar q[5];
+    State      s = StateFromPrimitive(&context->gas, context->reference);
     StateToQ(&context->gas, s, q, state_var);
     for (CeedInt j = 0; j < 5; j++) q0[j][i] = q[j];
   }

@@ -15,6 +15,16 @@ config.mk
 *~
 *.dylib
 
+# Coverage
+*.gcno
+*.gcda
+*.gcov
+
+# Debugging
+vgcore*
+*.json
+tests/smartsim_test_dir
+
 # Python
 dist
 *egg*
@@ -54,7 +64,6 @@ perf.data
 *.log
 *.npy
 *.csv
-tests/smartsim_test_dir
 
 # Editor Misc
 .cache/

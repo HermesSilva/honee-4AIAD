@@ -39,7 +39,7 @@ CEED_QFUNCTION_HELPER int IC_GaussianWave(void *ctx, CeedInt Q, const CeedScalar
   const CeedScalar gamma = HeatCapacityRatio(newt_ctx);
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar       U[5] = {0.}, qi[5] = {0.};
+    CeedScalar       U[5], qi[5];
     const CeedScalar x[3]      = {X[0][i], X[1][i], X[2][i]};
     const CeedScalar x0        = x[0] - xc;
     const CeedScalar y0        = x[1] - yc;
