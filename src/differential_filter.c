@@ -11,7 +11,7 @@
 
 #include <petscdmplex.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 // @brief Create RHS and LHS operators for differential filtering
 PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData ceed_data, CeedQFunctionContext diff_filter_qfctx) {

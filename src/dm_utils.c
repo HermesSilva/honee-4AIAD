@@ -12,7 +12,7 @@
 #include <petscdmplex.h>
 #include <petscds.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 /**
   @brief Convert `DM` field to `DS` field.

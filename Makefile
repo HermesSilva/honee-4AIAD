@@ -76,7 +76,7 @@ OBJDIR := build
 SRCDIR := src
 PROBLEMDIR := problems
 
-src.c := navierstokes.c $(sort $(wildcard $(PROBLEMDIR)/*.c)) $(sort $(wildcard $(SRCDIR)/*.c))
+src.c := examples/navierstokes.c $(sort $(wildcard $(PROBLEMDIR)/*.c)) $(sort $(wildcard $(SRCDIR)/*.c))
 src.o = $(src.c:%.c=$(OBJDIR)/%.o) $(src.cpp:%.cpp=$(OBJDIR)/%.o)
 
 # Path to install directory for SmartRedis. Example: /software/smartredis/install
@@ -220,8 +220,8 @@ $(petsc.pc):
 .PHONY: all print clean
 
 # Define test files
-examples.c     := $(sort $(wildcard *.c))
-examples       := $(examples.c:%.c=$(OBJDIR)/%)
+examples.c     := $(sort $(wildcard examples/*.c))
+examples       := $(examples.c:examples/%.c=$(OBJDIR)/%)
 tests.smartsim := test-smartsim
 tests          += $(tests.smartsim:%=$(OBJDIR)/%)
 

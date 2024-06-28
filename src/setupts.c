@@ -12,7 +12,7 @@
 #include <petscdmplex.h>
 #include <petscts.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 #include "../qfunctions/newtonian_state.h"
 
 // Insert Boundary values if it's a new time

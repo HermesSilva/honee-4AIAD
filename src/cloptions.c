@@ -11,7 +11,7 @@
 #include <petscdevice.h>
 #include <petscsys.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 // Register problems to be available on the command line
 PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {

@@ -13,7 +13,7 @@
 #include <ceed.h>
 #include <petscdm.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping
 //

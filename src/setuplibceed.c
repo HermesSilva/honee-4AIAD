@@ -11,7 +11,7 @@
 #include <ceed.h>
 #include <petscdmplex.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 // @brief Create CeedOperator for unstabilized mass KSP for explicit timestepping
 static PetscErrorCode CreateKSPMassOperator_Unstabilized(User user, CeedOperator *op_mass) {

@@ -751,13 +751,13 @@ The Gaussian wave problem has the following command-line options in addition to 
 
 :::
 
-This problem can be run with the `gaussianwave.yaml` file via:
+This problem can be run with the `examples/gaussianwave.yaml` file via:
 
 ```
-./navierstokes -options_file gaussianwave.yaml
+./build/navierstokes -options_file examples/gaussianwave.yaml
 ```
 
-```{literalinclude} ../gaussianwave.yaml
+```{literalinclude} ../examples/gaussianwave.yaml
 :language: yaml
 ```
 
@@ -794,24 +794,24 @@ The initial condition is taken from `-reference_temperature` and `-reference_pre
 To run this problem, first generate a mesh:
 
 ```console
-$ make -C /meshes
+$ make -C examples/meshes
 ```
 
 Then run by building the executable and running:
 
 ```console
-$ make build/fluids-navierstokes
-$ mpiexec -n 6 build/fluids-navierstokes -options_file vortexshedding.yaml -{ts,snes}_monitor_
+$ make -j
+$ mpiexec -n 6 build/navierstokes -options_file examples/vortexshedding.yaml -{ts,snes}_monitor_
 ```
 
 The vortex shedding period is roughly 5.6 and this problem runs until time 100 (2000 time steps).
-The above run writes a file named `force.csv` (see `ts_monitor_wall_force` in `vortexshedding.yaml`), which can be postprocessed by running to create a figure showing lift and drag coefficients over time.
+The above run writes a file named `force.csv` (see `ts_monitor_wall_force` in `examples/vortexshedding.yaml`), which can be postprocessed by running to create a figure showing lift and drag coefficients over time.
 
 ```console
 $ python postprocess/vortexshedding.py
 ```
 
-```{literalinclude} ../vortexshedding.yaml
+```{literalinclude} ../examples/vortexshedding.yaml
 :language: yaml
 ```
 
@@ -902,12 +902,12 @@ The Channel problem has the following command-line options in addition to the Ne
   -
 :::
 
-This problem can be run with the `channel.yaml` file via:
+This problem can be run with the `examples/channel.yaml` file via:
 
 ```
-./navierstokes -options_file channel.yaml
+./build/navierstokes -options_file examples/channel.yaml
 ```
-```{literalinclude} ../channel.yaml
+```{literalinclude} ../examples/channel.yaml
 :language: yaml
 ```
 
@@ -997,13 +997,13 @@ The Blasius problem has the following command-line options in addition to the Ne
 
 :::
 
-This problem can be run with the `blasius.yaml` file via:
+This problem can be run with the `examples/blasius.yaml` file via:
 
 ```
-./navierstokes -options_file blasius.yaml
+./build/navierstokes -options_file examples/blasius.yaml
 ```
 
-```{literalinclude} ../blasius.yaml
+```{literalinclude} ../examples/blasius.yaml
 :language: yaml
 ```
 
@@ -1066,11 +1066,11 @@ Using the STG Inflow for the blasius problem adds the following command-line opt
 
 :::
 
-This problem can be run with the `blasius.yaml` file via:
+This problem can be run with the `examples/blasius.yaml` file via:
 
 ```
-./navierstokes -options_file blasius.yaml -stg_use true
+./build/navierstokes -options_file examples/blasius.yaml -stg_use true
 ```
 
 Note the added `-stg_use true` flag
-This overrides the `stg: use: false` setting in the `blasius.yaml` file, enabling the use of the STG inflow.
+This overrides the `stg: use: false` setting in the `examples/blasius.yaml` file, enabling the use of the STG inflow.

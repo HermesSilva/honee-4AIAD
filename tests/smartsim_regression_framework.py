@@ -117,7 +117,7 @@ class SmartSimTest(object):
         try:
             arguments = [
                 '-ceed', ceed_resource,
-                '-options_file', (file_dir / '../blasius.yaml').as_posix(),
+                '-options_file', (file_dir / '../examples/blasius.yaml').as_posix(),
                 '-ts_max_steps', '2',
                 '-diff_filter_grid_based_width',
                 '-ts_monitor', '-snes_monitor',

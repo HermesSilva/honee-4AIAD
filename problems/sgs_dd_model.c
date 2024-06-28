@@ -9,8 +9,8 @@
 
 #include <petscdmplex.h>
 
+#include <navierstokes.h>
 #include <sgs_model_torch.h>
-#include "../navierstokes.h"
 
 typedef struct {
   CeedElemRestriction      elem_restr_grid_aniso, elem_restr_sgs;

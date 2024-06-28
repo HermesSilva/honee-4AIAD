@@ -13,7 +13,7 @@
 #include <ceed.h>
 #include <petscdm.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   SetupContextShock    setup_context;

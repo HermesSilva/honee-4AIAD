@@ -10,7 +10,7 @@
 #include <ceed.h>
 #include <petscdmplex.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 #include "../problems/stg_shur14.h"
 
 PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, ProblemData problem, SimpleBC bc, Physics phys, CeedOperator op_strong_bc) {

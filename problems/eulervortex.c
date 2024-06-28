@@ -13,7 +13,7 @@
 #include <ceed.h>
 #include <petscdm.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   EulerTestType        euler_test;

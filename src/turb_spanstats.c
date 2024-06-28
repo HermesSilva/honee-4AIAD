@@ -17,8 +17,8 @@
 #include <petscdmplex.h>
 #include <petscsf.h>
 
-#include "../include/petsc_ops.h"
-#include "../navierstokes.h"
+#include <navierstokes.h>
+#include <petsc_ops.h>
 
 typedef struct {
   CeedElemRestriction elem_restr_parent_x, elem_restr_parent_stats, elem_restr_parent_colloc, elem_restr_child_colloc;

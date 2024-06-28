@@ -13,7 +13,7 @@
 #include <ceed.h>
 #include <petscdm.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 // For use with PetscOptionsEnum
 static const char *const StateVariables[] = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};

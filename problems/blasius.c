@@ -14,7 +14,7 @@
 #include <petscdm.h>
 #include <petscdt.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 #include "stg_shur14.h"
 
 PetscErrorCode CompressibleBlasiusResidual(SNES snes, Vec X, Vec R, void *ctx) {

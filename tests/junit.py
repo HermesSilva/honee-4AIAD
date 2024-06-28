@@ -48,7 +48,10 @@ class CeedSuiteSpec(SuiteSpec):
         Returns:
             Path: Path to source file
         """
-        return Path(test).with_suffix('.c')
+        if test.startswith('navierstokes'):
+            return (Path('examples') / 'navierstokes').with_suffix('.c')
+        else:
+            return (Path('tests') / test).with_suffix('.c')
 
     # get path to executable
     def get_run_path(self, test: str) -> Path:
