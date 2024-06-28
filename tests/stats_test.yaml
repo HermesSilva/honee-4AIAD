@@ -32,8 +32,8 @@ outflow_type: pressure # simpler, but worse than default "riemann"
 
 stg:
   use: true
-  inflow_path: "STGInflow_blasius.dat"
-  rand_path: "STGRand.dat"
+  inflow_path: "examples/STGInflow_blasius.dat"
+  rand_path: "examples/STGRand.dat"
   mean_only: true
   strong: true
 
