@@ -5,12 +5,12 @@
 //
 // This file is part of CEED:  http://github.com/ceed
 
-#include "../include/petsc_ops.h"
+#include <petsc_ops.h>
 
 #include <ceed.h>
 #include <petscdm.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 // @brief Get information about a DM's local vector
 PetscErrorCode DMGetLocalVectorInfo(DM dm, PetscInt *local_size, PetscInt *global_size, VecType *vec_type) {

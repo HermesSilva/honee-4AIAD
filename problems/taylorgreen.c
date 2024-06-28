@@ -10,7 +10,7 @@
 
 #include "../qfunctions/taylorgreen.h"
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscFunctionBeginUser;

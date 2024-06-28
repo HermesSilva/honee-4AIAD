@@ -6,9 +6,9 @@
 // This file is part of CEED:  http://github.com/ceed
 // Based on the instructions from https://www.craylabs.org/docs/sr_integration.html and PHASTA implementation
 
-#include "../../include/smartsim.h"
+#include <smartsim.h>
 
-#include "../../navierstokes.h"
+#include <navierstokes.h>
 
 PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const size_t name_length) {
   bool does_exist = true;

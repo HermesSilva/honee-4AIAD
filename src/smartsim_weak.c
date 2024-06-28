@@ -8,7 +8,7 @@
 // @file This creates weak functions for smartsim dependent functions. If the smartsim-dependent functions are actually built, these functions are not
 // linked to the final executable.
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem) __attribute__((weak));
 PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem) {

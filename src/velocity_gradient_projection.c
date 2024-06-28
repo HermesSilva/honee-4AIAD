@@ -11,7 +11,7 @@
 
 #include <petscdmplex.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_proj, User user, PetscInt degree) {
   PetscSection section;

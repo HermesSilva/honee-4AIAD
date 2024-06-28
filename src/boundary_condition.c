@@ -5,7 +5,7 @@
 //
 // This file is part of CEED:  http://github.com/ceed
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 /**
    @brief Add `BCDefinition` to a `PetscSegBuffer`

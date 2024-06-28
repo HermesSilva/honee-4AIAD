@@ -13,7 +13,7 @@
 #include <petscsf.h>
 #include <petscts.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 #include "../qfunctions/mass.h"
 
 PetscErrorCode ICs_FixMultiplicity(DM dm, CeedData ceed_data, User user, Vec Q_loc, Vec Q, CeedScalar time) {

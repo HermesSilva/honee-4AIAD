@@ -9,7 +9,7 @@
 
 #include <petscdmplex.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
                                                         CeedVector *grid_aniso_vector) {

@@ -14,8 +14,8 @@
 #include <petscts.h>
 #include <stdbool.h>
 
-#include "./include/petsc_ops.h"
-#include "qfunctions/newtonian_types.h"
+#include <petsc_ops.h>
+#include "../qfunctions/newtonian_types.h"
 
 #if PETSC_VERSION_LT(3, 21, 0)
 #error "PETSc v3.21 or later is required"

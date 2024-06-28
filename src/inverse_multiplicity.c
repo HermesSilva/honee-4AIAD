@@ -6,7 +6,7 @@
 // This file is part of CEED:  http://github.com/ceed
 
 #include "../qfunctions/inverse_multiplicity.h"
-#include "../navierstokes.h"
+#include <navierstokes.h>
 
 /**
  * @brief Get the inverse of the node multiplicity

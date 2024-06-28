@@ -16,7 +16,7 @@
 #include <petscdm.h>
 #include <stdlib.h>
 
-#include "../navierstokes.h"
+#include <navierstokes.h>
 #include "../qfunctions/stg_shur14.h"
 
 StgShur14Context global_stg_ctx;

@@ -9,8 +9,8 @@
 
 #include <petscdmplex.h>
 
-#include "../../include/smartsim.h"
-#include "../../navierstokes.h"
+#include <navierstokes.h>
+#include <smartsim.h>
 
 typedef struct {
   CeedElemRestriction  elem_restr_grid_aniso;
