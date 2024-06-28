@@ -304,6 +304,9 @@ CEED_QFUNCTION_HELPER void StateToQ(NewtonianIdealGasContext gas, const State in
     case STATEVAR_ENTROPY:
       StateToV(gas, input, Q);
       break;
+    default:
+      SetValueN(Q, -1, 5);
+      break;
   }
 }
 
