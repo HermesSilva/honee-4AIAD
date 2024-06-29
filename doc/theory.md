@@ -749,7 +749,7 @@ A symmetry (adiabatic free slip) condition is imposed at the top and bottom boun
 The cylinder wall is an adiabatic (no heat flux) no-slip boundary condition.
 As we evolve in time, eddies appear past the cylinder leading to a vortex shedding known as the vortex street, with shedding period of about 6.
 
-The Gmsh input file, `examples/fluids/meshes/cylinder.geo` is parametrized to facilitate experimenting with similar configurations.
+The Gmsh input file, `examples/meshes/cylinder.geo` is parametrized to facilitate experimenting with similar configurations.
 The Strouhal number (nondimensional shedding frequency) is sensitive to the size of the computational domain and boundary conditions.
 
 Forces on the cylinder walls are computed using the "reaction force" method, which is variationally consistent with the volume operator.
