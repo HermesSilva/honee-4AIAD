@@ -41,7 +41,7 @@ k: 14.34 # thermal conductivity, Pr = 0.71 typical of air
 
 ## DM Settings:
 degree: 3
-dm_plex_filename: examples/fluids/meshes/cylinder-q1-n08.msh
+dm_plex_filename: examples/meshes/cylinder-q1-n08.msh
 
 # Boundary Settings
 bc_symmetry_z: 6
