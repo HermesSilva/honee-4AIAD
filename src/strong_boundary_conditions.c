@@ -181,5 +181,6 @@ PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, User use
   PetscCall(OperatorApplyContextCreate(NULL, NULL, ceed, op_strong_bc, CEED_VECTOR_NONE, NULL, NULL, NULL, &user->op_strong_bc_ctx));
 
   PetscCall(PetscObjectComposeFunction((PetscObject)dm, "DMPlexInsertBoundaryValues_C", DMPlexInsertBoundaryValues_StrongBCCeed));
+  PetscCallCeed(ceed, CeedOperatorDestroy(&op_strong_bc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
