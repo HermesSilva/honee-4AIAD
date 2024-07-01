@@ -554,7 +554,7 @@ PetscErrorCode MatCeedCopy(Mat mat_ceed, Mat mat_other) {
 }
 
 /**
-  @brief Mark Mark `CeedQFunction` data as updated and the `CeedQFunction` as requiring re-assembly for a `MatCEED`.
+  @brief Mark `CeedQFunction` data as updated and the `CeedQFunction` as requiring re-assembly for a `MatCEED`.
 
   Collective across MPI processes.
 
