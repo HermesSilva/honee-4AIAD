@@ -290,7 +290,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
       problem->apply_inflow_jacobian.qfunction     = BoundaryIntegral_Jacobian_Conserv;
       problem->apply_inflow_jacobian.qfunction_loc = BoundaryIntegral_Jacobian_Conserv_loc;
       break;
-
     case STATEVAR_PRIMITIVE:
       problem->ics.qfunction                       = ICsNewtonianIG_Prim;
       problem->ics.qfunction_loc                   = ICsNewtonianIG_Prim_loc;
