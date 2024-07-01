@@ -572,6 +572,10 @@ PetscErrorCode MatCeedSetAssemblyDataUpdateNeeded(Mat mat_ceed, PetscBool update
   if (ctx->op_mult_transpose) {
     PetscCallCeed(ctx->ceed, CeedOperatorSetQFunctionAssemblyDataUpdateNeeded(ctx->op_mult_transpose, update_needed));
   }
+  if (update_needed) {
+    PetscCall(MatAssemblyBegin(mat_ceed, MAT_FINAL_ASSEMBLY));
+    PetscCall(MatAssemblyEnd(mat_ceed, MAT_FINAL_ASSEMBLY));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
