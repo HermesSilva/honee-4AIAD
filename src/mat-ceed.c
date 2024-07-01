@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <petsc/private/petscimpl.h>
 
 PetscClassId  MATCEED_CLASSID;
 PetscLogEvent MATCEED_MULT, MATCEED_MULT_CEEDOP, MATCEED_MULT_TRANSPOSE, MATCEED_MULT_TRANSPOSE_CEEDOP, MATCEED_ASSEMBLE_DIAGONAL,
