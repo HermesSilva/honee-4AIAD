@@ -108,8 +108,7 @@ noether-memcheck:
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
     # ASAN
     - echo "-------------- ASAN ----------------"
-    - echo "ASAN intentionlly skipped, known leaks"
-    # - export ASAN=1 AFLAGS="-fsanitize=address -fsanitize=leak"
+    - export ASAN=1 AFLAGS="-fsanitize=address -fsanitize=leak"
     - echo $AFLAGS
     # HONEE
     - echo "-------------- HONEE ---------------" && make info
