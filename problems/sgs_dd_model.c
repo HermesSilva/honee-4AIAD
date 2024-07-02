@@ -473,6 +473,7 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, User user, CeedData ceed
   PetscCall(
       OperatorApplyContextCreate(user->dm, user->dm, ceed, op_sgs_apply, user->q_ceed, user->g_ceed, NULL, NULL, &sgs_dd_data->op_sgs_apply_ctx));
 
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_sgs));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_sgs_apply));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_apply));
   PetscFunctionReturn(PETSC_SUCCESS);
