@@ -658,7 +658,8 @@ PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_
   @param[in]   face          Index of face
   @param[out]  basis         `CeedBasis` for cell to face evaluation on coordinate space of `DMPlex`
 **/
-PetscErrorCode DMPlexCeedBasisCellToFaceCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face, CeedBasis *basis) {
+PetscErrorCode DMPlexCeedBasisCellToFaceCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face,
+                                                         CeedBasis *basis) {
   DM dm_coord;
 
   PetscFunctionBeginUser;
@@ -797,9 +798,11 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
   @param[out]     face_label_name   Label name for newly created label, or `NULL` if no elements match the `material` and `dm_face`
 **/
 PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, PetscInt *num_label_values, char **face_label_name) {
-  PetscInt first_face_point, last_face_point, face_height = 1, num_label_values_local = 0;
-  DMLabel  face_label = NULL;
-  MPI_Comm comm       = PetscObjectComm((PetscObject)dm);
+  PetscInt        num_label_points, face_height = 1, num_label_values_local = 0;
+  const PetscInt *label_points;
+  IS              is_label_points;
+  DMLabel         face_label = NULL;
+  MPI_Comm        comm       = PetscObjectComm((PetscObject)dm);
 
   PetscFunctionBeginUser;
   {  // Create label name and label
@@ -813,18 +816,24 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, PetscInt *num_labe
     PetscCall(DMGetLabel(dm, *face_label_name, &face_label));
   }
 
-  // Find FE face number for all points in "Face Sets"
-  PetscCall(DMPlexGetHeightStratum(dm, face_height, &first_face_point, &last_face_point));
-  //TODO: Possibly use `DMLabelGetStratumBounds` to get first_face_point and last_face_point
-  // Actually, should probably use DMGetStratumIS and loop only over the Face Set members with dm_face value
+  PetscCall(DMGetStratumIS(dm, "Face Sets", dm_face, &is_label_points));
+  if (is_label_points) {
+    PetscCall(ISGetLocalSize(is_label_points, &num_label_points));
+    PetscCall(ISGetIndices(is_label_points, &label_points));
+  }
 
-  for (PetscInt face_point = first_face_point; face_point < last_face_point; face_point++) {
+  for (PetscInt face_index = 0; face_index < num_label_points; face_index++) {
     const PetscInt *face_support, *cell_cone;
-    PetscInt        face_support_size = 0, cell_cone_size = 0, fe_face_on_cell = -1, value = -1;
+    PetscInt        face_support_size = 0, cell_cone_size = 0, fe_face_on_cell = -1;
+    PetscInt        face_point;
 
-    // Check if current point is on target DMPlex face
-    PetscCall(DMGetLabelValue(dm, "Face Sets", face_point, &value));
-    if (value != dm_face) continue;
+    {  // Verify label point is a face point
+      PetscInt label_point = label_points[face_index], label_point_height = -1;
+
+      PetscCall(DMPlexGetPointHeight(dm, label_point, &label_point_height));
+      if (label_point_height != face_height) continue;
+      else face_point = label_point;
+    }
 
     // Get cell supporting face
     PetscCall(DMPlexGetSupport(dm, face_point, &face_support));
