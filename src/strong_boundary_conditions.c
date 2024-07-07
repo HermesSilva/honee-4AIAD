@@ -22,8 +22,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Problem
   CeedOperator        op_setup, op_strong_bc_sub, op_stgdata;
   DMLabel             domain_label;
   const PetscInt      dm_field = 0, height_face = 1, height_cell = 0;
-  PetscInt dim;
-  MPI_Comm            comm = PetscObjectComm((PetscObject)dm);
+  PetscInt            dim;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetLabel(dm, "Face Sets", &domain_label));
@@ -61,36 +60,21 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Problem
 
   // Compute contribution on each boundary face
   for (CeedInt i = 0; i < bc->num_inflow; i++) {
-    PetscInt num_face_orientations;  // Ignored for now
-    char    *face_orientation_label_name;
-    PetscCall(DMPlexCreateFaceLabel(dm, bc->inflows[i], &num_face_orientations, &face_orientation_label_name));
+    DMLabel  face_orientation_label;
+    PetscInt num_orientations_values, *orientation_values;
 
-    IS              is_orientation_values;
-    DMLabel         face_orientation_label;
-    PetscInt        num_orientations_local;
-    PetscInt        minmax_orientation_values[2];
-    const PetscInt *orientations_local;
-    PetscCall(DMGetLabel(dm, face_orientation_label_name, &face_orientation_label));
-    PetscCall(DMLabelGetValueIS(face_orientation_label, &is_orientation_values));
-    PetscCall(ISSort(is_orientation_values));
-    PetscCall(ISGetLocalSize(is_orientation_values, &num_orientations_local));
-    PetscCall(ISGetIndices(is_orientation_values, &orientations_local));
     {
-      const PetscInt minmax_orientation_values_loc[2] = {orientations_local[0], orientations_local[num_orientations_local - 1]};
+      char *face_orientation_label_name;
 
-      PetscCall(PetscGlobalMinMaxInt(comm, minmax_orientation_values_loc, minmax_orientation_values));
+      PetscCall(DMPlexCreateFaceLabel(dm, bc->inflows[i], &face_orientation_label_name));
+      PetscCall(DMGetLabel(dm, face_orientation_label_name, &face_orientation_label));
+      PetscCall(PetscFree(face_orientation_label_name));
     }
-
-    for (PetscInt orientation = minmax_orientation_values[0]; orientation <= minmax_orientation_values[1]; orientation++) {
-      CeedBasis basis_x_to_q_cell;
+    PetscCall(DMLabelCreateGlobalValueArray(dm, face_orientation_label, &num_orientations_values, &orientation_values));
+    for (PetscInt o = 0; o < num_orientations_values; o++) {
+      CeedBasis           basis_x_to_q_cell;
       CeedElemRestriction elem_restr_x_cell;
-      {  // Skip orientation if no process has this face with this orientation
-        PetscInt location_local, location_global = -1;
-
-        PetscCall(PetscFindInt(orientation, num_orientations_local, orientations_local, &location_local));
-        PetscCall(MPIU_Allreduce(&location_local, &location_global, 1, MPIU_INT, MPI_MAX, comm));
-        if (location_global < 0) continue;
-      }
+      PetscInt            orientation = orientation_values[o];
 
       {
         CeedBasis basis_x_cell_to_face, basis_q_face;
@@ -168,6 +152,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Problem
       PetscCallCeed(ceed, CeedOperatorDestroy(&op_setup));
       PetscCallCeed(ceed, CeedOperatorDestroy(&op_stgdata));
     }
+    PetscCall(PetscFree(orientation_values));
   }
 
   PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_strong_bc, "solution time", &phys->stg_solution_time_label));

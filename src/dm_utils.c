@@ -797,8 +797,8 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
   @param[in]      dm_face           Face number on `DMPlex`
   @param[out]     face_label_name   Label name for newly created label, or `NULL` if no elements match the `material` and `dm_face`
 **/
-PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, PetscInt *num_label_values, char **face_label_name) {
-  PetscInt        num_label_points, face_height = 1, num_label_values_local = 0;
+PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_name) {
+  PetscInt        num_label_points = 0, face_height = 1;
   const PetscInt *label_points;
   IS              is_label_points;
   DMLabel         face_label = NULL;
@@ -851,17 +851,66 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, PetscInt *num_labe
     PetscCheck(fe_face_on_cell != -1, comm, PETSC_ERR_SUP, "Could not find face %" PetscInt_FMT " in cone of its support", face_point);
 
     // Add to label
-    num_label_values_local = cell_cone_size;
     PetscCall(DMLabelSetValue(face_label, face_point, fe_face_on_cell));
   }
   PetscCall(DMPlexLabelAddFaceCells(dm, face_label));
+  PetscCall(ISDestroy(&is_label_points));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
 
-  {  // Form agreement about total number of face orientations
-    PetscInt num_label_values_global = -1;
+/**
+   @brief Creates an array of all the values set for a `DMLabel`
 
-    PetscCall(MPIU_Allreduce(&num_label_values_local, &num_label_values_global, 1, MPIU_INT, MPI_MAX, comm));
-    *num_label_values = num_label_values_global;
+   Because `DMLabelGetValueIS` returns label values locally, not globally.
+
+   Collective across MPI processes.
+
+   @param[in]  dm          `DM` with the label
+   @param[in]  label       `DMLabel` to get values of
+   @param[out] num_values  Total number of values
+   @param[out] value_array Array of label values, must be freed by user
+**/
+PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num_values, PetscInt **value_array) {
+  IS              is_values;
+  PetscInt        num_values_local, minmax_values[2], minmax_values_loc[2];
+  const PetscInt *values_local = NULL;
+  MPI_Comm        comm         = PetscObjectComm((PetscObject)dm);
+  PetscSegBuffer  seg;
+  size_t          seg_size;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMLabelGetValueIS(label, &is_values));
+  PetscCall(ISGetLocalSize(is_values, &num_values_local));
+  if (num_values_local) {
+    PetscCall(ISSort(is_values));
+    PetscCall(ISGetIndices(is_values, &values_local));
+    minmax_values_loc[0] = values_local[0];
+    minmax_values_loc[1] = values_local[num_values_local - 1];
+  } else {
+    // Rank has no set label values, therefore set local min/max to have no effect on global min/max
+    minmax_values_loc[0] = PETSC_INT_MAX;
+    minmax_values_loc[1] = PETSC_INT_MIN;
   }
+  PetscCall(PetscGlobalMinMaxInt(comm, minmax_values_loc, minmax_values));
 
+  PetscCall(PetscSegBufferCreate(sizeof(PetscInt), 16, &seg));
+  for (PetscInt value = minmax_values[0]; value <= minmax_values[1]; value++) {
+    PetscInt location_local = -1, location_global = -1;
+
+    PetscCall(PetscFindInt(value, num_values_local, values_local, &location_local));
+    PetscCall(MPIU_Allreduce(&location_local, &location_global, 1, MPIU_INT, MPI_MAX, comm));
+    if (location_global < 0) continue;
+    else {
+      PetscInt *seg_slot;
+
+      PetscCall(PetscSegBufferGetInts(seg, 1, &seg_slot));
+      *seg_slot = value;
+    }
+  }
+  PetscCall(PetscSegBufferGetSize(seg, &seg_size));
+  *num_values = (PetscInt)seg_size;
+  PetscCall(PetscSegBufferExtractAlloc(seg, value_array));
+  PetscCall(PetscSegBufferDestroy(&seg));
+  PetscCall(ISDestroy(&is_values));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
