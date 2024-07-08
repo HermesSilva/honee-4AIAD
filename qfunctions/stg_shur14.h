@@ -225,6 +225,20 @@ CEED_QFUNCTION_HELPER void StgShur14Calc_PrecompEktot(const CeedScalar X[3], con
   u[2] = ubar[2] + cij[4] * vp[0] + cij[5] * vp[1] + cij[2] * vp[2];
 }
 
+/**
+   @brief Calculate the element length scales based on dXdx
+
+   WARNING: This assumes the reference domain is [-1,1], which is not true for tetrahedral elements
+
+   @param[in]  dXdx    Inverse mapping Jacobian, d\xi/dx
+   @param[in]  scale   Scale factor for the element lengths
+   @param[out] lengths The element lengths in each cartesian direction
+**/
+CEED_QFUNCTION_HELPER void CalculateElementLengths(CeedScalar dXdx[3][3], CeedScalar scale, CeedScalar lengths[3]) {
+  for (CeedInt j = 0; j < 3; j++) lengths[j] = 2 / sqrt(Square(dXdx[0][j]) + Square(dXdx[1][j]) + Square(dXdx[2][j]));
+  ScaleN(lengths, scale, 3);
+}
+
 // Create preprocessed input for the stg calculation
 //
 // stg_data[0] = 1 / Ektot (inverse of total spectrum energy)
@@ -249,13 +263,10 @@ CEED_QFUNCTION(StgShur14Preprocess)(void *ctx, CeedInt Q, const CeedScalar *cons
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar wall_dist = x[1][i];
-    CeedScalar       dXdx[3][3];
+    CeedScalar       dXdx[3][3], h_node_sep[3];
     StoredValuesUnpack(Q, i, 0, 9, dXdx_q, (CeedScalar *)dXdx);
 
-    CeedScalar h_node_sep[3];
-    for (CeedInt j = 0; j < 3; j++) h_node_sep[j] = 2 / sqrt(Square(dXdx[0][j]) + Square(dXdx[1][j]) + Square(dXdx[2][j]));
-    ScaleN(h_node_sep, stg_ctx->h_scale_factor, 3);
-
+    CalculateElementLengths(dXdx, stg_ctx->h_scale_factor, h_node_sep);
     InterpolateProfile(wall_dist, ubar, cij, &eps, &lt, stg_ctx);
     SpectrumConstants(wall_dist, eps, lt, h_node_sep, nu, &hmax, &ke, &keta, &kcut);
 
@@ -478,13 +489,10 @@ CEED_QFUNCTION(StgShur14InflowStrongQF)(void *ctx, CeedInt Q, const CeedScalar *
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar x[] = {coords[0][i], coords[1][i], coords[2][i]};
-    CeedScalar       dXdx[3][3];
+    CeedScalar       dXdx[3][3], h_node_sep[3];
     StoredValuesUnpack(Q, i, 0, 9, dXdx_q, (CeedScalar *)dXdx);
 
-    CeedScalar h_node_sep[3];
-    for (CeedInt j = 0; j < 3; j++) h_node_sep[j] = 2 / sqrt(Square(dXdx[0][j]) + Square(dXdx[1][j]) + Square(dXdx[2][j]));
-    ScaleN(h_node_sep, stg_ctx->h_scale_factor, 3);
-
+    CalculateElementLengths(dXdx, stg_ctx->h_scale_factor, h_node_sep);
     InterpolateProfile(coords[1][i], ubar, cij, &eps, &lt, stg_ctx);
     if (!mean_only) {
       if (1) {
