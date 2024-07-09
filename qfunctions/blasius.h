@@ -74,7 +74,7 @@ State CEED_QFUNCTION_HELPER(BlasiusSolution)(const BlasiusContext blasius, const
   CeedScalar mu      = blasius->newtonian_ctx.mu;
   State      S_infty = blasius->S_infty;
   CeedScalar nu      = mu / rho_infty;
-  CeedScalar U_infty = sqrt(Dot3(S_infty.Y.velocity, S_infty.Y.velocity));
+  CeedScalar U_infty = Norm3(S_infty.Y.velocity);
   CeedScalar eta     = x[1] * sqrt(U_infty / (nu * (x0 + x[0] - x_inflow)));
   CeedScalar X       = 2 * (eta / blasius->eta_max) - 1.;
   CeedScalar Rd      = GasConstant(&blasius->newtonian_ctx);
@@ -109,7 +109,7 @@ CEED_QFUNCTION(ICsBlasius)(void *ctx, CeedInt Q, const CeedScalar *const *in, Ce
   CeedScalar                     t12;
 
   const State      S_infty = context->S_infty;
-  const CeedScalar U_infty = sqrt(Dot3(S_infty.Y.velocity, S_infty.Y.velocity));
+  const CeedScalar U_infty = Norm3(S_infty.Y.velocity);
 
   const CeedScalar x0 = U_infty * S_infty.U.density / (mu * 25 / Square(delta0));
 
@@ -137,7 +137,7 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const NewtonianIdealGasContext gas         = &context->newtonian_ctx;
   State                          S_infty     = context->S_infty;
   const CeedScalar               rho_0       = S_infty.U.density;
-  const CeedScalar               U_infty     = sqrt(Dot3(S_infty.Y.velocity, S_infty.Y.velocity));
+  const CeedScalar               U_infty     = Norm3(S_infty.Y.velocity);
   const CeedScalar               x0          = U_infty * rho_0 / (gas->mu * 25 / Square(context->delta0));
   const CeedScalar               zeros[11]   = {0.};
 
@@ -194,7 +194,7 @@ CEED_QFUNCTION(Blasius_Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *
   const CeedScalar               gamma       = HeatCapacityRatio(gas);
   const State                    S_infty     = context->S_infty;
   const CeedScalar               rho_0       = S_infty.U.density;
-  const CeedScalar               U_infty     = sqrt(Dot3(S_infty.Y.velocity, S_infty.Y.velocity));
+  const CeedScalar               U_infty     = Norm3(S_infty.Y.velocity);
   const CeedScalar               x0          = U_infty * rho_0 / (gas->mu * 25 / Square(context->delta0));
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {

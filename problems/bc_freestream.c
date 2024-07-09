@@ -270,7 +270,7 @@ static PetscErrorCode TestRiemannHLL_fwd(NewtonianIdealGasContext gas, CeedScala
   PetscFunctionBeginUser;
   State left0  = StateFromY(gas, Y0_left);
   State right0 = StateFromY(gas, Y0_right);
-  ScaleN(normal, 1 / sqrt(Dot3(normal, normal)), 3);
+  ScaleN(normal, 1 / Norm3(normal), 3);
 
   for (int i = 0; i < 10; i++) {
     CeedScalar dFlux[5] = {0.}, dFlux_fd[5] = {0.};
@@ -332,7 +332,7 @@ static PetscErrorCode TestRiemannHLLC_fwd(NewtonianIdealGasContext gas, CeedScal
   PetscFunctionBeginUser;
   State left0  = StateFromY(gas, Y0_left);
   State right0 = StateFromY(gas, Y0_right);
-  ScaleN(normal, 1 / sqrt(Dot3(normal, normal)), 3);
+  ScaleN(normal, 1 / Norm3(normal), 3);
 
   for (int i = 0; i < 10; i++) {
     CeedScalar dFlux[5] = {0.}, dFlux_fd[5] = {0.};
@@ -394,7 +394,7 @@ static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(NewtonianIdealGasContext gas,
   PetscFunctionBeginUser;
   State left0  = StateFromY(gas, Y0_left);
   State right0 = StateFromY(gas, Y0_right);
-  ScaleN(normal, 1 / sqrt(Dot3(normal, normal)), 3);
+  ScaleN(normal, 1 / Norm3(normal), 3);
   CeedScalar u_left0  = Dot3(left0.Y.velocity, normal);
   CeedScalar u_right0 = Dot3(right0.Y.velocity, normal);
 

@@ -27,7 +27,7 @@ CEED_QFUNCTION_HELPER void AnisotropyTensor(const CeedScalar km_g_ij[6], CeedSca
   MatMat3(evecs, evals_evecs, CEED_TRANSPOSE, CEED_NOTRANSPOSE, A_ij);  // A_ij = E^T D E
 
   // Scale by delta to get anisotropy tensor
-  *delta = sqrt(Dot3(evals, evals));
+  *delta = Norm3(evals);
   ScaleN((CeedScalar *)A_ij, 1 / *delta, 9);
   // NOTE Need 2 factor to get physical element size (rather than projected onto [-1,1]^dim)
   // Should attempt to auto-determine this from the quadrature point coordinates in reference space

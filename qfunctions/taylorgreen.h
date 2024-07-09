@@ -21,7 +21,7 @@ CEED_QFUNCTION(ICsTaylorGreen)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const NewtonianIdealGasContext gas       = &context->gas;
   CeedScalar                     R         = GasConstant(gas);
   StatePrimitive                 reference = context->reference;
-  const CeedScalar               V0        = sqrt(Dot3(reference.velocity, reference.velocity));
+  const CeedScalar               V0        = Norm3(reference.velocity);
   const CeedScalar               density0  = reference.pressure / (reference.temperature * R);
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
