@@ -108,7 +108,7 @@ CEED_QFUNCTION_HELPER State Exact_DC(CeedInt dim, CeedScalar time, const CeedSca
   CeedScalar rr[3] = {x - center[0], y - center[1], z - center[2]};
   // (I - q q^T) r: distance from dc_axis (or from center if dc_axis is the zero vector)
   for (CeedInt i = 0; i < 3; i++) rr[i] -= dc_axis[i] * Dot3(dc_axis, rr);
-  const CeedScalar r           = sqrt(Dot3(rr, rr));
+  const CeedScalar r           = Norm3(rr);
   const CeedScalar delta_theta = r <= rc ? thetaC * (1. + cos(M_PI * r / rc)) / 2. : 0.;
   const CeedScalar theta       = theta0 * exp(Square(N) * z / g) + delta_theta;
 

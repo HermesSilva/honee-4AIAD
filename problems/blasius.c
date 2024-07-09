@@ -23,7 +23,7 @@ PetscErrorCode CompressibleBlasiusResidual(SNES snes, Vec X, Vec R, void *ctx) {
   PetscScalar         *r, f[4], h[4];
   PetscInt             N       = blasius->n_cheb;
   State                S_infty = blasius->S_infty;
-  CeedScalar           U_infty = sqrt(Dot3(S_infty.Y.velocity, S_infty.Y.velocity));
+  CeedScalar           U_infty = Norm3(S_infty.Y.velocity);
 
   PetscFunctionBeginUser;
   PetscScalar Ma = Mach(&blasius->newtonian_ctx, S_infty.Y.temperature, U_infty), Pr = Prandtl(&blasius->newtonian_ctx),
