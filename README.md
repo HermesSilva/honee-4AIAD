@@ -3,7 +3,7 @@
 [![GitLab-CI](https://gitlab.com/phypid/honee/badges/main/pipeline.svg?key_text=GitLab-CI)](https://gitlab.com/phypid/honee/badges/main/pipeline.svg?key_text=GitLab-CI)
 [![BSD-2-Clause](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
 [![Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-orange.svg)](https://opensource.org/license/Apache-2-0)
-[![Documentation](https://img.shields.io/badge/Documentation-latest-blue.svg)](https://phypid.gitlab.io/honee)
+[![Documentation](https://img.shields.io/badge/Documentation-latest-blue.svg)](https://honee.phypid.org)
 [![Code Coverage](https://gitlab.com/phypid/honee/badges/main/coverage.svg)](https://gitlab.com/phypid/honee/-/commits/main)
 
 <!-- abstract -->
