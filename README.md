@@ -1,4 +1,4 @@
-# HONEE: High-Order Navier-stokes Equation Evaluator
+# HONEE
 
 [![GitLab-CI](https://gitlab.com/phypid/honee/badges/main/pipeline.svg?key_text=GitLab-CI)](https://gitlab.com/phypid/honee/badges/main/pipeline.svg?key_text=GitLab-CI)
 [![BSD-2-Clause](https://img.shields.io/badge/License-BSD%202--Clause-orange.svg)](https://opensource.org/licenses/BSD-2-Clause)
@@ -7,11 +7,11 @@
 [![Code Coverage](https://gitlab.com/phypid/honee/badges/main/coverage.svg)](https://gitlab.com/phypid/honee/-/commits/main)
 
 <!-- abstract -->
-HONEE (pronounced "honey") is a fluids mechanics library based on [libCEED](https://libceed.org) and [PETSc](https://petsc.org) with support for efficient high-order elements and CUDA, ROCm, and Intel GPUs.
+HONEE (High-Order Navier-stokes Equation Evaluator, pronounced "honey") is a fluids mechanics library based on [libCEED](https://libceed.org) and [PETSc](https://petsc.org) with support for efficient high-order elements and CUDA, ROCm, and Intel GPUs.
 
 HONEE uses continuous-Galerkin stabilized finite element methods, namely SUPG, with a focus on scale-resolving simulations.
 Effort is made to maintain flexibility in state variable choice, boundary conditions, time integration scheme (both implicit and explicit), and other solver choices.
-High-order finite elements implemented in a matrix-free fashion with appropriate preconditioning strategies can overcome these inefficiencies.
+High-order finite elements are implemented in an analytic matrix-free fashion to maximize performance on GPU hardware, while matrix assembly may also be used if desired.
 
 # Getting Started
 <!-- getting-started -->
@@ -58,7 +58,7 @@ The environment variables `CEED_DIR`, `PETSC_DIR`, and `PETSC_ARCH` must be set 
 Assuming you have cloned the HONEE repository as above, build using:
 
 ```console
-$ export CEED_DIR=[path to libCEED] PETSC_DIR=[path to PETSc] PETSC_ARCH=[PETSc arch] ENZYME_LIB=[path to Enzyme]
+$ export CEED_DIR=[path to libCEED] PETSC_DIR=[path to PETSc] PETSC_ARCH=[PETSc arch]
 $ make -j8
 ```
 
