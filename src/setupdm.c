@@ -47,6 +47,7 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
   {  // Add strong boundary conditions to DM
     DMLabel label;
     PetscCall(DMGetLabel(dm, "Face Sets", &label));
+    PetscCheck(label, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "DM does not have 'Face Sets' label");
     PetscCall(DMPlexLabelComplete(dm, label));
 
     for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
