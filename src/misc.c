@@ -180,7 +180,7 @@ int FreeContextPetsc(void *data) {
   return CEED_ERROR_SUCCESS;
 }
 
-// Return mass qfunction specification for number of components N
+// @brief Return mass qfunction specification for number of components N
 PetscErrorCode CreateMassQFunction(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf) {
   PetscFunctionBeginUser;
   switch (N) {
