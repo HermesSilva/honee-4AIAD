@@ -220,7 +220,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, U
   char                     stg_rand_path[PETSC_MAX_PATH_LEN]   = "./STGRand.dat";
   PetscBool                mean_only = PETSC_FALSE, use_stgstrong = PETSC_FALSE, use_fluctuating_IC = PETSC_FALSE, given_stg_dx = PETSC_FALSE;
   CeedScalar               u0 = 0.0, alpha = 1.01, stg_dx = -1, stg_h_scale_factor = 1 / user->app_ctx->degree;
-  CeedQFunctionContext     stg_context;
+  CeedQFunctionContext     stg_qfctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
 
   PetscFunctionBeginUser;
@@ -264,34 +264,34 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, U
                "STG dx must be positive normal number, got %g", global_stg_ctx->dx);
   }
 
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
   global_stg_ctx->newtonian_ctx = *newtonian_ig_ctx;
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
 
   PetscCall(GetStgContextData(comm, dm, stg_inflow_path, stg_rand_path, &global_stg_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &stg_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(stg_context, CEED_MEM_HOST, CEED_USE_POINTER, global_stg_ctx->total_bytes, global_stg_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(stg_context, CEED_MEM_HOST, FreeContextPetsc));
-  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(stg_context, "solution time", offsetof(struct STGShur14Context_, time), 1,
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &stg_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(stg_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, global_stg_ctx->total_bytes, global_stg_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(stg_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(stg_qfctx, "solution time", offsetof(struct STGShur14Context_, time), 1,
                                                          "Physical time of the solution"));
 
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfunction_context));
-  problem->ics.qfunction         = ICsStg;
-  problem->ics.qfunction_loc     = ICsStg_loc;
-  problem->ics.qfunction_context = stg_context;
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+  problem->ics.qf_func_ptr = ICsStg;
+  problem->ics.qf_loc      = ICsStg_loc;
+  problem->ics.qfctx       = stg_qfctx;
 
   if (use_stgstrong) {
     // Use default boundary integral QF (BoundaryIntegral) in newtonian.h
     problem->use_strong_bc_ceed = PETSC_TRUE;
     problem->set_bc_from_ics    = PETSC_FALSE;
   } else {
-    problem->apply_inflow.qfunction              = StgShur14Inflow;
-    problem->apply_inflow.qfunction_loc          = StgShur14Inflow_loc;
-    problem->apply_inflow_jacobian.qfunction     = StgShur14Inflow_Jacobian;
-    problem->apply_inflow_jacobian.qfunction_loc = StgShur14Inflow_Jacobian_loc;
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_context, &problem->apply_inflow.qfunction_context));
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_context, &problem->apply_inflow_jacobian.qfunction_context));
+    problem->apply_inflow.qf_func_ptr          = StgShur14Inflow;
+    problem->apply_inflow.qf_loc               = StgShur14Inflow_loc;
+    problem->apply_inflow_jacobian.qf_func_ptr = StgShur14Inflow_Jacobian;
+    problem->apply_inflow_jacobian.qf_loc      = StgShur14Inflow_Jacobian_loc;
+    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &problem->apply_inflow.qfctx));
+    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &problem->apply_inflow_jacobian.qfctx));
     problem->set_bc_from_ics = PETSC_TRUE;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -337,7 +337,7 @@ PetscErrorCode SetupStrongStg_QF(Ceed ceed, ProblemData problem, CeedInt num_com
   PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_strongbc, "stg data", stg_data_size, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddOutput(*qf_strongbc, "q", num_comp_q, CEED_EVAL_NONE));
 
-  PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_strongbc, problem->ics.qfunction_context));
+  PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_strongbc, problem->ics.qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -349,6 +349,6 @@ PetscErrorCode SetupStrongStg_PreProcessing(Ceed ceed, ProblemData problem, Ceed
   PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_strongbc, "x", num_comp_x, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddOutput(*qf_strongbc, "stg data", stg_data_size, CEED_EVAL_NONE));
 
-  PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_strongbc, problem->ics.qfunction_context));
+  PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_strongbc, problem->ics.qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

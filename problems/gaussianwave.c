@@ -19,23 +19,23 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC 
   GaussianWaveContext      gausswave_ctx;
   FreestreamContext        freestream_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
-  CeedQFunctionContext     gausswave_context;
+  CeedQFunctionContext     gausswave_qfctx;
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
 
   switch (user->phys->state_var) {
     case STATEVAR_CONSERVATIVE:
-      problem->ics.qfunction     = IC_GaussianWave_Conserv;
-      problem->ics.qfunction_loc = IC_GaussianWave_Conserv_loc;
+      problem->ics.qf_func_ptr = IC_GaussianWave_Conserv;
+      problem->ics.qf_loc      = IC_GaussianWave_Conserv_loc;
       break;
     case STATEVAR_PRIMITIVE:
-      problem->ics.qfunction     = IC_GaussianWave_Prim;
-      problem->ics.qfunction_loc = IC_GaussianWave_Prim_loc;
+      problem->ics.qf_func_ptr = IC_GaussianWave_Prim;
+      problem->ics.qf_loc      = IC_GaussianWave_Prim_loc;
       break;
     case STATEVAR_ENTROPY:
-      problem->ics.qfunction     = IC_GaussianWave_Entropy;
-      problem->ics.qfunction_loc = IC_GaussianWave_Entropy_loc;
+      problem->ics.qf_func_ptr = IC_GaussianWave_Entropy;
+      problem->ics.qf_loc      = IC_GaussianWave_Entropy_loc;
       break;
   }
 
@@ -57,8 +57,8 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC 
 
   // -- Set gausswave_ctx struct values
   PetscCall(PetscCalloc1(1, &gausswave_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &newtonian_ig_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_freestream.qfunction_context, CEED_MEM_HOST, &freestream_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_freestream.qfctx, CEED_MEM_HOST, &freestream_ctx));
 
   gausswave_ctx->amplitude = amplitude;
   gausswave_ctx->width     = width;
@@ -66,13 +66,13 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC 
   gausswave_ctx->newt_ctx  = *newtonian_ig_ctx;
   PetscCall(PetscArraycpy(gausswave_ctx->epicenter, epicenter, 3));
 
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &newtonian_ig_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_freestream.qfunction_context, &freestream_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_freestream.qfctx, &freestream_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &gausswave_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(gausswave_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*gausswave_ctx), gausswave_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(gausswave_context, CEED_MEM_HOST, FreeContextPetsc));
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfunction_context));
-  problem->ics.qfunction_context = gausswave_context;
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &gausswave_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(gausswave_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*gausswave_ctx), gausswave_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(gausswave_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+  problem->ics.qfctx = gausswave_qfctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

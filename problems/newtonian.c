@@ -215,7 +215,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscBool                implicit;
   PetscBool                unit_tests;
   NewtonianIdealGasContext newtonian_ig_ctx;
-  CeedQFunctionContext     newtonian_ig_context;
+  CeedQFunctionContext     newtonian_ig_qfctx;
 
   PetscFunctionBeginUser;
   PetscCall(PetscCalloc1(1, &setup_context));
@@ -274,42 +274,42 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
 
   switch (state_var) {
     case STATEVAR_CONSERVATIVE:
-      problem->ics.qfunction                       = ICsNewtonianIG_Conserv;
-      problem->ics.qfunction_loc                   = ICsNewtonianIG_Conserv_loc;
-      problem->apply_vol_rhs.qfunction             = RHSFunction_Newtonian;
-      problem->apply_vol_rhs.qfunction_loc         = RHSFunction_Newtonian_loc;
-      problem->apply_vol_ifunction.qfunction       = IFunction_Newtonian_Conserv;
-      problem->apply_vol_ifunction.qfunction_loc   = IFunction_Newtonian_Conserv_loc;
-      problem->apply_vol_ijacobian.qfunction       = IJacobian_Newtonian_Conserv;
-      problem->apply_vol_ijacobian.qfunction_loc   = IJacobian_Newtonian_Conserv_loc;
-      problem->apply_inflow.qfunction              = BoundaryIntegral_Conserv;
-      problem->apply_inflow.qfunction_loc          = BoundaryIntegral_Conserv_loc;
-      problem->apply_inflow_jacobian.qfunction     = BoundaryIntegral_Jacobian_Conserv;
-      problem->apply_inflow_jacobian.qfunction_loc = BoundaryIntegral_Jacobian_Conserv_loc;
+      problem->ics.qf_func_ptr                   = ICsNewtonianIG_Conserv;
+      problem->ics.qf_loc                        = ICsNewtonianIG_Conserv_loc;
+      problem->apply_vol_rhs.qf_func_ptr         = RHSFunction_Newtonian;
+      problem->apply_vol_rhs.qf_loc              = RHSFunction_Newtonian_loc;
+      problem->apply_vol_ifunction.qf_func_ptr   = IFunction_Newtonian_Conserv;
+      problem->apply_vol_ifunction.qf_loc        = IFunction_Newtonian_Conserv_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr   = IJacobian_Newtonian_Conserv;
+      problem->apply_vol_ijacobian.qf_loc        = IJacobian_Newtonian_Conserv_loc;
+      problem->apply_inflow.qf_func_ptr          = BoundaryIntegral_Conserv;
+      problem->apply_inflow.qf_loc               = BoundaryIntegral_Conserv_loc;
+      problem->apply_inflow_jacobian.qf_func_ptr = BoundaryIntegral_Jacobian_Conserv;
+      problem->apply_inflow_jacobian.qf_loc      = BoundaryIntegral_Jacobian_Conserv_loc;
       break;
     case STATEVAR_PRIMITIVE:
-      problem->ics.qfunction                       = ICsNewtonianIG_Prim;
-      problem->ics.qfunction_loc                   = ICsNewtonianIG_Prim_loc;
-      problem->apply_vol_ifunction.qfunction       = IFunction_Newtonian_Prim;
-      problem->apply_vol_ifunction.qfunction_loc   = IFunction_Newtonian_Prim_loc;
-      problem->apply_vol_ijacobian.qfunction       = IJacobian_Newtonian_Prim;
-      problem->apply_vol_ijacobian.qfunction_loc   = IJacobian_Newtonian_Prim_loc;
-      problem->apply_inflow.qfunction              = BoundaryIntegral_Prim;
-      problem->apply_inflow.qfunction_loc          = BoundaryIntegral_Prim_loc;
-      problem->apply_inflow_jacobian.qfunction     = BoundaryIntegral_Jacobian_Prim;
-      problem->apply_inflow_jacobian.qfunction_loc = BoundaryIntegral_Jacobian_Prim_loc;
+      problem->ics.qf_func_ptr                   = ICsNewtonianIG_Prim;
+      problem->ics.qf_loc                        = ICsNewtonianIG_Prim_loc;
+      problem->apply_vol_ifunction.qf_func_ptr   = IFunction_Newtonian_Prim;
+      problem->apply_vol_ifunction.qf_loc        = IFunction_Newtonian_Prim_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr   = IJacobian_Newtonian_Prim;
+      problem->apply_vol_ijacobian.qf_loc        = IJacobian_Newtonian_Prim_loc;
+      problem->apply_inflow.qf_func_ptr          = BoundaryIntegral_Prim;
+      problem->apply_inflow.qf_loc               = BoundaryIntegral_Prim_loc;
+      problem->apply_inflow_jacobian.qf_func_ptr = BoundaryIntegral_Jacobian_Prim;
+      problem->apply_inflow_jacobian.qf_loc      = BoundaryIntegral_Jacobian_Prim_loc;
       break;
     case STATEVAR_ENTROPY:
-      problem->ics.qfunction                       = ICsNewtonianIG_Entropy;
-      problem->ics.qfunction_loc                   = ICsNewtonianIG_Entropy_loc;
-      problem->apply_vol_ifunction.qfunction       = IFunction_Newtonian_Entropy;
-      problem->apply_vol_ifunction.qfunction_loc   = IFunction_Newtonian_Entropy_loc;
-      problem->apply_vol_ijacobian.qfunction       = IJacobian_Newtonian_Entropy;
-      problem->apply_vol_ijacobian.qfunction_loc   = IJacobian_Newtonian_Entropy_loc;
-      problem->apply_inflow.qfunction              = BoundaryIntegral_Entropy;
-      problem->apply_inflow.qfunction_loc          = BoundaryIntegral_Entropy_loc;
-      problem->apply_inflow_jacobian.qfunction     = BoundaryIntegral_Jacobian_Entropy;
-      problem->apply_inflow_jacobian.qfunction_loc = BoundaryIntegral_Jacobian_Entropy_loc;
+      problem->ics.qf_func_ptr                   = ICsNewtonianIG_Entropy;
+      problem->ics.qf_loc                        = ICsNewtonianIG_Entropy_loc;
+      problem->apply_vol_ifunction.qf_func_ptr   = IFunction_Newtonian_Entropy;
+      problem->apply_vol_ifunction.qf_loc        = IFunction_Newtonian_Entropy_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr   = IJacobian_Newtonian_Entropy;
+      problem->apply_vol_ijacobian.qf_loc        = IJacobian_Newtonian_Entropy_loc;
+      problem->apply_inflow.qf_func_ptr          = BoundaryIntegral_Entropy;
+      problem->apply_inflow.qf_loc               = BoundaryIntegral_Entropy_loc;
+      problem->apply_inflow_jacobian.qf_func_ptr = BoundaryIntegral_Jacobian_Entropy;
+      problem->apply_inflow_jacobian.qf_loc      = BoundaryIntegral_Jacobian_Entropy_loc;
       break;
   }
 
@@ -434,34 +434,32 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   setup_context->lz        = domain_size[2];
   setup_context->time      = 0;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &problem->ics.qfunction_context));
-  PetscCallCeed(ceed,
-                CeedQFunctionContextSetData(problem->ics.qfunction_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfunction_context, CEED_MEM_HOST, FreeContextPetsc));
-  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(problem->ics.qfunction_context, "evaluation time", offsetof(struct SetupContext_, time), 1,
-                                                         "Time of evaluation"));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &problem->ics.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(
+      ceed, CeedQFunctionContextRegisterDouble(problem->ics.qfctx, "evaluation time", offsetof(struct SetupContext_, time), 1, "Time of evaluation"));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &newtonian_ig_context));
-  PetscCallCeed(ceed,
-                CeedQFunctionContextSetData(newtonian_ig_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*newtonian_ig_ctx), newtonian_ig_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(newtonian_ig_context, CEED_MEM_HOST, FreeContextPetsc));
-  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_context, "timestep size", offsetof(struct NewtonianIdealGasContext_, dt), 1,
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &newtonian_ig_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(newtonian_ig_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*newtonian_ig_ctx), newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(newtonian_ig_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_qfctx, "timestep size", offsetof(struct NewtonianIdealGasContext_, dt), 1,
                                                          "Size of timestep, delta t"));
-  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_context, "ijacobian time shift",
+  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_qfctx, "ijacobian time shift",
                                                          offsetof(struct NewtonianIdealGasContext_, ijacobian_time_shift), 1,
                                                          "Shift for mass matrix in IJacobian"));
-  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_context, "solution time", offsetof(struct NewtonianIdealGasContext_, time), 1,
+  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_qfctx, "solution time", offsetof(struct NewtonianIdealGasContext_, time), 1,
                                                          "Current solution time"));
 
-  problem->apply_vol_rhs.qfunction_context = newtonian_ig_context;
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_context, &problem->apply_vol_ifunction.qfunction_context));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_context, &problem->apply_vol_ijacobian.qfunction_context));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_context, &problem->apply_inflow.qfunction_context));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_context, &problem->apply_inflow_jacobian.qfunction_context));
+  problem->apply_vol_rhs.qfctx = newtonian_ig_qfctx;
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_vol_ifunction.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_vol_ijacobian.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_inflow.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_inflow_jacobian.qfctx));
 
   if (bc->num_freestream > 0) PetscCall(FreestreamBCSetup(problem, dm, ctx, newtonian_ig_ctx, &reference));
   if (bc->num_outflow > 0) PetscCall(OutflowBCSetup(problem, dm, ctx, newtonian_ig_ctx, &reference));
-  if (bc->num_slip > 0) PetscCall(SlipBCSetup(problem, dm, ctx, newtonian_ig_context));
+  if (bc->num_slip > 0) PetscCall(SlipBCSetup(problem, dm, ctx, newtonian_ig_qfctx));
 
   if (unit_tests) {
     PetscCall(UnitTests_Newtonian(user, newtonian_ig_ctx));
@@ -475,12 +473,12 @@ PetscErrorCode PRINT_NEWTONIAN(User user, ProblemData problem, AppCtx app_ctx) {
   NewtonianIdealGasContext newtonian_ctx;
 
   PetscFunctionBeginUser;
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &newtonian_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ctx));
   PetscCall(PetscPrintf(comm,
                         "  Problem:\n"
                         "    Problem Name                       : %s\n"
                         "    Stabilization                      : %s\n",
                         app_ctx->problem_name, StabilizationTypes[newtonian_ctx->stabilization]));
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &newtonian_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

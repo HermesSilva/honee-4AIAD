@@ -240,7 +240,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscBool                use_stg = PETSC_FALSE;
   BlasiusContext           blasius_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
-  CeedQFunctionContext     blasius_context;
+  CeedQFunctionContext     blasius_qfctx;
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
@@ -249,8 +249,8 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   // ------------------------------------------------------
   //               SET UP Blasius
   // ------------------------------------------------------
-  problem->ics.qfunction     = ICsBlasius;
-  problem->ics.qfunction_loc = ICsBlasius_loc;
+  problem->ics.qf_func_ptr = ICsBlasius;
+  problem->ics.qf_loc      = ICsBlasius_loc;
 
   CeedScalar U_inf                                = 40;           // m/s
   CeedScalar T_inf                                = 288.;         // K
@@ -315,7 +315,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   }
 
   // Some properties depend on parameters from NewtonianIdealGas
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
 
   StatePrimitive Y_inf = {
       .pressure = P_inf, .velocity = {U_inf, 0, 0},
@@ -342,14 +342,14 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-diff_filter_mms", &diff_filter_mms, NULL));
   if (!use_stg && !diff_filter_mms) PetscCall(ComputeChebyshevCoefficients(blasius_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &blasius_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(blasius_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*blasius_ctx), blasius_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(blasius_context, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &blasius_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(blasius_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*blasius_ctx), blasius_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(blasius_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfunction_context));
-  problem->ics.qfunction_context = blasius_context;
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+  problem->ics.qfctx = blasius_qfctx;
   if (use_stg) {
     PetscCall(SetupStg(comm, dm, problem, user, weakT, S_infty.Y.temperature, S_infty.Y.pressure));
   } else if (diff_filter_mms) {
@@ -357,12 +357,12 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   } else {
     PetscCheck((user->phys->state_var == STATEVAR_CONSERVATIVE) || (user->app_ctx->test_type == TESTTYPE_DIFF_FILTER), user->comm,
                PETSC_ERR_ARG_INCOMP, "Can only use conservative variables with Blasius and weak inflow");
-    problem->apply_inflow.qfunction              = Blasius_Inflow;
-    problem->apply_inflow.qfunction_loc          = Blasius_Inflow_loc;
-    problem->apply_inflow_jacobian.qfunction     = Blasius_Inflow_Jacobian;
-    problem->apply_inflow_jacobian.qfunction_loc = Blasius_Inflow_Jacobian_loc;
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_context, &problem->apply_inflow.qfunction_context));
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_context, &problem->apply_inflow_jacobian.qfunction_context));
+    problem->apply_inflow.qf_func_ptr          = Blasius_Inflow;
+    problem->apply_inflow.qf_loc               = Blasius_Inflow_loc;
+    problem->apply_inflow_jacobian.qf_func_ptr = Blasius_Inflow_Jacobian;
+    problem->apply_inflow_jacobian.qf_loc      = Blasius_Inflow_Jacobian_loc;
+    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &problem->apply_inflow.qfctx));
+    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &problem->apply_inflow_jacobian.qfctx));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

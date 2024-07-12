@@ -21,7 +21,7 @@ PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, Newtonia
   MPI_Comm             comm = user->comm;
   Ceed                 ceed = user->ceed;
   FreestreamContext    freestream_ctx;
-  CeedQFunctionContext freestream_context;
+  CeedQFunctionContext freestream_qfctx;
   RiemannFluxType      riemann = RIEMANN_HLLC;
   PetscScalar          meter   = user->units->meter;
   PetscScalar          second  = user->units->second;
@@ -47,48 +47,48 @@ PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, Newtonia
     case STATEVAR_CONSERVATIVE:
       switch (riemann) {
         case RIEMANN_HLL:
-          problem->apply_freestream.qfunction              = Freestream_Conserv_HLL;
-          problem->apply_freestream.qfunction_loc          = Freestream_Conserv_HLL_loc;
-          problem->apply_freestream_jacobian.qfunction     = Freestream_Jacobian_Conserv_HLL;
-          problem->apply_freestream_jacobian.qfunction_loc = Freestream_Jacobian_Conserv_HLL_loc;
+          problem->apply_freestream.qf_func_ptr          = Freestream_Conserv_HLL;
+          problem->apply_freestream.qf_loc               = Freestream_Conserv_HLL_loc;
+          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Conserv_HLL;
+          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Conserv_HLL_loc;
           break;
         case RIEMANN_HLLC:
-          problem->apply_freestream.qfunction              = Freestream_Conserv_HLLC;
-          problem->apply_freestream.qfunction_loc          = Freestream_Conserv_HLLC_loc;
-          problem->apply_freestream_jacobian.qfunction     = Freestream_Jacobian_Conserv_HLLC;
-          problem->apply_freestream_jacobian.qfunction_loc = Freestream_Jacobian_Conserv_HLLC_loc;
+          problem->apply_freestream.qf_func_ptr          = Freestream_Conserv_HLLC;
+          problem->apply_freestream.qf_loc               = Freestream_Conserv_HLLC_loc;
+          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Conserv_HLLC;
+          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Conserv_HLLC_loc;
           break;
       }
       break;
     case STATEVAR_PRIMITIVE:
       switch (riemann) {
         case RIEMANN_HLL:
-          problem->apply_freestream.qfunction              = Freestream_Prim_HLL;
-          problem->apply_freestream.qfunction_loc          = Freestream_Prim_HLL_loc;
-          problem->apply_freestream_jacobian.qfunction     = Freestream_Jacobian_Prim_HLL;
-          problem->apply_freestream_jacobian.qfunction_loc = Freestream_Jacobian_Prim_HLL_loc;
+          problem->apply_freestream.qf_func_ptr          = Freestream_Prim_HLL;
+          problem->apply_freestream.qf_loc               = Freestream_Prim_HLL_loc;
+          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Prim_HLL;
+          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Prim_HLL_loc;
           break;
         case RIEMANN_HLLC:
-          problem->apply_freestream.qfunction              = Freestream_Prim_HLLC;
-          problem->apply_freestream.qfunction_loc          = Freestream_Prim_HLLC_loc;
-          problem->apply_freestream_jacobian.qfunction     = Freestream_Jacobian_Prim_HLLC;
-          problem->apply_freestream_jacobian.qfunction_loc = Freestream_Jacobian_Prim_HLLC_loc;
+          problem->apply_freestream.qf_func_ptr          = Freestream_Prim_HLLC;
+          problem->apply_freestream.qf_loc               = Freestream_Prim_HLLC_loc;
+          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Prim_HLLC;
+          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Prim_HLLC_loc;
           break;
       }
       break;
     case STATEVAR_ENTROPY:
       switch (riemann) {
         case RIEMANN_HLL:
-          problem->apply_freestream.qfunction              = Freestream_Entropy_HLL;
-          problem->apply_freestream.qfunction_loc          = Freestream_Entropy_HLL_loc;
-          problem->apply_freestream_jacobian.qfunction     = Freestream_Jacobian_Entropy_HLL;
-          problem->apply_freestream_jacobian.qfunction_loc = Freestream_Jacobian_Entropy_HLL_loc;
+          problem->apply_freestream.qf_func_ptr          = Freestream_Entropy_HLL;
+          problem->apply_freestream.qf_loc               = Freestream_Entropy_HLL_loc;
+          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Entropy_HLL;
+          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Entropy_HLL_loc;
           break;
         case RIEMANN_HLLC:
-          problem->apply_freestream.qfunction              = Freestream_Entropy_HLLC;
-          problem->apply_freestream.qfunction_loc          = Freestream_Entropy_HLLC_loc;
-          problem->apply_freestream_jacobian.qfunction     = Freestream_Jacobian_Entropy_HLLC;
-          problem->apply_freestream_jacobian.qfunction_loc = Freestream_Jacobian_Entropy_HLLC_loc;
+          problem->apply_freestream.qf_func_ptr          = Freestream_Entropy_HLLC;
+          problem->apply_freestream.qf_loc               = Freestream_Entropy_HLLC_loc;
+          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Entropy_HLLC;
+          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Entropy_HLLC_loc;
           break;
       }
       break;
@@ -105,11 +105,11 @@ PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, Newtonia
   freestream_ctx->newtonian_ctx = *newtonian_ig_ctx;
   freestream_ctx->S_infty       = S_infty;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &freestream_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(freestream_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*freestream_ctx), freestream_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(freestream_context, CEED_MEM_HOST, FreeContextPetsc));
-  problem->apply_freestream.qfunction_context = freestream_context;
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(freestream_context, &problem->apply_freestream_jacobian.qfunction_context));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &freestream_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(freestream_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*freestream_ctx), freestream_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(freestream_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  problem->apply_freestream.qfctx = freestream_qfctx;
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(freestream_qfctx, &problem->apply_freestream_jacobian.qfctx));
 
   {
     PetscBool run_unit_tests = PETSC_FALSE;
@@ -131,7 +131,7 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
   Ceed                 ceed = user->ceed;
   OutflowContext       outflow_ctx;
   OutflowType          outflow_type = OUTFLOW_RIEMANN;
-  CeedQFunctionContext outflow_context;
+  CeedQFunctionContext outflow_qfctx;
   const PetscScalar    Kelvin = user->units->Kelvin;
   const PetscScalar    Pascal = user->units->Pascal;
 
@@ -158,44 +158,44 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
     case OUTFLOW_RIEMANN:
       switch (user->phys->state_var) {
         case STATEVAR_CONSERVATIVE:
-          problem->apply_outflow.qfunction              = RiemannOutflow_Conserv;
-          problem->apply_outflow.qfunction_loc          = RiemannOutflow_Conserv_loc;
-          problem->apply_outflow_jacobian.qfunction     = RiemannOutflow_Jacobian_Conserv;
-          problem->apply_outflow_jacobian.qfunction_loc = RiemannOutflow_Jacobian_Conserv_loc;
+          problem->apply_outflow.qf_func_ptr          = RiemannOutflow_Conserv;
+          problem->apply_outflow.qf_loc               = RiemannOutflow_Conserv_loc;
+          problem->apply_outflow_jacobian.qf_func_ptr = RiemannOutflow_Jacobian_Conserv;
+          problem->apply_outflow_jacobian.qf_loc      = RiemannOutflow_Jacobian_Conserv_loc;
           break;
         case STATEVAR_PRIMITIVE:
-          problem->apply_outflow.qfunction              = RiemannOutflow_Prim;
-          problem->apply_outflow.qfunction_loc          = RiemannOutflow_Prim_loc;
-          problem->apply_outflow_jacobian.qfunction     = RiemannOutflow_Jacobian_Prim;
-          problem->apply_outflow_jacobian.qfunction_loc = RiemannOutflow_Jacobian_Prim_loc;
+          problem->apply_outflow.qf_func_ptr          = RiemannOutflow_Prim;
+          problem->apply_outflow.qf_loc               = RiemannOutflow_Prim_loc;
+          problem->apply_outflow_jacobian.qf_func_ptr = RiemannOutflow_Jacobian_Prim;
+          problem->apply_outflow_jacobian.qf_loc      = RiemannOutflow_Jacobian_Prim_loc;
           break;
         case STATEVAR_ENTROPY:
-          problem->apply_outflow.qfunction              = RiemannOutflow_Entropy;
-          problem->apply_outflow.qfunction_loc          = RiemannOutflow_Entropy_loc;
-          problem->apply_outflow_jacobian.qfunction     = RiemannOutflow_Jacobian_Entropy;
-          problem->apply_outflow_jacobian.qfunction_loc = RiemannOutflow_Jacobian_Entropy_loc;
+          problem->apply_outflow.qf_func_ptr          = RiemannOutflow_Entropy;
+          problem->apply_outflow.qf_loc               = RiemannOutflow_Entropy_loc;
+          problem->apply_outflow_jacobian.qf_func_ptr = RiemannOutflow_Jacobian_Entropy;
+          problem->apply_outflow_jacobian.qf_loc      = RiemannOutflow_Jacobian_Entropy_loc;
           break;
       }
       break;
     case OUTFLOW_PRESSURE:
       switch (user->phys->state_var) {
         case STATEVAR_CONSERVATIVE:
-          problem->apply_outflow.qfunction              = PressureOutflow_Conserv;
-          problem->apply_outflow.qfunction_loc          = PressureOutflow_Conserv_loc;
-          problem->apply_outflow_jacobian.qfunction     = PressureOutflow_Jacobian_Conserv;
-          problem->apply_outflow_jacobian.qfunction_loc = PressureOutflow_Jacobian_Conserv_loc;
+          problem->apply_outflow.qf_func_ptr          = PressureOutflow_Conserv;
+          problem->apply_outflow.qf_loc               = PressureOutflow_Conserv_loc;
+          problem->apply_outflow_jacobian.qf_func_ptr = PressureOutflow_Jacobian_Conserv;
+          problem->apply_outflow_jacobian.qf_loc      = PressureOutflow_Jacobian_Conserv_loc;
           break;
         case STATEVAR_PRIMITIVE:
-          problem->apply_outflow.qfunction              = PressureOutflow_Prim;
-          problem->apply_outflow.qfunction_loc          = PressureOutflow_Prim_loc;
-          problem->apply_outflow_jacobian.qfunction     = PressureOutflow_Jacobian_Prim;
-          problem->apply_outflow_jacobian.qfunction_loc = PressureOutflow_Jacobian_Prim_loc;
+          problem->apply_outflow.qf_func_ptr          = PressureOutflow_Prim;
+          problem->apply_outflow.qf_loc               = PressureOutflow_Prim_loc;
+          problem->apply_outflow_jacobian.qf_func_ptr = PressureOutflow_Jacobian_Prim;
+          problem->apply_outflow_jacobian.qf_loc      = PressureOutflow_Jacobian_Prim_loc;
           break;
         case STATEVAR_ENTROPY:
-          problem->apply_outflow.qfunction              = PressureOutflow_Entropy;
-          problem->apply_outflow.qfunction_loc          = PressureOutflow_Entropy_loc;
-          problem->apply_outflow_jacobian.qfunction     = PressureOutflow_Jacobian_Entropy;
-          problem->apply_outflow_jacobian.qfunction_loc = PressureOutflow_Jacobian_Entropy_loc;
+          problem->apply_outflow.qf_func_ptr          = PressureOutflow_Entropy;
+          problem->apply_outflow.qf_loc               = PressureOutflow_Entropy_loc;
+          problem->apply_outflow_jacobian.qf_func_ptr = PressureOutflow_Jacobian_Entropy;
+          problem->apply_outflow_jacobian.qf_loc      = PressureOutflow_Jacobian_Entropy_loc;
           break;
       }
       break;
@@ -207,11 +207,11 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
   outflow_ctx->pressure          = pressure;
   outflow_ctx->temperature       = temperature;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &outflow_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(outflow_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*outflow_ctx), outflow_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(outflow_context, CEED_MEM_HOST, FreeContextPetsc));
-  problem->apply_outflow.qfunction_context = outflow_context;
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(outflow_context, &problem->apply_outflow_jacobian.qfunction_context));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &outflow_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(outflow_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*outflow_ctx), outflow_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(outflow_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  problem->apply_outflow.qfctx = outflow_qfctx;
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(outflow_qfctx, &problem->apply_outflow_jacobian.qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

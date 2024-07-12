@@ -12,7 +12,7 @@ PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
 
-  problem->ics.qfunction     = ICsTaylorGreen;
-  problem->ics.qfunction_loc = ICsTaylorGreen_loc;
+  problem->ics.qf_func_ptr = ICsTaylorGreen;
+  problem->ics.qf_loc      = ICsTaylorGreen_loc;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

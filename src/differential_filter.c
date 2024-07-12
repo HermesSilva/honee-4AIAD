@@ -261,9 +261,9 @@ PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data,
   diff_filter_ctx->friction_length *= units->meter;
 
   // -- Create QFContext
-  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfunction_context, CEED_MEM_HOST, &gas));
+  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
   diff_filter_ctx->gas = *gas;
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfunction_context, &gas));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(ceed, &diff_filter_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(diff_filter_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*diff_filter_ctx), diff_filter_ctx));
@@ -336,7 +336,7 @@ PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData diff_filter) {
 
 PetscErrorCode DifferentialFilterMmsICSetup(ProblemData problem) {
   PetscFunctionBeginUser;
-  problem->ics.qfunction     = DifferentialFilter_MMS_IC;
-  problem->ics.qfunction_loc = DifferentialFilter_MMS_IC_loc;
+  problem->ics.qf_func_ptr = DifferentialFilter_MMS_IC;
+  problem->ics.qf_loc      = DifferentialFilter_MMS_IC_loc;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

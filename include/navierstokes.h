@@ -270,9 +270,9 @@ struct Physics_private {
 PetscErrorCode BoundaryConditionSetUp(User user, ProblemData problem, AppCtx app_ctx, SimpleBC bc);
 
 typedef struct {
-  CeedQFunctionUser    qfunction;
-  const char          *qfunction_loc;
-  CeedQFunctionContext qfunction_context;
+  CeedQFunctionUser    qf_func_ptr;  // !< QFunction function pointer
+  const char          *qf_loc;       // !< Absolute path to QFunction source file
+  CeedQFunctionContext qfctx;        // !< QFunctionContext to attach to QFunction
 } ProblemQFunctionSpec;
 
 // Problem specific data

@@ -17,7 +17,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   Ceed                     ceed = user->ceed;
   ChannelContext           channel_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
-  CeedQFunctionContext     channel_context;
+  CeedQFunctionContext     channel_qfctx;
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
@@ -26,14 +26,14 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   // ------------------------------------------------------
   //               SET UP Channel
   // ------------------------------------------------------
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfunction_context));
-  problem->ics.qfunction     = ICsChannel;
-  problem->ics.qfunction_loc = ICsChannel_loc;
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+  problem->ics.qf_func_ptr = ICsChannel;
+  problem->ics.qf_loc      = ICsChannel_loc;
   if (user->phys->state_var == STATEVAR_CONSERVATIVE) {
-    problem->apply_inflow.qfunction      = Channel_Inflow;
-    problem->apply_inflow.qfunction_loc  = Channel_Inflow_loc;
-    problem->apply_outflow.qfunction     = Channel_Outflow;
-    problem->apply_outflow.qfunction_loc = Channel_Outflow_loc;
+    problem->apply_inflow.qf_func_ptr  = Channel_Inflow;
+    problem->apply_inflow.qf_loc       = Channel_Inflow_loc;
+    problem->apply_outflow.qf_func_ptr = Channel_Outflow;
+    problem->apply_outflow.qf_loc      = Channel_Outflow_loc;
   }
 
   // -- Command Line Options
@@ -69,7 +69,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   }
 
   // Some properties depend on parameters from NewtonianIdealGas
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
 
   channel_ctx->center   = center;
   channel_ctx->H        = H;
@@ -88,14 +88,14 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
     PetscCall(PetscArraycpy(newtonian_ig_ctx->g, g, 3));
   }
   channel_ctx->newtonian_ctx = *newtonian_ig_ctx;
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &channel_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(channel_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*channel_ctx), channel_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(channel_context, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &channel_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(channel_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*channel_ctx), channel_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(channel_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-  problem->ics.qfunction_context = channel_context;
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_context, &problem->apply_inflow.qfunction_context));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_context, &problem->apply_outflow.qfunction_context));
+  problem->ics.qfctx = channel_qfctx;
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &problem->apply_inflow.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &problem->apply_outflow.qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

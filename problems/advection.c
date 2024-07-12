@@ -87,7 +87,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   Ceed                 ceed = user->ceed;
   PetscBool            implicit;
   AdvectionContext     advection_ctx;
-  CeedQFunctionContext advection_context;
+  CeedQFunctionContext advection_qfctx;
   PetscInt             dim;
 
   PetscFunctionBeginUser;
@@ -100,30 +100,30 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   switch (dim) {
     case 2:
-      problem->dim                               = 2;
-      problem->ics.qfunction                     = ICsAdvection2d;
-      problem->ics.qfunction_loc                 = ICsAdvection2d_loc;
-      problem->apply_vol_rhs.qfunction           = RHS_Advection2d;
-      problem->apply_vol_rhs.qfunction_loc       = RHS_Advection2d_loc;
-      problem->apply_vol_ifunction.qfunction     = IFunction_Advection2d;
-      problem->apply_vol_ifunction.qfunction_loc = IFunction_Advection2d_loc;
-      problem->apply_inflow.qfunction            = Advection2d_InOutFlow;
-      problem->apply_inflow.qfunction_loc        = Advection2d_InOutFlow_loc;
-      problem->compute_exact_solution_error      = PETSC_TRUE;
-      problem->print_info                        = PRINT_ADVECTION;
+      problem->dim                             = 2;
+      problem->ics.qf_func_ptr                 = ICsAdvection2d;
+      problem->ics.qf_loc                      = ICsAdvection2d_loc;
+      problem->apply_vol_rhs.qf_func_ptr       = RHS_Advection2d;
+      problem->apply_vol_rhs.qf_loc            = RHS_Advection2d_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Advection2d;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Advection2d_loc;
+      problem->apply_inflow.qf_func_ptr        = Advection2d_InOutFlow;
+      problem->apply_inflow.qf_loc             = Advection2d_InOutFlow_loc;
+      problem->compute_exact_solution_error    = PETSC_TRUE;
+      problem->print_info                      = PRINT_ADVECTION;
       break;
     case 3:
-      problem->dim                               = 3;
-      problem->ics.qfunction                     = ICsAdvection;
-      problem->ics.qfunction_loc                 = ICsAdvection_loc;
-      problem->apply_vol_rhs.qfunction           = RHS_Advection;
-      problem->apply_vol_rhs.qfunction_loc       = RHS_Advection_loc;
-      problem->apply_vol_ifunction.qfunction     = IFunction_Advection;
-      problem->apply_vol_ifunction.qfunction_loc = IFunction_Advection_loc;
-      problem->apply_inflow.qfunction            = Advection_InOutFlow;
-      problem->apply_inflow.qfunction_loc        = Advection_InOutFlow_loc;
-      problem->compute_exact_solution_error      = PETSC_FALSE;
-      problem->print_info                        = PRINT_ADVECTION;
+      problem->dim                             = 3;
+      problem->ics.qf_func_ptr                 = ICsAdvection;
+      problem->ics.qf_loc                      = ICsAdvection_loc;
+      problem->apply_vol_rhs.qf_func_ptr       = RHS_Advection;
+      problem->apply_vol_rhs.qf_loc            = RHS_Advection_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Advection;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Advection_loc;
+      problem->apply_inflow.qf_func_ptr        = Advection_InOutFlow;
+      problem->apply_inflow.qf_loc             = Advection_InOutFlow_loc;
+      problem->compute_exact_solution_error    = PETSC_FALSE;
+      problem->print_info                      = PRINT_ADVECTION;
       break;
   }
 
@@ -251,19 +251,18 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   advection_ctx->Ctau_t            = Ctau_t;
   advection_ctx->diffusion_coeff   = diffusion_coeff;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &problem->ics.qfunction_context));
-  PetscCallCeed(ceed,
-                CeedQFunctionContextSetData(problem->ics.qfunction_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfunction_context, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &problem->ics.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &advection_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(advection_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*advection_ctx), advection_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(advection_context, CEED_MEM_HOST, FreeContextPetsc));
-  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(advection_context, "timestep size", offsetof(struct AdvectionContext_, dt), 1,
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &advection_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(advection_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*advection_ctx), advection_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(advection_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(advection_qfctx, "timestep size", offsetof(struct AdvectionContext_, dt), 1,
                                                          "Size of timestep, delta t"));
-  problem->apply_vol_rhs.qfunction_context = advection_context;
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_context, &problem->apply_vol_ifunction.qfunction_context));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_context, &problem->apply_inflow.qfunction_context));
+  problem->apply_vol_rhs.qfctx = advection_qfctx;
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &problem->apply_vol_ifunction.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &problem->apply_inflow.qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -274,8 +273,8 @@ PetscErrorCode PRINT_ADVECTION(User user, ProblemData problem, AppCtx app_ctx) {
   AdvectionContext advection_ctx;
 
   PetscFunctionBeginUser;
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfunction_context, CEED_MEM_HOST, &setup_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &advection_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &setup_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &advection_ctx));
   PetscCall(PetscPrintf(comm,
                         "  Problem:\n"
                         "    Problem Name                       : %s\n"
@@ -297,7 +296,7 @@ PetscErrorCode PRINT_ADVECTION(User user, ProblemData problem, AppCtx app_ctx) {
         break;
     }
   }
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfunction_context, &setup_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &advection_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &setup_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &advection_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
