@@ -72,6 +72,39 @@ PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, Pe
 }
 
 /**
+  @brief Write vector to binary file with solution time and step number
+
+  @param[in] viewer      `PetscViewer` for binary file. Must be binary viewer and in write mode
+  @param[in] Q           `Vec` of the solution
+  @param[in] time        Solution time of the `Vec`
+  @param[in] step_number Timestep number of the Vec
+**/
+PetscErrorCode HoneeWriteBinaryVec(PetscViewer viewer, Vec Q, PetscReal time, PetscInt step_number) {
+  PetscInt32 token = PetscDefined(USE_64BIT_INDICES) ? HONEE_FILE_TOKEN_64 : HONEE_FILE_TOKEN_32;
+
+  PetscFunctionBeginUser;
+  {  // Verify viewer is in correct state
+    PetscViewerType viewer_type;
+    PetscFileMode   file_mode;
+    PetscBool       is_binary_viewer;
+    MPI_Comm        comm = PetscObjectComm((PetscObject)viewer);
+
+    PetscCall(PetscViewerGetType(viewer, &viewer_type));
+    PetscCall(PetscStrcmp(viewer_type, PETSCVIEWERBINARY, &is_binary_viewer));
+    PetscCheck(is_binary_viewer, comm, PETSC_ERR_ARG_WRONGSTATE, "Viewer must be binary type; instead got %s", viewer_type);
+    PetscCall(PetscViewerFileGetMode(viewer, &file_mode));
+    PetscCheck(file_mode == FILE_MODE_WRITE, comm, PETSC_ERR_ARG_WRONGSTATE, "Viewer must be binary type; instead got %s",
+               file_mode == -1 ? "UNDEFINED" : PetscFileModes[file_mode]);
+  }
+
+  PetscCall(PetscViewerBinaryWrite(viewer, &token, 1, PETSC_INT32));
+  PetscCall(PetscViewerBinaryWrite(viewer, &step_number, 1, PETSC_INT));
+  PetscCall(PetscViewerBinaryWrite(viewer, &time, 1, PETSC_REAL));
+  PetscCall(VecView(Q, viewer));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Open a PHASTA *.dat file, grabbing dimensions and file pointer
 
   This function opens the file specified by `path` using `PetscFOpen` and passes the file pointer in `fp`.
