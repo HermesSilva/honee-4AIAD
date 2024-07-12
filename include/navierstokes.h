@@ -394,6 +394,7 @@ PetscErrorCode RegisterProblems_NS(AppCtx app_ctx);
 
 // Process general command line options
 PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC bc);
+PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name[], const char value[]);
 
 // -----------------------------------------------------------------------------
 // Miscellaneous utility functions

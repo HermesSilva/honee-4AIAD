@@ -223,6 +223,22 @@ PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+   @brief Sets the value of an option if it is not already set
+
+   @param[in,out] options `PetscOptions` database, or `NULL` for default global database
+   @param[in]     name    Name of the option (with `-` prepended to it)
+   @param[in]     value   Value to set the option to
+**/
+PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name[], const char value[]) {
+  PetscBool has_option;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscOptionsHasName(options, NULL, name, &has_option));
+  if (!has_option) PetscCall(PetscOptionsSetValue(options, name, value));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // Print information about the given simulation run
 PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS ts) {
   Ceed     ceed = user->ceed;
