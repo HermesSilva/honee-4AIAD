@@ -26,10 +26,10 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
   PetscCall(DMSetVecType(*dm, vec_type));
 
   // Set Tensor elements
-  PetscCall(PetscOptionsSetValue(NULL, "-dm_plex_simplex", "0"));
-  PetscCall(PetscOptionsSetValue(NULL, "-dm_sparse_localize", "0"));
-  PetscCall(PetscOptionsSetValue(NULL, "-dm_localize", "0"));  // Localization done in DMSetupByOrderEnd_FEM
-  PetscCall(PetscOptionsSetValue(NULL, "-dm_blocking_type", "field_node"));
+  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_plex_simplex", "0"));
+  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_sparse_localize", "0"));
+  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_localize", "0"));  // Localization done in DMSetupByOrderEnd_FEM
+  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_blocking_type", "field_node"));
 
   // Set CL options
   PetscCall(DMSetFromOptions(*dm));
@@ -47,6 +47,7 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
   {  // Add strong boundary conditions to DM
     DMLabel label;
     PetscCall(DMGetLabel(dm, "Face Sets", &label));
+    PetscCheck(label, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "DM does not have 'Face Sets' label");
     PetscCall(DMPlexLabelComplete(dm, label));
 
     for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
