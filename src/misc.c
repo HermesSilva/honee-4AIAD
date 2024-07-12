@@ -174,17 +174,6 @@ PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// Gather initial Q values in case of continuation of simulation
-PetscErrorCode SetupICsFromBinary(MPI_Comm comm, AppCtx app_ctx, Vec Q) {
-  PetscViewer viewer;
-
-  PetscFunctionBeginUser;
-  PetscCall(PetscViewerBinaryOpen(comm, app_ctx->cont_file, FILE_MODE_READ, &viewer));
-  PetscCall(HoneeLoadBinaryVec(viewer, Q, &app_ctx->cont_time, &app_ctx->cont_steps));
-  PetscCall(PetscViewerDestroy(&viewer));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 // Free a plain data context that was allocated using PETSc; returning libCEED error codes
 int FreeContextPetsc(void *data) {
   if (PetscFree(data)) return CeedError(NULL, CEED_ERROR_ACCESS, "PetscFree failed");
