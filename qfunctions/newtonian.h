@@ -400,8 +400,8 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral(void *ctx, CeedInt Q, const CeedScala
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
     State            s     = StateFromQ(context, qi, state_var);
 
-    CeedScalar wdetJb, dXdx[2][3], norm[3];
-    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, norm);
+    CeedScalar wdetJb, dXdx[2][3], normal[3];
+    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
     wdetJb *= is_implicit ? -1. : 1.;
 
     State grad_s[3];
@@ -417,7 +417,7 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral(void *ctx, CeedInt Q, const CeedScala
     FluxInviscid(context, s, F_inviscid);
 
     CeedScalar Flux[5];
-    FluxTotal_Boundary(F_inviscid, stress, Fe, norm, Flux);
+    FluxTotal_Boundary(F_inviscid, stress, Fe, normal, Flux);
 
     for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
 
@@ -456,8 +456,8 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral_Jacobian(void *ctx, CeedInt Q, const 
   const bool                     is_implicit = context->is_implicit;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar wdetJb, dXdx[2][3], norm[3];
-    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, norm);
+    CeedScalar wdetJb, dXdx[2][3], normal[3];
+    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
     wdetJb *= is_implicit ? -1. : 1.;
 
     CeedScalar qi[5], kmstress[6], dqi[5];
@@ -482,7 +482,7 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral_Jacobian(void *ctx, CeedInt Q, const 
     FluxInviscid_fwd(context, s, ds, dF_inviscid);
 
     CeedScalar dFlux[5];
-    FluxTotal_Boundary(dF_inviscid, dstress, dFe, norm, dFlux);
+    FluxTotal_Boundary(dF_inviscid, dstress, dFe, normal, dFlux);
 
     for (int j = 0; j < 5; j++) v[j][i] = -wdetJb * dFlux[j];
   }

@@ -118,8 +118,7 @@ PetscErrorCode HoneeWriteBinaryVec(PetscViewer viewer, Vec Q, PetscReal time, Pe
   @param[out] dims           Dimensions of the file, taken from the first line of the file
   @param[out] fp File        pointer to the opened file
 **/
-PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], const PetscInt char_array_len, PetscInt dims[2],
-                                 FILE **fp) {
+PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[], const PetscInt char_array_len, PetscInt dims[2], FILE **fp) {
   int    ndims;
   char   line[char_array_len];
   char **array;
@@ -144,7 +143,7 @@ PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[PETSC_MAX_
   @param[in]  path  Path to the file
   @param[out] nrows Number of rows
 **/
-PetscErrorCode PhastaDatFileGetNRows(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], PetscInt *nrows) {
+PetscErrorCode PhastaDatFileGetNRows(const MPI_Comm comm, const char path[], PetscInt *nrows) {
   const PetscInt char_array_len = 512;
   PetscInt       dims[2];
   FILE          *fp;
@@ -163,7 +162,7 @@ PetscErrorCode PhastaDatFileGetNRows(const MPI_Comm comm, const char path[PETSC_
   @param[in]  path  Path to the file
   @param[out] array Pointer to allocated array of correct size
 **/
-PetscErrorCode PhastaDatFileReadToArrayReal(MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], PetscReal array[]) {
+PetscErrorCode PhastaDatFileReadToArrayReal(MPI_Comm comm, const char path[], PetscReal array[]) {
   PetscInt       dims[2];
   FILE          *fp;
   const PetscInt char_array_len = 512;

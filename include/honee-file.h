@@ -11,7 +11,6 @@ extern const PetscInt32 HONEE_FILE_TOKEN_64;
 PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, PetscInt *step_number);
 PetscErrorCode HoneeWriteBinaryVec(PetscViewer viewer, Vec Q, PetscReal time, PetscInt step_number);
 
-PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], const PetscInt char_array_len, PetscInt dims[2],
-                                 FILE **fp);
-PetscErrorCode PhastaDatFileGetNRows(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], PetscInt *nrows);
-PetscErrorCode PhastaDatFileReadToArrayReal(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], PetscReal array[]);
+PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[], const PetscInt char_array_len, PetscInt dims[2], FILE **fp);
+PetscErrorCode PhastaDatFileGetNRows(const MPI_Comm comm, const char path[], PetscInt *nrows);
+PetscErrorCode PhastaDatFileReadToArrayReal(const MPI_Comm comm, const char path[], PetscReal array[]);

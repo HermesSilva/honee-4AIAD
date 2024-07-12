@@ -138,8 +138,8 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const CeedScalar               zeros[11]   = {0.};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar wdetJb, norm[3];
-    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, norm);
+    CeedScalar wdetJb, normal[3];
+    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
     wdetJb *= is_implicit ? -1. : 1.;
 
     // Calculate inflow values
@@ -169,7 +169,7 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     };
     const CeedScalar Fe[3] = {0};  // TODO: viscous energy flux needs grad temperature
     CeedScalar       Flux[5];
-    FluxTotal_Boundary(Flux_inviscid, stress, Fe, norm, Flux);
+    FluxTotal_Boundary(Flux_inviscid, stress, Fe, normal, Flux);
     for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
     if (is_implicit) StoredValuesPack(Q, i, 0, 11, zeros, jac_data_sur);
   }
@@ -194,8 +194,8 @@ CEED_QFUNCTION(Blasius_Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *
   const CeedScalar               x0          = U_infty * rho_0 / (gas->mu * 25 / Square(context->delta0));
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar wdetJb, norm[3];
-    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, norm);
+    CeedScalar wdetJb, normal[3];
+    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
     wdetJb *= is_implicit ? -1. : 1.;
 
     // Calculate inflow values
@@ -219,11 +219,11 @@ CEED_QFUNCTION(Blasius_Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *
       dP   = dE * (gamma - 1.);
     }
 
-    const CeedScalar u_normal = Dot3(norm, s.Y.velocity);
+    const CeedScalar u_normal = Dot3(normal, s.Y.velocity);
 
     v[0][i] = -wdetJb * drho * u_normal;
     for (int j = 0; j < 3; j++) {
-      v[j + 1][i] = -wdetJb * (drho * u_normal * s.Y.velocity[j] + norm[j] * dP);
+      v[j + 1][i] = -wdetJb * (drho * u_normal * s.Y.velocity[j] + normal[j] * dP);
     }
     v[4][i] = -wdetJb * u_normal * (dE + dP);
   }
