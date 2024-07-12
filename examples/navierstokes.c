@@ -226,7 +226,11 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   // -- Set up initial values from binary file
   if (app_ctx->cont_steps) {
-    PetscCall(SetupICsFromBinary(comm, app_ctx, Q));
+    PetscViewer viewer;
+
+    PetscCall(PetscViewerBinaryOpen(comm, app_ctx->cont_file, FILE_MODE_READ, &viewer));
+    PetscCall(HoneeLoadBinaryVec(viewer, Q, &app_ctx->cont_time, &app_ctx->cont_steps));
+    PetscCall(PetscViewerDestroy(&viewer));
   }
 
   // -- Zero Q_loc

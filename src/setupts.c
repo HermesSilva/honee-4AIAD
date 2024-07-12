@@ -227,12 +227,8 @@ PetscErrorCode WriteOutput(User user, Vec Q, PetscInt step_no, PetscScalar time)
   }
   PetscCall(PetscViewerBinaryOpen(user->comm, file_path, FILE_MODE_WRITE, &viewer));
 
-  PetscInt32 token = PetscDefined(USE_64BIT_INDICES) ? FLUIDS_FILE_TOKEN_64 : FLUIDS_FILE_TOKEN_32;
-  PetscCall(PetscViewerBinaryWrite(viewer, &token, 1, PETSC_INT32));
-  PetscCall(PetscViewerBinaryWrite(viewer, &step_no, 1, PETSC_INT));
   time /= user->units->second;  // Dimensionalize time back
-  PetscCall(PetscViewerBinaryWrite(viewer, &time, 1, PETSC_REAL));
-  PetscCall(VecView(Q, viewer));
+  PetscCall(HoneeWriteBinaryVec(viewer, Q, time, step_no));
   PetscCall(PetscViewerDestroy(&viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

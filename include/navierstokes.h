@@ -4,6 +4,7 @@
 
 #include <ceed.h>
 #include <bc_definition.h>
+#include <honee-file.h>
 #include <log_events.h>
 #include <mat-ceed.h>
 #include <petsc-ceed-utils.h>
@@ -414,28 +415,13 @@ PetscErrorCode PrintError(CeedData ceed_data, DM dm, User user, Vec Q, PetscScal
 // Post-processing
 PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem, User user, Vec Q, PetscScalar final_time);
 
-// -- Gather initial Q values in case of continuation of simulation
-PetscErrorCode SetupICsFromBinary(MPI_Comm comm, AppCtx app_ctx, Vec Q);
-
 // Record boundary values from initial condition
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
-
-// Versioning token for binary checkpoints
-extern const PetscInt32 FLUIDS_FILE_TOKEN;  // for backwards compatibility
-extern const PetscInt32 FLUIDS_FILE_TOKEN_32;
-extern const PetscInt32 FLUIDS_FILE_TOKEN_64;
 
 // Create appropriate mass qfunction based on number of components N
 PetscErrorCode CreateMassQFunction(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
 
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
-
-PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], const PetscInt char_array_len, PetscInt dims[2],
-                                 FILE **fp);
-
-PetscErrorCode PhastaDatFileGetNRows(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], PetscInt *nrows);
-
-PetscErrorCode PhastaDatFileReadToArrayReal(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], PetscReal array[]);
 
 // -----------------------------------------------------------------------------
 // Turbulence Statistics Collection Functions
