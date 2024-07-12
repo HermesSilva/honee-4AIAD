@@ -101,7 +101,7 @@ PetscErrorCode RegressionTest(AppCtx app_ctx, Vec Q) {
   PetscCall(VecDuplicate(Q, &Qref));
   PetscCheck(strcmp(app_ctx->test_file_path, "") != 0, comm, PETSC_ERR_FILE_READ, "File for regression test not given");
   PetscCall(PetscViewerBinaryOpen(comm, app_ctx->test_file_path, FILE_MODE_READ, &viewer));
-  PetscCall(LoadFluidsBinaryVec(comm, viewer, Qref, NULL, NULL));
+  PetscCall(HoneeLoadBinaryVec(comm, viewer, Qref, NULL, NULL));
 
   // Compute error with respect to reference solution
   PetscCall(VecAXPY(Q, -1.0, Qref));
@@ -180,7 +180,7 @@ PetscErrorCode SetupICsFromBinary(MPI_Comm comm, AppCtx app_ctx, Vec Q) {
 
   PetscFunctionBeginUser;
   PetscCall(PetscViewerBinaryOpen(comm, app_ctx->cont_file, FILE_MODE_READ, &viewer));
-  PetscCall(LoadFluidsBinaryVec(comm, viewer, Q, &app_ctx->cont_time, &app_ctx->cont_steps));
+  PetscCall(HoneeLoadBinaryVec(comm, viewer, Q, &app_ctx->cont_time, &app_ctx->cont_steps));
   PetscCall(PetscViewerDestroy(&viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -4,11 +4,11 @@
 #include <petsc.h>
 
 // Versioning token for binary checkpoints
-extern const PetscInt32 FLUIDS_FILE_TOKEN;  // for backwards compatibility
-extern const PetscInt32 FLUIDS_FILE_TOKEN_32;
-extern const PetscInt32 FLUIDS_FILE_TOKEN_64;
+extern const PetscInt32 HONEE_FILE_TOKEN;  // for backwards compatibility
+extern const PetscInt32 HONEE_FILE_TOKEN_32;
+extern const PetscInt32 HONEE_FILE_TOKEN_64;
 
-PetscErrorCode LoadFluidsBinaryVec(MPI_Comm comm, PetscViewer viewer, Vec Q, PetscReal *time, PetscInt *step_number);
+PetscErrorCode HoneeLoadBinaryVec(MPI_Comm comm, PetscViewer viewer, Vec Q, PetscReal *time, PetscInt *step_number);
 
 PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[PETSC_MAX_PATH_LEN], const PetscInt char_array_len, PetscInt dims[2],
                                  FILE **fp);
