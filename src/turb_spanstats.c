@@ -498,14 +498,8 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, User user, CeedData ceed_dat
     PetscCall(SetupMMSErrorChecking(ceed, user, ceed_data, stats_data));
   }
 
-  {  // Setup stats viewer with prefix
-    PetscViewerType viewer_type;
-    PetscCall(PetscViewerGetType(user->app_ctx->turb_spanstats_viewer, &viewer_type));
-    PetscCall(PetscOptionsSetValue(NULL, "-ts_monitor_turbulence_spanstats_viewer_type", viewer_type));
-
-    PetscCall(PetscViewerSetOptionsPrefix(user->app_ctx->turb_spanstats_viewer, "ts_monitor_turbulence_spanstats_"));
-    PetscCall(PetscViewerSetFromOptions(user->app_ctx->turb_spanstats_viewer));
-  }
+  PetscCall(PetscViewerSetOptionsPrefix(user->app_ctx->turb_spanstats_viewer, "ts_monitor_turbulence_spanstats_"));
+  PetscCall(PetscViewerSetFromOptions(user->app_ctx->turb_spanstats_viewer));
 
   PetscCall(SpanStatsSetupDataDestroy(stats_data));
   PetscCall(PetscLogStagePop());
