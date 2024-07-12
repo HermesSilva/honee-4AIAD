@@ -802,12 +802,15 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_
 
   PetscFunctionBeginUser;
   {  // Create label name and label
-    PetscSizeT label_name_len;
+    PetscSizeT label_name_len = 64;
+    PetscBool  has_label_already;
 
     // Face label
-    label_name_len = 26;
     PetscCall(PetscCalloc1(label_name_len, face_label_name));
     PetscCall(PetscSNPrintf(*face_label_name, label_name_len, "Orientation for DM face %" PetscInt_FMT, dm_face));
+    PetscCall(DMHasLabel(dm, *face_label_name, &has_label_already));
+    if (has_label_already) PetscFunctionReturn(PETSC_SUCCESS);
+
     PetscCall(DMCreateLabel(dm, *face_label_name));
     PetscCall(DMGetLabel(dm, *face_label_name, &face_label));
   }
