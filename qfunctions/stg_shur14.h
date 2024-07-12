@@ -352,8 +352,8 @@ CEED_QFUNCTION(StgShur14Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar rho = prescribe_T ? q[0][i] : P0 / (Rd * theta0);
     const CeedScalar x[] = {X[0][i], X[1][i], X[2][i]};
-    CeedScalar       wdetJb, dXdx[2][3], norm[3];
-    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, norm);
+    CeedScalar       wdetJb, dXdx[2][3], normal[3];
+    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
     wdetJb *= is_implicit ? -1. : 1.;
 
     CeedScalar h_node_sep[3];
@@ -384,7 +384,7 @@ CEED_QFUNCTION(StgShur14Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
     const CeedScalar E = E_internal + E_kinetic;
 
     // Velocity normal to the boundary
-    const CeedScalar u_normal = Dot3(norm, u);
+    const CeedScalar u_normal = Dot3(normal, u);
 
     // The Physics
     // Zero v so all future terms can safely sum into it
@@ -395,7 +395,7 @@ CEED_QFUNCTION(StgShur14Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
     v[0][i] -= wdetJb * rho * u_normal;
 
     // -- Momentum
-    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] -= wdetJb * (rho * u_normal * u[j] + norm[j] * P);
+    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] -= wdetJb * (rho * u_normal * u[j] + normal[j] * P);
 
     // -- Total Energy Density
     v[4][i] -= wdetJb * u_normal * (E + P);
@@ -449,12 +449,12 @@ CEED_QFUNCTION(StgShur14Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar 
       dE   = dq[4][i];
       dP   = dE * (gamma - 1.);
     }
-    const CeedScalar norm[3] = {q_data_sur[1][i], q_data_sur[2][i], q_data_sur[3][i]};
+    const CeedScalar normal[3] = {q_data_sur[1][i], q_data_sur[2][i], q_data_sur[3][i]};
 
-    const CeedScalar u_normal = Dot3(norm, velocity);
+    const CeedScalar u_normal = Dot3(normal, velocity);
 
     v[0][i] = -wdetJb * drho * u_normal;
-    for (int j = 0; j < 3; j++) v[j + 1][i] = -wdetJb * (drho * u_normal * velocity[j] + norm[j] * dP);
+    for (int j = 0; j < 3; j++) v[j + 1][i] = -wdetJb * (drho * u_normal * velocity[j] + normal[j] * dP);
     v[4][i] = -wdetJb * u_normal * (dE + dP);
   }
   return 0;

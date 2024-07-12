@@ -130,17 +130,10 @@ CEED_QFUNCTION_HELPER void ConvectiveFluxJacobian_Euler(CeedScalar dF[3][5][5], 
 //  h           = covariant element length along vec
 // *****************************************************************************
 CEED_QFUNCTION_HELPER CeedScalar Covariant_length_along_vector(CeedScalar vec[3], const CeedScalar dXdx[3][3]) {
-  CeedScalar vec_norm            = sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
   CeedScalar vec_dot_jacobian[3] = {0.0};
-  for (CeedInt i = 0; i < 3; i++) {
-    for (CeedInt j = 0; j < 3; j++) {
-      vec_dot_jacobian[i] += dXdx[j][i] * vec[i];
-    }
-  }
-  CeedScalar norm_vec_dot_jacobian =
-      sqrt(vec_dot_jacobian[0] * vec_dot_jacobian[0] + vec_dot_jacobian[1] * vec_dot_jacobian[1] + vec_dot_jacobian[2] * vec_dot_jacobian[2]);
-  CeedScalar h = 2.0 * vec_norm / norm_vec_dot_jacobian;
-  return h;
+
+  MatVec3(dXdx, vec, CEED_TRANSPOSE, vec_dot_jacobian);
+  return 2.0 * Norm3(vec) / Norm3(vec_dot_jacobian);
 }
 
 // *****************************************************************************
@@ -162,7 +155,7 @@ CEED_QFUNCTION_HELPER void Tau_spatial(CeedScalar Tau_x[3], const CeedScalar dXd
                                        const CeedScalar c_tau) {
   for (CeedInt i = 0; i < 3; i++) {
     // length of element in direction i
-    CeedScalar h = 2 / sqrt(dXdx[0][i] * dXdx[0][i] + dXdx[1][i] * dXdx[1][i] + dXdx[2][i] * dXdx[2][i]);
+    CeedScalar h = 2 / sqrt(Square(dXdx[0][i]) + Square(dXdx[1][i]) + Square(dXdx[2][i]));
     // fastest wave in direction i
     CeedScalar fastest_wave = fabs(u[i]) + sound_speed;
     Tau_x[i]                = c_tau * h / fastest_wave;
@@ -293,7 +286,7 @@ CEED_QFUNCTION(EulerShockTube)(void *ctx, CeedInt Q, const CeedScalar *const *in
       CeedScalar nu_shock     = 0.0;    // artificial diffusion
 
       // Unit vector aligned with the density gradient
-      drho_norm = sqrt(drhodx[0] * drhodx[0] + drhodx[1] * drhodx[1] + drhodx[2] * drhodx[2]);
+      drho_norm = Norm3(drhodx);
       for (CeedInt j = 0; j < 3; j++) j_vec[j] = drhodx[j] / (drho_norm + 1e-20);
 
       if (drho_norm == 0.0) {
