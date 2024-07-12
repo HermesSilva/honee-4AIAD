@@ -35,17 +35,17 @@ static PetscErrorCode BinaryReadIntoInt(PetscViewer viewer, PetscInt *out, Petsc
   If written by HONEE, will also load the solution time and timestep, otherwise not.
   Also handles case where file was written with different PetscInt size than is read with.
 
-  @param[in]  comm        `MPI_Comm`
-  @param[in]  viewer      Viewer to read the vec from
+  @param[in]  viewer      `PetscViewer` to read the vec from. Must be a binary viewer
   @param[out] Q           `Vec` to read the data into
   @param[out] time        Solution time the Vec was written at, or `NULL`. Set to 0 if legacy file format.
   @param[out] step_number Timestep number the Vec was written at, or `NULL`. Set to 0 if legacy file format.
 **/
-PetscErrorCode HoneeLoadBinaryVec(MPI_Comm comm, PetscViewer viewer, Vec Q, PetscReal *time, PetscInt *step_number) {
+PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, PetscInt *step_number) {
   PetscInt      file_step_number;
   PetscInt32    token;
   PetscReal     file_time;
   PetscDataType file_type = PETSC_INT32;
+  MPI_Comm      comm      = PetscObjectComm((PetscObject)viewer);
 
   PetscFunctionBeginUser;
   PetscCall(PetscViewerBinaryRead(viewer, &token, 1, NULL, PETSC_INT32));
