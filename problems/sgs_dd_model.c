@@ -605,15 +605,15 @@ PetscErrorCode SgsDDSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData 
   // -- Create DM for storing SGS tensor at nodes
   PetscCall(SgsDDCreateDM(user->dm, &user->sgs_dd_data->dm_sgs, user->app_ctx->degree, user->app_ctx->q_extra, &user->sgs_dd_data->num_comp_sgs));
 
-  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfunction_context, CEED_MEM_HOST, &gas));
+  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
   sgsdd_ctx->gas = *gas;
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfunction_context, &gas));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
   PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &sgs_dd_setup_data->sgsdd_qfctx));
   PetscCallCeed(ceed,
                 CeedQFunctionContextSetData(sgs_dd_setup_data->sgsdd_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sgsdd_ctx->total_bytes, sgsdd_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(sgs_dd_setup_data->sgsdd_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(problem->apply_vol_ifunction.qfunction_context, &sgs_dd_setup_data->ifunction_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(problem->apply_vol_ifunction.qfctx, &sgs_dd_setup_data->ifunction_qfctx));
 
   // -- Compute and store anisotropy tensor
   PetscCall(GridAnisotropyTensorProjectionSetupApply(ceed, user, ceed_data, &sgs_dd_setup_data->elem_restr_grid_aniso,

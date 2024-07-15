@@ -145,9 +145,9 @@ static PetscErrorCode SetupBCQFunctions(Ceed ceed, PetscInt dim_sur, PetscInt nu
                                         PetscInt jac_data_size_sur, ProblemQFunctionSpec apply_bc, ProblemQFunctionSpec apply_bc_jacobian,
                                         CeedQFunction *qf_apply_bc, CeedQFunction *qf_apply_bc_jacobian) {
   PetscFunctionBeginUser;
-  if (apply_bc.qfunction) {
-    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, apply_bc.qfunction, apply_bc.qfunction_loc, qf_apply_bc));
-    PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_apply_bc, apply_bc.qfunction_context));
+  if (apply_bc.qf_func_ptr) {
+    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, apply_bc.qf_func_ptr, apply_bc.qf_loc, qf_apply_bc));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_apply_bc, apply_bc.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(*qf_apply_bc, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_apply_bc, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_apply_bc, "Grad_q", num_comp_q * dim_sur, CEED_EVAL_GRAD));
@@ -156,9 +156,9 @@ static PetscErrorCode SetupBCQFunctions(Ceed ceed, PetscInt dim_sur, PetscInt nu
     PetscCallCeed(ceed, CeedQFunctionAddOutput(*qf_apply_bc, "v", num_comp_q, CEED_EVAL_INTERP));
     if (jac_data_size_sur) PetscCallCeed(ceed, CeedQFunctionAddOutput(*qf_apply_bc, "surface jacobian data", jac_data_size_sur, CEED_EVAL_NONE));
   }
-  if (apply_bc_jacobian.qfunction) {
-    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, apply_bc_jacobian.qfunction, apply_bc_jacobian.qfunction_loc, qf_apply_bc_jacobian));
-    PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_apply_bc_jacobian, apply_bc_jacobian.qfunction_context));
+  if (apply_bc_jacobian.qf_func_ptr) {
+    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, apply_bc_jacobian.qf_func_ptr, apply_bc_jacobian.qf_loc, qf_apply_bc_jacobian));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(*qf_apply_bc_jacobian, apply_bc_jacobian.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(*qf_apply_bc_jacobian, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_apply_bc_jacobian, "dq", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_apply_bc_jacobian, "Grad_dq", num_comp_q * dim_sur, CEED_EVAL_GRAD));
@@ -280,11 +280,11 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
 
   PetscFunctionBeginUser;
 
-  if (problem->apply_vol_ifunction.qfunction && problem->uses_newtonian) {
+  if (problem->apply_vol_ifunction.qf_func_ptr && problem->uses_newtonian) {
     NewtonianIdealGasContext gas;
-    PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfunction_context, CEED_MEM_HOST, &gas));
+    PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
     jac_data_size_vol += (gas->idl_enable ? 1 : 0);
-    PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfunction_context, &gas));
+    PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
   }
 
   {  // Create bases and element restrictions
@@ -330,8 +330,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     CeedOperator  op_ics;
 
     PetscCallCeed(ceed, CeedBasisCreateProjection(ceed_data->basis_x, ceed_data->basis_q, &basis_xc));
-    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->ics.qfunction, problem->ics.qfunction_loc, &qf_ics));
-    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ics, problem->ics.qfunction_context));
+    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->ics.qf_func_ptr, problem->ics.qf_loc, &qf_ics));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ics, problem->ics.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ics, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ics, "x", num_comp_x, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ics, "dx", num_comp_x * dim, CEED_EVAL_GRAD));
@@ -349,11 +349,11 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_ics));
   }
 
-  if (problem->apply_vol_rhs.qfunction) {
+  if (problem->apply_vol_rhs.qf_func_ptr) {
     CeedQFunction qf_rhs_vol;
 
-    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_rhs.qfunction, problem->apply_vol_rhs.qfunction_loc, &qf_rhs_vol));
-    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_vol, problem->apply_vol_rhs.qfunction_context));
+    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_rhs.qf_func_ptr, problem->apply_vol_rhs.qf_loc, &qf_rhs_vol));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_vol, problem->apply_vol_rhs.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_rhs_vol, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
@@ -373,12 +373,12 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_vol));
   }
 
-  if (problem->apply_vol_ifunction.qfunction) {
+  if (problem->apply_vol_ifunction.qf_func_ptr) {
     CeedQFunction qf_ifunction_vol;
 
-    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ifunction.qfunction, problem->apply_vol_ifunction.qfunction_loc,
-                                                    &qf_ifunction_vol));
-    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ifunction_vol, problem->apply_vol_ifunction.qfunction_context));
+    PetscCallCeed(
+        ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ifunction.qf_func_ptr, problem->apply_vol_ifunction.qf_loc, &qf_ifunction_vol));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ifunction_vol, problem->apply_vol_ifunction.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ifunction_vol, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
@@ -402,12 +402,12 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ifunction_vol));
   }
 
-  if (problem->apply_vol_ijacobian.qfunction) {
+  if (problem->apply_vol_ijacobian.qf_func_ptr) {
     CeedQFunction qf_ijacobian_vol;
 
-    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ijacobian.qfunction, problem->apply_vol_ijacobian.qfunction_loc,
-                                                    &qf_ijacobian_vol));
-    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ijacobian_vol, problem->apply_vol_ijacobian.qfunction_context));
+    PetscCallCeed(
+        ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ijacobian.qf_func_ptr, problem->apply_vol_ijacobian.qf_loc, &qf_ijacobian_vol));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ijacobian_vol, problem->apply_vol_ijacobian.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ijacobian_vol, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "dq", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "Grad_dq", num_comp_q * dim, CEED_EVAL_GRAD));

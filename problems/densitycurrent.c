@@ -15,19 +15,19 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   User                     user = *(User *)ctx;
   MPI_Comm                 comm = user->comm;
   Ceed                     ceed = user->ceed;
-  DensityCurrentContext    dc_ctx;
-  CeedQFunctionContext     density_current_context;
+  DensityCurrentContext    density_current_ctx;
+  CeedQFunctionContext     density_current_qfctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
-  PetscCall(PetscCalloc1(1, &dc_ctx));
+  PetscCall(PetscCalloc1(1, &density_current_ctx));
   // ------------------------------------------------------
   //               SET UP DENSITY_CURRENT
   // ------------------------------------------------------
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfunction_context));
-  problem->ics.qfunction     = ICsDC;
-  problem->ics.qfunction_loc = ICsDC_loc;
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+  problem->ics.qf_func_ptr = ICsDC;
+  problem->ics.qf_loc      = ICsDC_loc;
 
   // ------------------------------------------------------
   //             Create the libCEED context
@@ -79,24 +79,25 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   N *= (1. / second);
   for (PetscInt i = 0; i < 3; i++) center[i] *= meter;
 
-  dc_ctx->theta0     = theta0;
-  dc_ctx->thetaC     = thetaC;
-  dc_ctx->P0         = P0;
-  dc_ctx->N          = N;
-  dc_ctx->rc         = rc;
-  dc_ctx->center[0]  = center[0];
-  dc_ctx->center[1]  = center[1];
-  dc_ctx->center[2]  = center[2];
-  dc_ctx->dc_axis[0] = dc_axis[0];
-  dc_ctx->dc_axis[1] = dc_axis[1];
-  dc_ctx->dc_axis[2] = dc_axis[2];
+  density_current_ctx->theta0     = theta0;
+  density_current_ctx->thetaC     = thetaC;
+  density_current_ctx->P0         = P0;
+  density_current_ctx->N          = N;
+  density_current_ctx->rc         = rc;
+  density_current_ctx->center[0]  = center[0];
+  density_current_ctx->center[1]  = center[1];
+  density_current_ctx->center[2]  = center[2];
+  density_current_ctx->dc_axis[0] = dc_axis[0];
+  density_current_ctx->dc_axis[1] = dc_axis[1];
+  density_current_ctx->dc_axis[2] = dc_axis[2];
 
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &newtonian_ig_ctx));
-  dc_ctx->newtonian_ctx = *newtonian_ig_ctx;
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &newtonian_ig_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &density_current_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(density_current_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*dc_ctx), dc_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(density_current_context, CEED_MEM_HOST, FreeContextPetsc));
-  problem->ics.qfunction_context = density_current_context;
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
+  density_current_ctx->newtonian_ctx = *newtonian_ig_ctx;
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &density_current_qfctx));
+  PetscCallCeed(
+      ceed, CeedQFunctionContextSetData(density_current_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*density_current_ctx), density_current_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(density_current_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  problem->ics.qfctx = density_current_qfctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -19,26 +19,26 @@ PetscErrorCode SlipBCSetup(ProblemData problem, DM dm, void *ctx, CeedQFunctionC
   PetscFunctionBeginUser;
   switch (user->phys->state_var) {
     case STATEVAR_CONSERVATIVE:
-      problem->apply_slip.qfunction              = Slip_Conserv;
-      problem->apply_slip.qfunction_loc          = Slip_Conserv_loc;
-      problem->apply_slip_jacobian.qfunction     = Slip_Jacobian_Conserv;
-      problem->apply_slip_jacobian.qfunction_loc = Slip_Jacobian_Conserv_loc;
+      problem->apply_slip.qf_func_ptr          = Slip_Conserv;
+      problem->apply_slip.qf_loc               = Slip_Conserv_loc;
+      problem->apply_slip_jacobian.qf_func_ptr = Slip_Jacobian_Conserv;
+      problem->apply_slip_jacobian.qf_loc      = Slip_Jacobian_Conserv_loc;
       break;
     case STATEVAR_PRIMITIVE:
-      problem->apply_slip.qfunction              = Slip_Prim;
-      problem->apply_slip.qfunction_loc          = Slip_Prim_loc;
-      problem->apply_slip_jacobian.qfunction     = Slip_Jacobian_Prim;
-      problem->apply_slip_jacobian.qfunction_loc = Slip_Jacobian_Prim_loc;
+      problem->apply_slip.qf_func_ptr          = Slip_Prim;
+      problem->apply_slip.qf_loc               = Slip_Prim_loc;
+      problem->apply_slip_jacobian.qf_func_ptr = Slip_Jacobian_Prim;
+      problem->apply_slip_jacobian.qf_loc      = Slip_Jacobian_Prim_loc;
       break;
     case STATEVAR_ENTROPY:
-      problem->apply_slip.qfunction              = Slip_Entropy;
-      problem->apply_slip.qfunction_loc          = Slip_Entropy_loc;
-      problem->apply_slip_jacobian.qfunction     = Slip_Jacobian_Entropy;
-      problem->apply_slip_jacobian.qfunction_loc = Slip_Jacobian_Entropy_loc;
+      problem->apply_slip.qf_func_ptr          = Slip_Entropy;
+      problem->apply_slip.qf_loc               = Slip_Entropy_loc;
+      problem->apply_slip_jacobian.qf_func_ptr = Slip_Jacobian_Entropy;
+      problem->apply_slip_jacobian.qf_loc      = Slip_Jacobian_Entropy_loc;
       break;
   }
 
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_slip.qfunction_context));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_slip_jacobian.qfunction_context));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_slip.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_slip_jacobian.qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -355,7 +355,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
   CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x = problem->dim, num_comp_q;
   Turbulence_SpanStatsContext collect_ctx;
   NewtonianIdealGasContext    newtonian_ig_ctx;
-  CeedQFunctionContext        collect_context;
+  CeedQFunctionContext        collect_qfctx;
   CeedQFunction               qf_stats_collect;
   CeedOperator                op_stats_collect;
 
@@ -382,24 +382,24 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
 
   {  // Setup Collection Context
     PetscCall(PetscNew(&collect_ctx));
-    PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfunction_context, CEED_MEM_HOST, &newtonian_ig_ctx));
+    PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
     collect_ctx->gas = *newtonian_ig_ctx;
 
-    PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &collect_context));
-    PetscCallCeed(ceed, CeedQFunctionContextSetData(collect_context, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*collect_ctx), collect_ctx));
-    PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(collect_context, CEED_MEM_HOST, FreeContextPetsc));
+    PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &collect_qfctx));
+    PetscCallCeed(ceed, CeedQFunctionContextSetData(collect_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*collect_ctx), collect_ctx));
+    PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(collect_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-    PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(collect_context, "solution time",
+    PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(collect_qfctx, "solution time",
                                                            offsetof(struct Turbulence_SpanStatsContext_, solution_time), 1, "Current solution time"));
-    PetscCallCeed(
-        ceed, CeedQFunctionContextRegisterDouble(collect_context, "previous time", offsetof(struct Turbulence_SpanStatsContext_, previous_time), 1,
-                                                 "Previous time statistics collection was done"));
+    PetscCallCeed(ceed,
+                  CeedQFunctionContextRegisterDouble(collect_qfctx, "previous time", offsetof(struct Turbulence_SpanStatsContext_, previous_time), 1,
+                                                     "Previous time statistics collection was done"));
 
-    PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfunction_context, &newtonian_ig_ctx));
+    PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
   }
 
-  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_stats_collect, collect_context));
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&collect_context));
+  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_stats_collect, collect_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&collect_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q", num_comp_q, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q_data", problem->q_data_size_vol, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "x", num_comp_x, CEED_EVAL_INTERP));

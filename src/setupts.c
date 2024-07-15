@@ -11,7 +11,7 @@
 #include <navierstokes.h>
 #include "../qfunctions/newtonian_state.h"
 
-// Insert Boundary values if it's a new time
+// @brief Insert Boundary values if it's a new time
 PetscErrorCode UpdateBoundaryValues(User user, Vec Q_loc, PetscReal t) {
   PetscFunctionBeginUser;
   if (user->time_bc_set != t) {
