@@ -870,19 +870,29 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_
    @param[out] value_array Array of label values, must be freed by user
 **/
 PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num_values, PetscInt **value_array) {
-  IS              is_values;
-  PetscInt        num_values_local, minmax_values[2], minmax_values_loc[2];
-  const PetscInt *values_local = NULL;
-  MPI_Comm        comm         = PetscObjectComm((PetscObject)dm);
-  PetscSegBuffer  seg;
-  size_t          seg_size;
+  PetscInt       num_values_local, minmax_values[2], minmax_values_loc[2];
+  PetscInt      *values_local = NULL;
+  MPI_Comm       comm         = PetscObjectComm((PetscObject)dm);
+  PetscSegBuffer seg;
+  size_t         seg_size;
 
   PetscFunctionBeginUser;
-  PetscCall(DMLabelGetValueIS(label, &is_values));
-  PetscCall(ISGetLocalSize(is_values, &num_values_local));
+  {  // Extract array of local DMLabel values so it can be sorted
+    IS              is_values;
+    const PetscInt *is_values_local = NULL;
+
+    PetscCall(DMLabelGetValueIS(label, &is_values));
+    PetscCall(ISGetLocalSize(is_values, &num_values_local));
+
+    PetscCall(ISGetIndices(is_values, &is_values_local));
+    PetscCall(PetscMalloc1(num_values_local, &values_local));
+    PetscCall(PetscArraycpy(values_local, is_values_local, num_values_local));
+    PetscCall(ISRestoreIndices(is_values, &is_values_local));
+    PetscCall(ISDestroy(&is_values));
+  }
+
   if (num_values_local) {
-    PetscCall(ISSort(is_values));
-    PetscCall(ISGetIndices(is_values, &values_local));
+    PetscCall(PetscSortInt(num_values_local, values_local));
     minmax_values_loc[0] = values_local[0];
     minmax_values_loc[1] = values_local[num_values_local - 1];
   } else {
@@ -910,6 +920,6 @@ PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num
   *num_values = (PetscInt)seg_size;
   PetscCall(PetscSegBufferExtractAlloc(seg, value_array));
   PetscCall(PetscSegBufferDestroy(&seg));
-  PetscCall(ISDestroy(&is_values));
+  if (values_local) PetscCall(PetscFree(values_local));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
