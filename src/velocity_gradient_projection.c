@@ -16,6 +16,7 @@ PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_
   grad_velo_proj->num_comp = 9;  // 9 velocity gradient
 
   PetscCall(DMClone(user->dm, &grad_velo_proj->dm));
+  PetscCall(DMSetMatrixPreallocateSkip(grad_velo_proj->dm, PETSC_TRUE));
   PetscCall(PetscObjectSetName((PetscObject)grad_velo_proj->dm, "Velocity Gradient Projection"));
 
   PetscCall(

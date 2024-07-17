@@ -35,6 +35,7 @@ static PetscErrorCode SGS_DD_TrainingCreateDM(DM dm_source, DM *dm_dd_training, 
   *num_components = 12;
 
   PetscCall(DMClone(dm_source, dm_dd_training));
+  PetscCall(DMSetMatrixPreallocateSkip(*dm_dd_training, PETSC_TRUE));
   PetscCall(PetscObjectSetName((PetscObject)*dm_dd_training, "Data-Driven SGS Training Data"));
 
   PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, degree, 1, q_extra, 1, num_components, *dm_dd_training));

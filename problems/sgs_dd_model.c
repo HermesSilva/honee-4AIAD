@@ -38,6 +38,7 @@ static PetscErrorCode SgsDDCreateDM(DM dm_source, DM *dm_sgs, PetscInt degree, P
   *num_components = 6;
 
   PetscCall(DMClone(dm_source, dm_sgs));
+  PetscCall(DMSetMatrixPreallocateSkip(*dm_sgs, PETSC_TRUE));
   PetscCall(PetscObjectSetName((PetscObject)*dm_sgs, "Subgrid Stress Projection"));
 
   PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, degree, 1, q_extra, 1, num_components, *dm_sgs));
@@ -282,6 +283,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, User user,
     }
 
     PetscCall(DMClone(sgs_dd_data->dm_sgs, &sgs_dd_data->dm_dd_inputs));
+    PetscCall(DMSetMatrixPreallocateSkip(sgs_dd_data->dm_dd_inputs, PETSC_TRUE));
     PetscCall(PetscObjectSetName((PetscObject)sgs_dd_data->dm_dd_inputs, "Data-Driven Model Inputs"));
     PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, degree, 1, q_extra, 1, &sgs_dd_data->num_comp_inputs, sgs_dd_data->dm_dd_inputs));
     PetscCall(DMGetLocalSection(sgs_dd_data->dm_dd_inputs, &section));
@@ -294,6 +296,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, User user,
     }
 
     PetscCall(DMClone(sgs_dd_data->dm_sgs, &sgs_dd_data->dm_dd_outputs));
+    PetscCall(DMSetMatrixPreallocateSkip(sgs_dd_data->dm_dd_outputs, PETSC_TRUE));
     PetscCall(PetscObjectSetName((PetscObject)sgs_dd_data->dm_dd_outputs, "Data-Driven Model Outputs"));
     PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, degree, 1, q_extra, 1, &sgs_dd_data->num_comp_outputs, sgs_dd_data->dm_dd_outputs));
     PetscCall(DMGetLocalSection(sgs_dd_data->dm_dd_outputs, &section));

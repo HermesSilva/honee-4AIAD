@@ -191,6 +191,7 @@ PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data,
     PetscSection section;
 
     PetscCall(DMClone(user->dm, &diff_filter->dm_filter));
+    PetscCall(DMSetMatrixPreallocateSkip(diff_filter->dm_filter, PETSC_TRUE));
     PetscCall(PetscObjectSetName((PetscObject)diff_filter->dm_filter, "Differential Filtering"));
 
     diff_filter->num_filtered_fields = diff_filter->do_mms_test ? 1 : 2;

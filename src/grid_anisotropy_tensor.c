@@ -26,6 +26,7 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, Ce
   // -- Create DM for Anisotropic tensor L^2 projection
   grid_aniso_proj->num_comp = 7;
   PetscCall(DMClone(user->dm, &grid_aniso_proj->dm));
+  PetscCall(DMSetMatrixPreallocateSkip(grid_aniso_proj->dm, PETSC_TRUE));
   PetscCall(PetscObjectSetName((PetscObject)grid_aniso_proj->dm, "Grid Anisotropy Tensor Projection"));
 
   {  // -- Setup DM
