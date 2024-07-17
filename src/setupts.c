@@ -12,11 +12,11 @@
 #include "../qfunctions/newtonian_state.h"
 
 // @brief Insert Boundary values if it's a new time
-PetscErrorCode UpdateBoundaryValues(User user, Vec Q_loc, PetscReal t) {
+PetscErrorCode UpdateBoundaryValues(Honee honee, Vec Q_loc, PetscReal t) {
   PetscFunctionBeginUser;
-  if (user->time_bc_set != t) {
-    PetscCall(DMPlexInsertBoundaryValues(user->dm, PETSC_TRUE, Q_loc, t, NULL, NULL, NULL));
-    user->time_bc_set = t;
+  if (honee->time_bc_set != t) {
+    PetscCall(DMPlexInsertBoundaryValues(honee->dm, PETSC_TRUE, Q_loc, t, NULL, NULL, NULL));
+    honee->time_bc_set = t;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -25,29 +25,31 @@ PetscErrorCode UpdateBoundaryValues(User user, Vec Q_loc, PetscReal t) {
 //   This is the RHS of the ODE, given as u_t = G(t,u)
 //   This function takes in a state vector Q and writes into G
 PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
-  User         user = *(User *)user_data;
-  Ceed         ceed = user->ceed;
+  Honee        honee = *(Honee *)user_data;
+  Ceed         ceed  = honee->ceed;
   PetscScalar  dt;
-  Vec          Q_loc = user->Q_loc;
+  Vec          Q_loc = honee->Q_loc;
   PetscMemType q_mem_type;
 
   PetscFunctionBeginUser;
   // Update time dependent data
-  PetscCall(UpdateBoundaryValues(user, Q_loc, t));
-  if (user->phys->solution_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(user->op_rhs_ctx->op, user->phys->solution_time_label, &t));
+  PetscCall(UpdateBoundaryValues(honee, Q_loc, t));
+  if (honee->phys->solution_time_label)
+    PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_rhs_ctx->op, honee->phys->solution_time_label, &t));
   PetscCall(TSGetTimeStep(ts, &dt));
-  if (user->phys->timestep_size_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(user->op_rhs_ctx->op, user->phys->timestep_size_label, &dt));
+  if (honee->phys->timestep_size_label)
+    PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_rhs_ctx->op, honee->phys->timestep_size_label, &dt));
 
-  PetscCall(DMGlobalToLocal(user->dm, Q, INSERT_VALUES, Q_loc));
-  if (user->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(user->diff_flux_proj, Q_loc));
-  PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, G, user->op_rhs_ctx));
+  PetscCall(DMGlobalToLocal(honee->dm, Q, INSERT_VALUES, Q_loc));
+  if (honee->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(honee->diff_flux_proj, Q_loc));
+  PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, G, honee->op_rhs_ctx));
 
-  PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, user->q_ceed));
+  PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, honee->q_ceed));
 
   // Inverse of the mass matrix
-  PetscCall(KSPSolve(user->mass_ksp, G, G));
+  PetscCall(KSPSolve(honee->mass_ksp, G, G));
 
-  PetscCall(VecReadCeedToPetsc(user->q_ceed, q_mem_type, Q_loc));
+  PetscCall(VecReadCeedToPetsc(honee->q_ceed, q_mem_type, Q_loc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -97,61 +99,61 @@ static PetscErrorCode Surface_Forces_NS(DM dm, Vec G_loc, PetscInt num_walls, co
 
 // Implicit time-stepper function setup
 PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *user_data) {
-  User         user = *(User *)user_data;
-  Ceed         ceed = user->ceed;
+  Honee        honee = *(Honee *)user_data;
+  Ceed         ceed  = honee->ceed;
   PetscScalar  dt;
-  Vec          Q_loc = user->Q_loc, Q_dot_loc = user->Q_dot_loc, G_loc;
+  Vec          Q_loc = honee->Q_loc, Q_dot_loc = honee->Q_dot_loc, G_loc;
   PetscMemType q_mem_type, q_dot_mem_type, g_mem_type;
 
   PetscFunctionBeginUser;
   // Get local vectors
-  PetscCall(DMGetNamedLocalVector(user->dm, "ResidualLocal", &G_loc));
+  PetscCall(DMGetNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
 
   // Update time dependent data
-  PetscCall(UpdateBoundaryValues(user, Q_loc, t));
-  if (user->phys->solution_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(user->op_ifunction, user->phys->solution_time_label, &t));
+  PetscCall(UpdateBoundaryValues(honee, Q_loc, t));
+  if (honee->phys->solution_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_ifunction, honee->phys->solution_time_label, &t));
   PetscCall(TSGetTimeStep(ts, &dt));
-  if (user->phys->timestep_size_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(user->op_ifunction, user->phys->timestep_size_label, &dt));
+  if (honee->phys->timestep_size_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_ifunction, honee->phys->timestep_size_label, &dt));
 
   // Global-to-local
-  PetscCall(DMGlobalToLocalBegin(user->dm, Q, INSERT_VALUES, Q_loc));
-  PetscCall(DMGlobalToLocalBegin(user->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
-  PetscCall(DMGlobalToLocalEnd(user->dm, Q, INSERT_VALUES, Q_loc));
-  if (user->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(user->diff_flux_proj, Q_loc));
-  PetscCall(DMGlobalToLocalEnd(user->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
+  PetscCall(DMGlobalToLocalBegin(honee->dm, Q, INSERT_VALUES, Q_loc));
+  PetscCall(DMGlobalToLocalBegin(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
+  PetscCall(DMGlobalToLocalEnd(honee->dm, Q, INSERT_VALUES, Q_loc));
+  if (honee->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(honee->diff_flux_proj, Q_loc));
+  PetscCall(DMGlobalToLocalEnd(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
 
   // Place PETSc vectors in CEED vectors
-  PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, user->q_ceed));
-  PetscCall(VecReadPetscToCeed(Q_dot_loc, &q_dot_mem_type, user->q_dot_ceed));
-  PetscCall(VecPetscToCeed(G_loc, &g_mem_type, user->g_ceed));
+  PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, honee->q_ceed));
+  PetscCall(VecReadPetscToCeed(Q_dot_loc, &q_dot_mem_type, honee->q_dot_ceed));
+  PetscCall(VecPetscToCeed(G_loc, &g_mem_type, honee->g_ceed));
 
   // Apply CEED operator
   PetscCall(PetscLogEventBegin(FLUIDS_CeedOperatorApply, Q, G, 0, 0));
   PetscCall(PetscLogGpuTimeBegin());
-  PetscCallCeed(user->ceed, CeedOperatorApply(user->op_ifunction, user->q_ceed, user->g_ceed, CEED_REQUEST_IMMEDIATE));
+  PetscCallCeed(honee->ceed, CeedOperatorApply(honee->op_ifunction, honee->q_ceed, honee->g_ceed, CEED_REQUEST_IMMEDIATE));
   PetscCall(PetscLogGpuTimeEnd());
   PetscCall(PetscLogEventEnd(FLUIDS_CeedOperatorApply, Q, G, 0, 0));
 
   // Restore vectors
-  PetscCall(VecReadCeedToPetsc(user->q_ceed, q_mem_type, Q_loc));
-  PetscCall(VecReadCeedToPetsc(user->q_dot_ceed, q_dot_mem_type, Q_dot_loc));
-  PetscCall(VecCeedToPetsc(user->g_ceed, g_mem_type, G_loc));
+  PetscCall(VecReadCeedToPetsc(honee->q_ceed, q_mem_type, Q_loc));
+  PetscCall(VecReadCeedToPetsc(honee->q_dot_ceed, q_dot_mem_type, Q_dot_loc));
+  PetscCall(VecCeedToPetsc(honee->g_ceed, g_mem_type, G_loc));
 
-  if (user->app_ctx->sgs_model_type == SGS_MODEL_DATA_DRIVEN) {
-    PetscCall(SgsDDApplyIFunction(user, Q_loc, G_loc));
+  if (honee->app_ctx->sgs_model_type == SGS_MODEL_DATA_DRIVEN) {
+    PetscCall(SgsDDApplyIFunction(honee, Q_loc, G_loc));
   }
 
   // Local-to-Global
   PetscCall(VecZeroEntries(G));
-  PetscCall(DMLocalToGlobal(user->dm, G_loc, ADD_VALUES, G));
+  PetscCall(DMLocalToGlobal(honee->dm, G_loc, ADD_VALUES, G));
 
   // Restore vectors
-  PetscCall(DMRestoreNamedLocalVector(user->dm, "ResidualLocal", &G_loc));
+  PetscCall(DMRestoreNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode FormIJacobian_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, PetscReal shift, Mat J, Mat J_pre, void *user_data) {
-  User      user = *(User *)user_data;
+  Honee     honee = *(Honee *)user_data;
   PetscBool J_is_matceed, J_is_mffd, J_pre_is_matceed, J_pre_is_mffd;
 
   PetscFunctionBeginUser;
@@ -160,75 +162,75 @@ PetscErrorCode FormIJacobian_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, PetscReal 
   PetscCall(PetscObjectTypeCompare((PetscObject)J_pre, MATMFFD, &J_pre_is_mffd));
   PetscCall(PetscObjectTypeCompare((PetscObject)J_pre, MATCEED, &J_pre_is_matceed));
 
-  PetscCall(MatCeedSetContextReal(user->mat_ijacobian, "ijacobian time shift", shift));
+  PetscCall(MatCeedSetContextReal(honee->mat_ijacobian, "ijacobian time shift", shift));
 
   if (J_is_matceed || J_is_mffd) {
     PetscCall(MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY));
-  } else PetscCall(MatCeedAssembleCOO(user->mat_ijacobian, J));
+  } else PetscCall(MatCeedAssembleCOO(honee->mat_ijacobian, J));
 
   if (J_pre_is_matceed && J != J_pre) {
     PetscCall(MatAssemblyBegin(J_pre, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(J_pre, MAT_FINAL_ASSEMBLY));
   } else if (!J_pre_is_matceed && !J_pre_is_mffd && J != J_pre) {
-    PetscCall(MatCeedAssembleCOO(user->mat_ijacobian, J_pre));
+    PetscCall(MatCeedAssembleCOO(honee->mat_ijacobian, J_pre));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode WriteOutput(User user, Vec Q, PetscInt step_no, PetscScalar time) {
+PetscErrorCode WriteOutput(Honee honee, Vec Q, PetscInt step_no, PetscScalar time) {
   Vec         Q_loc;
   char        file_path[PETSC_MAX_PATH_LEN];
   PetscViewer viewer;
 
   PetscFunctionBeginUser;
-  if (user->app_ctx->checkpoint_vtk) {
+  if (honee->app_ctx->checkpoint_vtk) {
     // Set up output
-    PetscCall(DMGetLocalVector(user->dm, &Q_loc));
+    PetscCall(DMGetLocalVector(honee->dm, &Q_loc));
     PetscCall(PetscObjectSetName((PetscObject)Q_loc, "StateVec"));
     PetscCall(VecZeroEntries(Q_loc));
-    PetscCall(DMGlobalToLocal(user->dm, Q, INSERT_VALUES, Q_loc));
+    PetscCall(DMGlobalToLocal(honee->dm, Q, INSERT_VALUES, Q_loc));
 
     // Output
-    PetscCall(PetscSNPrintf(file_path, sizeof file_path, "%s/ns-%03" PetscInt_FMT ".vtu", user->app_ctx->output_dir, step_no));
+    PetscCall(PetscSNPrintf(file_path, sizeof file_path, "%s/ns-%03" PetscInt_FMT ".vtu", honee->app_ctx->output_dir, step_no));
 
     PetscCall(PetscViewerVTKOpen(PetscObjectComm((PetscObject)Q), file_path, FILE_MODE_WRITE, &viewer));
     PetscCall(VecView(Q_loc, viewer));
     PetscCall(PetscViewerDestroy(&viewer));
-    if (user->dm_viz) {
+    if (honee->dm_viz) {
       Vec         Q_refined, Q_refined_loc;
       char        file_path_refined[PETSC_MAX_PATH_LEN];
       PetscViewer viewer_refined;
 
-      PetscCall(DMGetGlobalVector(user->dm_viz, &Q_refined));
-      PetscCall(DMGetLocalVector(user->dm_viz, &Q_refined_loc));
+      PetscCall(DMGetGlobalVector(honee->dm_viz, &Q_refined));
+      PetscCall(DMGetLocalVector(honee->dm_viz, &Q_refined_loc));
       PetscCall(PetscObjectSetName((PetscObject)Q_refined_loc, "Refined"));
 
-      PetscCall(MatInterpolate(user->interp_viz, Q, Q_refined));
+      PetscCall(MatInterpolate(honee->interp_viz, Q, Q_refined));
       PetscCall(VecZeroEntries(Q_refined_loc));
-      PetscCall(DMGlobalToLocal(user->dm_viz, Q_refined, INSERT_VALUES, Q_refined_loc));
+      PetscCall(DMGlobalToLocal(honee->dm_viz, Q_refined, INSERT_VALUES, Q_refined_loc));
 
       PetscCall(
-          PetscSNPrintf(file_path_refined, sizeof file_path_refined, "%s/nsrefined-%03" PetscInt_FMT ".vtu", user->app_ctx->output_dir, step_no));
+          PetscSNPrintf(file_path_refined, sizeof file_path_refined, "%s/nsrefined-%03" PetscInt_FMT ".vtu", honee->app_ctx->output_dir, step_no));
 
       PetscCall(PetscViewerVTKOpen(PetscObjectComm((PetscObject)Q_refined), file_path_refined, FILE_MODE_WRITE, &viewer_refined));
       PetscCall(VecView(Q_refined_loc, viewer_refined));
-      PetscCall(DMRestoreLocalVector(user->dm_viz, &Q_refined_loc));
-      PetscCall(DMRestoreGlobalVector(user->dm_viz, &Q_refined));
+      PetscCall(DMRestoreLocalVector(honee->dm_viz, &Q_refined_loc));
+      PetscCall(DMRestoreGlobalVector(honee->dm_viz, &Q_refined));
       PetscCall(PetscViewerDestroy(&viewer_refined));
     }
-    PetscCall(DMRestoreLocalVector(user->dm, &Q_loc));
+    PetscCall(DMRestoreLocalVector(honee->dm, &Q_loc));
   }
 
   // Save data in a binary file for continuation of simulations
-  if (user->app_ctx->add_stepnum2bin) {
-    PetscCall(PetscSNPrintf(file_path, sizeof file_path, "%s/ns-solution-%" PetscInt_FMT ".bin", user->app_ctx->output_dir, step_no));
+  if (honee->app_ctx->add_stepnum2bin) {
+    PetscCall(PetscSNPrintf(file_path, sizeof file_path, "%s/ns-solution-%" PetscInt_FMT ".bin", honee->app_ctx->output_dir, step_no));
   } else {
-    PetscCall(PetscSNPrintf(file_path, sizeof file_path, "%s/ns-solution.bin", user->app_ctx->output_dir));
+    PetscCall(PetscSNPrintf(file_path, sizeof file_path, "%s/ns-solution.bin", honee->app_ctx->output_dir));
   }
-  PetscCall(PetscViewerBinaryOpen(user->comm, file_path, FILE_MODE_WRITE, &viewer));
+  PetscCall(PetscViewerBinaryOpen(honee->comm, file_path, FILE_MODE_WRITE, &viewer));
 
-  time /= user->units->second;  // Dimensionalize time back
+  time /= honee->units->second;  // Dimensionalize time back
   PetscCall(HoneeWriteBinaryVec(viewer, Q, time, step_no));
   PetscCall(PetscViewerDestroy(&viewer));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -236,28 +238,28 @@ PetscErrorCode WriteOutput(User user, Vec Q, PetscInt step_no, PetscScalar time)
 
 // CSV Monitor
 PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec Q, void *ctx) {
-  User              user = ctx;
+  Honee             honee = ctx;
   Vec               G_loc;
-  PetscInt          num_wall = user->app_ctx->wall_forces.num_wall, dim = 3;
-  const PetscInt   *walls  = user->app_ctx->wall_forces.walls;
-  PetscViewer       viewer = user->app_ctx->wall_forces.viewer;
-  PetscViewerFormat format = user->app_ctx->wall_forces.viewer_format;
+  PetscInt          num_wall = honee->app_ctx->wall_forces.num_wall, dim = 3;
+  const PetscInt   *walls  = honee->app_ctx->wall_forces.walls;
+  PetscViewer       viewer = honee->app_ctx->wall_forces.viewer;
+  PetscViewerFormat format = honee->app_ctx->wall_forces.viewer_format;
   PetscScalar      *reaction_force;
   PetscBool         is_ascii;
 
   PetscFunctionBeginUser;
   if (!viewer) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(DMGetNamedLocalVector(user->dm, "ResidualLocal", &G_loc));
+  PetscCall(DMGetNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
   PetscCall(PetscCalloc1(num_wall * dim, &reaction_force));
-  PetscCall(Surface_Forces_NS(user->dm, G_loc, num_wall, walls, reaction_force));
-  PetscCall(DMRestoreNamedLocalVector(user->dm, "ResidualLocal", &G_loc));
+  PetscCall(Surface_Forces_NS(honee->dm, G_loc, num_wall, walls, reaction_force));
+  PetscCall(DMRestoreNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
 
   PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &is_ascii));
 
   if (is_ascii) {
-    if (format == PETSC_VIEWER_ASCII_CSV && !user->app_ctx->wall_forces.header_written) {
+    if (format == PETSC_VIEWER_ASCII_CSV && !honee->app_ctx->wall_forces.header_written) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "Step,Time,Wall,ForceX,ForceY,ForceZ\n"));
-      user->app_ctx->wall_forces.header_written = PETSC_TRUE;
+      honee->app_ctx->wall_forces.header_written = PETSC_TRUE;
     }
     for (PetscInt w = 0; w < num_wall; w++) {
       PetscInt wall = walls[w];
@@ -277,53 +279,53 @@ PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec 
 
 // User provided TS Monitor
 PetscErrorCode TSMonitor_NS(TS ts, PetscInt step_no, PetscReal time, Vec Q, void *ctx) {
-  User user = ctx;
+  Honee honee = ctx;
 
   PetscFunctionBeginUser;
   // Print every 'checkpoint_interval' steps
-  if (user->app_ctx->checkpoint_interval <= 0 || step_no % user->app_ctx->checkpoint_interval != 0 ||
-      (user->app_ctx->cont_steps == step_no && step_no != 0)) {
+  if (honee->app_ctx->checkpoint_interval <= 0 || step_no % honee->app_ctx->checkpoint_interval != 0 ||
+      (honee->app_ctx->cont_steps == step_no && step_no != 0)) {
     PetscFunctionReturn(PETSC_SUCCESS);
   }
 
-  PetscCall(WriteOutput(user, Q, step_no, time));
+  PetscCall(WriteOutput(honee, Q, step_no, time));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // TS: Create, setup, and solve
-PetscErrorCode TSSolve_NS(DM dm, User user, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts) {
-  MPI_Comm    comm = user->comm;
+PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts) {
+  MPI_Comm    comm = honee->comm;
   TSAdapt     adapt;
   PetscScalar final_time;
 
   PetscFunctionBeginUser;
   PetscCall(TSCreate(comm, ts));
   PetscCall(TSSetDM(*ts, dm));
-  PetscCall(TSSetApplicationContext(*ts, user));
+  PetscCall(TSSetApplicationContext(*ts, honee));
   if (phys->implicit) {
     PetscCall(TSSetType(*ts, TSBDF));
-    if (user->op_ifunction) {
-      PetscCall(TSSetIFunction(*ts, NULL, IFunction_NS, &user));
+    if (honee->op_ifunction) {
+      PetscCall(TSSetIFunction(*ts, NULL, IFunction_NS, &honee));
     } else {  // Implicit integrators can fall back to using an RHSFunction
-      PetscCall(TSSetRHSFunction(*ts, NULL, RHS_NS, &user));
+      PetscCall(TSSetRHSFunction(*ts, NULL, RHS_NS, &honee));
     }
-    if (user->mat_ijacobian) {
-      PetscCall(DMTSSetIJacobian(dm, FormIJacobian_NS, &user));
+    if (honee->mat_ijacobian) {
+      PetscCall(DMTSSetIJacobian(dm, FormIJacobian_NS, &honee));
     }
   } else {
-    PetscCheck(user->op_rhs_ctx, comm, PETSC_ERR_ARG_NULL, "Problem does not provide RHSFunction");
+    PetscCheck(honee->op_rhs_ctx, comm, PETSC_ERR_ARG_NULL, "Problem does not provide RHSFunction");
     PetscCall(TSSetType(*ts, TSRK));
     PetscCall(TSRKSetType(*ts, TSRK5F));
-    PetscCall(TSSetRHSFunction(*ts, NULL, RHS_NS, &user));
+    PetscCall(TSSetRHSFunction(*ts, NULL, RHS_NS, &honee));
   }
-  PetscCall(TSSetMaxTime(*ts, 500. * user->units->second));
+  PetscCall(TSSetMaxTime(*ts, 500. * honee->units->second));
   PetscCall(TSSetExactFinalTime(*ts, TS_EXACTFINALTIME_STEPOVER));
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(TSSetErrorIfStepFails(*ts, PETSC_FALSE));
-  PetscCall(TSSetTimeStep(*ts, 1.e-2 * user->units->second));
+  PetscCall(TSSetTimeStep(*ts, 1.e-2 * honee->units->second));
   PetscCall(TSGetAdapt(*ts, &adapt));
-  PetscCall(TSAdaptSetStepLimits(adapt, 1.e-12 * user->units->second, 1.e2 * user->units->second));
+  PetscCall(TSAdaptSetStepLimits(adapt, 1.e-12 * honee->units->second, 1.e2 * honee->units->second));
   PetscCall(TSSetFromOptions(*ts));
-  if (user->mat_ijacobian) {
+  if (honee->mat_ijacobian) {
     if (app_ctx->amat_type && !strcmp(app_ctx->amat_type, MATSHELL)) {
       SNES snes;
       KSP  ksp;
@@ -331,13 +333,13 @@ PetscErrorCode TSSolve_NS(DM dm, User user, AppCtx app_ctx, Physics phys, Proble
 
       PetscCall(TSGetSNES(*ts, &snes));
       PetscCall(SNESGetKSP(snes, &ksp));
-      PetscCall(CreateSolveOperatorsFromMatCeed(ksp, user->mat_ijacobian, PETSC_FALSE, &Amat, &Pmat));
-      PetscCall(TSSetIJacobian(*ts, user->mat_ijacobian, Pmat, NULL, NULL));
+      PetscCall(CreateSolveOperatorsFromMatCeed(ksp, honee->mat_ijacobian, PETSC_FALSE, &Amat, &Pmat));
+      PetscCall(TSSetIJacobian(*ts, honee->mat_ijacobian, Pmat, NULL, NULL));
       PetscCall(MatDestroy(&Amat));
       PetscCall(MatDestroy(&Pmat));
     }
   }
-  user->time_bc_set = -1.0;   // require all BCs be updated
+  honee->time_bc_set = -1.0;  // require all BCs be updated
   if (app_ctx->cont_steps) {  // continue from previous timestep data
     PetscInt    count;
     PetscViewer viewer;
@@ -349,29 +351,29 @@ PetscErrorCode TSSolve_NS(DM dm, User user, AppCtx app_ctx, Physics phys, Proble
       PetscCheck(app_ctx->cont_steps != -1, comm, PETSC_ERR_ARG_INCOMP,
                  "-continue step number not specified, but checkpoint file does not contain a step number (likely written by older code version)");
     }
-    PetscCall(TSSetTime(*ts, app_ctx->cont_time * user->units->second));
+    PetscCall(TSSetTime(*ts, app_ctx->cont_time * honee->units->second));
     PetscCall(TSSetStepNumber(*ts, app_ctx->cont_steps));
   }
   if (app_ctx->test_type == TESTTYPE_NONE) {
-    PetscCall(TSMonitorSet(*ts, TSMonitor_NS, user, NULL));
+    PetscCall(TSMonitorSet(*ts, TSMonitor_NS, honee, NULL));
   }
   if (app_ctx->wall_forces.viewer) {
-    PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, user, NULL));
+    PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, honee, NULL));
   }
   if (app_ctx->turb_spanstats_enable) {
-    PetscCall(TSMonitorSet(*ts, TSMonitor_TurbulenceStatistics, user, NULL));
-    CeedScalar previous_time = app_ctx->cont_time * user->units->second;
-    PetscCallCeed(user->ceed,
-                  CeedOperatorSetContextDouble(user->spanstats.op_stats_collect_ctx->op, user->spanstats.previous_time_label, &previous_time));
+    PetscCall(TSMonitorSet(*ts, TSMonitor_TurbulenceStatistics, honee, NULL));
+    CeedScalar previous_time = app_ctx->cont_time * honee->units->second;
+    PetscCallCeed(honee->ceed,
+                  CeedOperatorSetContextDouble(honee->spanstats.op_stats_collect_ctx->op, honee->spanstats.previous_time_label, &previous_time));
   }
-  if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, user, NULL));
+  if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
 
   if (app_ctx->sgs_train_enable) {
-    PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, user, NULL));
+    PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
     PetscCall(TSSetPostStep(*ts, TSPostStep_SGS_DD_Training));
   }
 
-  if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(PrintRunInfo(user, user->phys, problem, *ts));
+  if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(PrintRunInfo(honee, honee->phys, problem, *ts));
   // Solve
   PetscReal start_time;
   PetscInt  start_step;
@@ -409,8 +411,8 @@ PetscErrorCode TSSolve_NS(DM dm, User user, AppCtx app_ctx, Physics phys, Proble
   if (app_ctx->test_type == TESTTYPE_NONE) {
     PetscInt step_no;
     PetscCall(TSGetStepNumber(*ts, &step_no));
-    if (user->app_ctx->checkpoint_interval > 0 || user->app_ctx->checkpoint_interval == -1) {
-      PetscCall(WriteOutput(user, *Q, step_no, final_time));
+    if (honee->app_ctx->checkpoint_interval > 0 || honee->app_ctx->checkpoint_interval == -1) {
+      PetscCall(WriteOutput(honee, *Q, step_no, final_time));
     }
 
     PetscLogStage      stage_id;

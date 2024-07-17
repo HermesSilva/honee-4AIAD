@@ -235,9 +235,9 @@ static PetscErrorCode ModifyMesh(MPI_Comm comm, DM dm, PetscReal growth, PetscIn
 }
 
 PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
-  User                     user    = *(User *)ctx;
-  MPI_Comm                 comm    = user->comm;
-  Ceed                     ceed    = user->ceed;
+  Honee                    honee   = *(Honee *)ctx;
+  MPI_Comm                 comm    = honee->comm;
+  Ceed                     ceed    = honee->ceed;
   PetscBool                use_stg = PETSC_FALSE;
   BlasiusContext           blasius_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
@@ -281,7 +281,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscCall(PetscOptionsInt("-n_chebyshev", "Number of Chebyshev terms", NULL, N, &N, NULL));
   PetscCheck(3 <= N && N <= BLASIUS_MAX_N_CHEBYSHEV, comm, PETSC_ERR_ARG_OUTOFRANGE, "-n_chebyshev %" PetscInt_FMT " must be in range [3, %d]", N,
              BLASIUS_MAX_N_CHEBYSHEV);
-  if (user->app_ctx->mesh_transform_type == MESH_TRANSFORM_PLATEMESH) {
+  if (honee->app_ctx->mesh_transform_type == MESH_TRANSFORM_PLATEMESH) {
     PetscCall(PetscOptionsBoundedInt("-platemesh_Ndelta", "Velocity at boundary layer edge", NULL, mesh_Ndelta, &mesh_Ndelta, NULL, 1));
     PetscCall(PetscOptionsScalar("-platemesh_refine_height", "Height of boundary layer mesh refinement", NULL, mesh_refine_height,
                                  &mesh_refine_height, NULL));
@@ -296,10 +296,10 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscCall(PetscOptionsBool("-stg_use", "Use STG inflow boundary condition", NULL, use_stg, &use_stg, NULL));
   PetscOptionsEnd();
 
-  PetscScalar meter  = user->units->meter;
-  PetscScalar second = user->units->second;
-  PetscScalar Kelvin = user->units->Kelvin;
-  PetscScalar Pascal = user->units->Pascal;
+  PetscScalar meter  = honee->units->meter;
+  PetscScalar second = honee->units->second;
+  PetscScalar Kelvin = honee->units->Kelvin;
+  PetscScalar Pascal = honee->units->Pascal;
 
   T_inf *= Kelvin;
   T_wall *= Kelvin;
@@ -307,7 +307,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   U_inf *= meter / second;
   delta0 *= meter;
 
-  if (user->app_ctx->mesh_transform_type == MESH_TRANSFORM_PLATEMESH) {
+  if (honee->app_ctx->mesh_transform_type == MESH_TRANSFORM_PLATEMESH) {
     PetscReal *mesh_ynodes  = NULL;
     PetscInt   mesh_nynodes = 0;
     if (strcmp(mesh_ynodes_path, "")) PetscCall(GetYNodeLocs(comm, mesh_ynodes_path, &mesh_ynodes, &mesh_nynodes));
@@ -329,7 +329,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   blasius_ctx->delta0   = delta0;
   blasius_ctx->S_infty  = S_infty;
   blasius_ctx->n_cheb   = N;
-  blasius_ctx->implicit = user->phys->implicit;
+  blasius_ctx->implicit = honee->phys->implicit;
   if (P0_set) newtonian_ig_ctx->idl_pressure = P_inf;  // For maintaining behavior of -P0 flag (which is deprecated)
   blasius_ctx->newtonian_ctx = *newtonian_ig_ctx;
 
@@ -345,18 +345,18 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
 
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &blasius_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &blasius_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(blasius_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*blasius_ctx), blasius_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(blasius_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
   problem->ics.qfctx = blasius_qfctx;
   if (use_stg) {
-    PetscCall(SetupStg(comm, dm, problem, user, weakT, S_infty.Y.temperature, S_infty.Y.pressure));
+    PetscCall(SetupStg(comm, dm, problem, honee, weakT, S_infty.Y.temperature, S_infty.Y.pressure));
   } else if (diff_filter_mms) {
     PetscCall(DifferentialFilterMmsICSetup(problem));
   } else {
-    PetscCheck((user->phys->state_var == STATEVAR_CONSERVATIVE) || (user->app_ctx->test_type == TESTTYPE_DIFF_FILTER), user->comm,
+    PetscCheck((honee->phys->state_var == STATEVAR_CONSERVATIVE) || (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER), honee->comm,
                PETSC_ERR_ARG_INCOMP, "Can only use conservative variables with Blasius and weak inflow");
     problem->apply_inflow.qf_func_ptr          = Blasius_Inflow;
     problem->apply_inflow.qf_loc               = Blasius_Inflow_loc;

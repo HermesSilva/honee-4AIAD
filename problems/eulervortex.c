@@ -13,10 +13,10 @@
 
 PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   EulerTestType        euler_test;
-  User                 user = *(User *)ctx;
+  Honee                honee = *(Honee *)ctx;
   StabilizationType    stab;
-  MPI_Comm             comm = user->comm;
-  Ceed                 ceed = user->ceed;
+  MPI_Comm             comm = honee->comm;
+  Ceed                 ceed = honee->ceed;
   PetscBool            implicit;
   EulerContext         euler_ctx;
   CeedQFunctionContext euler_qfctx;
@@ -98,8 +98,8 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   // ------------------------------------------------------
   //           Set up the PETSc context
   // ------------------------------------------------------
-  user->units->meter  = meter;
-  user->units->second = second;
+  honee->units->meter  = meter;
+  honee->units->second = second;
 
   // ------------------------------------------------------
   //           Set up the libCEED context
@@ -112,7 +112,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   }
 
   // -- QFunction Context
-  user->phys->implicit        = implicit;
+  honee->phys->implicit       = implicit;
   euler_ctx->curr_time        = 0.;
   euler_ctx->implicit         = implicit;
   euler_ctx->euler_test       = euler_test;
@@ -126,7 +126,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   euler_ctx->mean_velocity[2] = mean_velocity[2];
   euler_ctx->stabilization    = stab;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &euler_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &euler_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(euler_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*euler_ctx), euler_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(euler_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(euler_qfctx, "solution time", offsetof(struct EulerContext_, curr_time), 1,
@@ -140,9 +140,9 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PRINT_EULER_VORTEX(User user, ProblemData problem, AppCtx app_ctx) {
-  MPI_Comm     comm = user->comm;
-  Ceed         ceed = user->ceed;
+PetscErrorCode PRINT_EULER_VORTEX(Honee honee, ProblemData problem, AppCtx app_ctx) {
+  MPI_Comm     comm = honee->comm;
+  Ceed         ceed = honee->ceed;
   EulerContext euler_ctx;
 
   PetscFunctionBeginUser;

@@ -9,18 +9,18 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_proj, User user, PetscInt degree) {
+PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_proj, Honee honee, PetscInt degree) {
   PetscSection section;
 
   PetscFunctionBeginUser;
   grad_velo_proj->num_comp = 9;  // 9 velocity gradient
 
-  PetscCall(DMClone(user->dm, &grad_velo_proj->dm));
+  PetscCall(DMClone(honee->dm, &grad_velo_proj->dm));
   PetscCall(DMSetMatrixPreallocateSkip(grad_velo_proj->dm, PETSC_TRUE));
   PetscCall(PetscObjectSetName((PetscObject)grad_velo_proj->dm, "Velocity Gradient Projection"));
 
-  PetscCall(
-      DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, user->app_ctx->degree, 1, user->app_ctx->q_extra, 1, &grad_velo_proj->num_comp, grad_velo_proj->dm));
+  PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, 1, &grad_velo_proj->num_comp,
+                               grad_velo_proj->dm));
 
   PetscCall(DMGetLocalSection(grad_velo_proj->dm, &section));
   PetscCall(PetscSectionSetFieldName(section, 0, ""));
@@ -36,7 +36,7 @@ PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_
   PetscFunctionReturn(PETSC_SUCCESS);
 };
 
-PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem, StateVariable state_var_input,
+PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem, StateVariable state_var_input,
                                                CeedElemRestriction elem_restr_input, CeedBasis basis_input, NodalProjectionData *pgrad_velo_proj) {
   NodalProjectionData grad_velo_proj;
   CeedBasis           basis_grad_velo;
@@ -48,7 +48,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ce
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&grad_velo_proj));
-  PetscCall(VelocityGradientProjectionCreateDM(grad_velo_proj, user, user->app_ctx->degree));
+  PetscCall(VelocityGradientProjectionCreateDM(grad_velo_proj, honee, honee->app_ctx->degree));
 
   // -- Get Pre-requisite things
   PetscCall(DMGetDimension(grad_velo_proj->dm, &dim));
@@ -92,7 +92,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ce
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "velocity gradient", elem_restr_grad_velo, basis_grad_velo, CEED_VECTOR_ACTIVE));
 
-    PetscCall(OperatorApplyContextCreate(user->dm, grad_velo_proj->dm, ceed, op_rhs_assemble, NULL, NULL, NULL, NULL, &grad_velo_proj->l2_rhs_ctx));
+    PetscCall(OperatorApplyContextCreate(honee->dm, grad_velo_proj->dm, ceed, op_rhs_assemble, NULL, NULL, NULL, NULL, &grad_velo_proj->l2_rhs_ctx));
 
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs_assemble));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_assemble));

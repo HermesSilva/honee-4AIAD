@@ -12,14 +12,14 @@
 #include <navierstokes.h>
 #include "../qfunctions/mass.h"
 
-PetscErrorCode ICs_FixMultiplicity(DM dm, CeedData ceed_data, User user, Vec Q_loc, Vec Q, CeedScalar time) {
-  Ceed         ceed = user->ceed;
+PetscErrorCode ICs_FixMultiplicity(DM dm, CeedData ceed_data, Honee honee, Vec Q_loc, Vec Q, CeedScalar time) {
+  Ceed         ceed = honee->ceed;
   CeedVector   mult_vec;
   PetscMemType m_mem_type;
   Vec          Multiplicity, Multiplicity_loc;
 
   PetscFunctionBeginUser;
-  if (user->phys->ics_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(ceed_data->op_ics_ctx->op, user->phys->ics_time_label, &time));
+  if (honee->phys->ics_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(ceed_data->op_ics_ctx->op, honee->phys->ics_time_label, &time));
   PetscCall(ApplyCeedOperatorLocalToGlobal(NULL, Q, ceed_data->op_ics_ctx));
 
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &mult_vec, NULL));
@@ -121,7 +121,7 @@ PetscErrorCode RegressionTest(AppCtx app_ctx, Vec Q) {
 }
 
 // Get error for problems with exact solutions
-PetscErrorCode PrintError(CeedData ceed_data, DM dm, User user, Vec Q, PetscScalar final_time) {
+PetscErrorCode PrintError(CeedData ceed_data, DM dm, Honee honee, Vec Q, PetscScalar final_time) {
   PetscInt  loc_nodes;
   Vec       Q_exact, Q_exact_loc;
   PetscReal rel_error, norm_error, norm_exact;
@@ -131,7 +131,7 @@ PetscErrorCode PrintError(CeedData ceed_data, DM dm, User user, Vec Q, PetscScal
   PetscCall(DMGetGlobalVector(dm, &Q_exact));
   PetscCall(DMGetLocalVector(dm, &Q_exact_loc));
   PetscCall(VecGetSize(Q_exact_loc, &loc_nodes));
-  PetscCall(ICs_FixMultiplicity(dm, ceed_data, user, Q_exact_loc, Q_exact, final_time));
+  PetscCall(ICs_FixMultiplicity(dm, ceed_data, honee, Q_exact_loc, Q_exact, final_time));
 
   // Get |exact solution - obtained solution|
   PetscCall(VecNorm(Q_exact, NORM_1, &norm_exact));
@@ -146,20 +146,20 @@ PetscErrorCode PrintError(CeedData ceed_data, DM dm, User user, Vec Q, PetscScal
 }
 
 // Post-processing
-PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem, User user, Vec Q, PetscScalar final_time) {
+PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem, Honee honee, Vec Q, PetscScalar final_time) {
   PetscInt          steps;
   TSConvergedReason reason;
 
   PetscFunctionBeginUser;
   // Print relative error
-  if (problem->compute_exact_solution_error && user->app_ctx->test_type == TESTTYPE_NONE) {
-    PetscCall(PrintError(ceed_data, dm, user, Q, final_time));
+  if (problem->compute_exact_solution_error && honee->app_ctx->test_type == TESTTYPE_NONE) {
+    PetscCall(PrintError(ceed_data, dm, honee, Q, final_time));
   }
 
   // Print final time and number of steps
   PetscCall(TSGetStepNumber(ts, &steps));
   PetscCall(TSGetConvergedReason(ts, &reason));
-  if (user->app_ctx->test_type == TESTTYPE_NONE) {
+  if (honee->app_ctx->test_type == TESTTYPE_NONE) {
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Time integrator %s on time step %" PetscInt_FMT " with final time %g\n", TSConvergedReasons[reason],
                           steps, (double)final_time));
   }
@@ -168,8 +168,8 @@ PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem
   PetscCall(VecViewFromOptions(Q, NULL, "-vec_view"));
 
   // Compare reference solution values with current test run for CI
-  if (user->app_ctx->test_type == TESTTYPE_SOLVER) {
-    PetscCall(RegressionTest(user->app_ctx, Q));
+  if (honee->app_ctx->test_type == TESTTYPE_SOLVER) {
+    PetscCall(RegressionTest(honee->app_ctx, Q));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -253,8 +253,8 @@ PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name
 }
 
 // Print information about the given simulation run
-PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS ts) {
-  Ceed     ceed = user->ceed;
+PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, TS ts) {
+  Ceed     ceed = honee->ceed;
   MPI_Comm comm = PetscObjectComm((PetscObject)ts);
 
   PetscFunctionBeginUser;
@@ -272,13 +272,13 @@ PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS
                         host_name, comm_size));
 
   // Problem specific info
-  PetscCall(problem->print_info(user, problem, user->app_ctx));
+  PetscCall(problem->print_info(honee, problem, honee->app_ctx));
 
   // libCEED
   const char *used_resource;
   CeedMemType mem_type_backend;
-  PetscCallCeed(ceed, CeedGetResource(user->ceed, &used_resource));
-  PetscCallCeed(ceed, CeedGetPreferredMemType(user->ceed, &mem_type_backend));
+  PetscCallCeed(ceed, CeedGetResource(honee->ceed, &used_resource));
+  PetscCallCeed(ceed, CeedGetPreferredMemType(honee->ceed, &mem_type_backend));
   PetscCall(PetscPrintf(comm,
                         "  libCEED:\n"
                         "    libCEED Backend                    : %s\n"
@@ -290,10 +290,10 @@ PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS
     char     box_faces_str[PETSC_MAX_PATH_LEN] = "3,3,3";
     PetscInt dim;
 
-    PetscCall(DMGetDimension(user->dm, &dim));
+    PetscCall(DMGetDimension(honee->dm, &dim));
     if (dim == 2) box_faces_str[3] = '\0';
     PetscCall(PetscOptionsGetString(NULL, NULL, "-dm_plex_box_faces", box_faces_str, sizeof(box_faces_str), NULL));
-    PetscCall(DMGetVecType(user->dm, &vec_type));
+    PetscCall(DMGetVecType(honee->dm, &vec_type));
     PetscCall(PetscPrintf(comm,
                           "  PETSc:\n"
                           "    Box Faces                          : %s\n"
@@ -327,20 +327,20 @@ PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS
                             amat_type, pmat_type_str));
     }
   }
-  if (user->app_ctx->cont_steps) {
+  if (honee->app_ctx->cont_steps) {
     PetscCall(PetscPrintf(comm,
                           "  Continue:\n"
                           "    Filename:                          : %s\n"
                           "    Step:                              : %" PetscInt_FMT "\n"
                           "    Time:                              : %g\n",
-                          user->app_ctx->cont_file, user->app_ctx->cont_steps, user->app_ctx->cont_time));
+                          honee->app_ctx->cont_file, honee->app_ctx->cont_steps, honee->app_ctx->cont_time));
   }
   // Mesh
   const PetscInt num_comp_q = 5;
   PetscInt       glob_dofs, owned_dofs, local_dofs;
-  const CeedInt  num_P = user->app_ctx->degree + 1, num_Q = num_P + user->app_ctx->q_extra;
-  PetscCall(DMGetGlobalVectorInfo(user->dm, &owned_dofs, &glob_dofs, NULL));
-  PetscCall(DMGetLocalVectorInfo(user->dm, &local_dofs, NULL, NULL));
+  const CeedInt  num_P = honee->app_ctx->degree + 1, num_Q = num_P + honee->app_ctx->q_extra;
+  PetscCall(DMGetGlobalVectorInfo(honee->dm, &owned_dofs, &glob_dofs, NULL));
+  PetscCall(DMGetLocalVectorInfo(honee->dm, &local_dofs, NULL, NULL));
   PetscCall(PetscPrintf(comm,
                         "  Mesh:\n"
                         "    Number of 1D Basis Nodes (P)       : %" CeedInt_FMT "\n"
@@ -388,7 +388,7 @@ PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS
         PetscMPIInt        nrranks, niranks;
         const PetscInt    *roffset, *rmine, *rremote, *ioffset, *irootloc;
         const PetscMPIInt *rranks, *iranks;
-        PetscCall(DMGetSectionSF(user->dm, &sf));
+        PetscCall(DMGetSectionSF(honee->dm, &sf));
         PetscCall(PetscSFGetRootRanks(sf, &nrranks, &rranks, &roffset, &rmine, &rremote));
         PetscCall(PetscSFGetLeafRanks(sf, &niranks, &iranks, &ioffset, &irootloc));
         for (PetscInt i = 0; i < nrranks; i++) {

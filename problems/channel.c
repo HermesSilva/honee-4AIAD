@@ -12,9 +12,9 @@
 #include <navierstokes.h>
 
 PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
-  User                     user = *(User *)ctx;
-  MPI_Comm                 comm = user->comm;
-  Ceed                     ceed = user->ceed;
+  Honee                    honee = *(Honee *)ctx;
+  MPI_Comm                 comm  = honee->comm;
+  Ceed                     ceed  = honee->ceed;
   ChannelContext           channel_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
   CeedQFunctionContext     channel_qfctx;
@@ -29,7 +29,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
   problem->ics.qf_func_ptr = ICsChannel;
   problem->ics.qf_loc      = ICsChannel_loc;
-  if (user->phys->state_var == STATEVAR_CONSERVATIVE) {
+  if (honee->phys->state_var == STATEVAR_CONSERVATIVE) {
     problem->apply_inflow.qf_func_ptr  = Channel_Inflow;
     problem->apply_inflow.qf_loc       = Channel_Inflow_loc;
     problem->apply_outflow.qf_func_ptr = Channel_Outflow;
@@ -48,10 +48,10 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscCall(PetscOptionsReal("-body_force_scale", "Multiplier for body force", NULL, body_force_scale = 1, &body_force_scale, NULL));
   PetscOptionsEnd();
 
-  PetscScalar meter  = user->units->meter;
-  PetscScalar second = user->units->second;
-  PetscScalar Kelvin = user->units->Kelvin;
-  PetscScalar Pascal = user->units->Pascal;
+  PetscScalar meter  = honee->units->meter;
+  PetscScalar second = honee->units->second;
+  PetscScalar Kelvin = honee->units->Kelvin;
+  PetscScalar Pascal = honee->units->Pascal;
 
   theta0 *= Kelvin;
   P0 *= Pascal;
@@ -76,7 +76,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   channel_ctx->theta0   = theta0;
   channel_ctx->P0       = P0;
   channel_ctx->umax     = umax;
-  channel_ctx->implicit = user->phys->implicit;
+  channel_ctx->implicit = honee->phys->implicit;
   channel_ctx->B        = body_force_scale * 2 * umax * newtonian_ig_ctx->mu / (H * H);
 
   {
@@ -90,7 +90,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   channel_ctx->newtonian_ctx = *newtonian_ig_ctx;
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &channel_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &channel_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(channel_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*channel_ctx), channel_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(channel_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 

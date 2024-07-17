@@ -7,14 +7,14 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
+PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
                                                         CeedVector *grid_aniso_vector) {
   NodalProjectionData grid_aniso_proj;
   CeedBasis           basis_grid_aniso;
   CeedVector          q_data;
   CeedElemRestriction elem_restr_qd;
   CeedInt             q_data_size;
-  MPI_Comm            comm         = PetscObjectComm((PetscObject)user->dm);
+  MPI_Comm            comm         = PetscObjectComm((PetscObject)honee->dm);
   DMLabel             domain_label = NULL;
   PetscInt            label_value = 0, height = 0, dm_field = 0;
 
@@ -24,13 +24,13 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, Ce
   {  // -- Create DM for Anisotropic tensor L^2 projection
     PetscSection section;
 
-    PetscCall(DMClone(user->dm, &grid_aniso_proj->dm));
+    PetscCall(DMClone(honee->dm, &grid_aniso_proj->dm));
     PetscCall(DMSetMatrixPreallocateSkip(grid_aniso_proj->dm, PETSC_TRUE));
     PetscCall(PetscObjectSetName((PetscObject)grid_aniso_proj->dm, "Grid Anisotropy Tensor Projection"));
 
     // -- Setup DM
     grid_aniso_proj->num_comp = 7;
-    PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, user->app_ctx->degree, 1, user->app_ctx->q_extra, 1, &grid_aniso_proj->num_comp,
+    PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, 1, &grid_aniso_proj->num_comp,
                                  grid_aniso_proj->dm));
 
     PetscCall(DMGetLocalSection(grid_aniso_proj->dm, &section));
@@ -62,7 +62,7 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, Ce
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "v", *elem_restr_grid_aniso, basis_grid_aniso, CEED_VECTOR_ACTIVE));
 
-    PetscCall(OperatorApplyContextCreate(user->dm, grid_aniso_proj->dm, ceed, op_rhs_assemble, CEED_VECTOR_NONE, NULL, NULL, NULL,
+    PetscCall(OperatorApplyContextCreate(honee->dm, grid_aniso_proj->dm, ceed, op_rhs_assemble, CEED_VECTOR_NONE, NULL, NULL, NULL,
                                          &grid_aniso_proj->l2_rhs_ctx));
 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_assemble));
@@ -123,7 +123,7 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, Ce
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, User user, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
+PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee honee, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
                                                              CeedVector *aniso_colloc_ceed, PetscInt *num_comp_aniso) {
   CeedInt             q_data_size, num_nodes;
   CeedQFunction       qf_colloc;
@@ -136,8 +136,8 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, User use
   PetscFunctionBeginUser;
   *num_comp_aniso = 7;
   PetscCallCeed(ceed, CeedBasisGetNumNodes(ceed_data->basis_q, &num_nodes));
-  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, user->dm, domain_label, label_value, height, *num_comp_aniso, elem_restr_grid_aniso));
-  PetscCall(QDataGet(ceed, user->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
+  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, domain_label, label_value, height, *num_comp_aniso, elem_restr_grid_aniso));
+  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
                      &q_data, &q_data_size));
 
   // -- Build collocation operator

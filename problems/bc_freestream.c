@@ -17,16 +17,16 @@ static const char *const RiemannSolverTypes[] = {"HLL", "HLLC", "RiemannSolverTy
 static PetscErrorCode RiemannSolverUnitTests(NewtonianIdealGasContext gas, CeedScalar rtol);
 
 PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference) {
-  User                 user = *(User *)ctx;
-  MPI_Comm             comm = user->comm;
-  Ceed                 ceed = user->ceed;
+  Honee                honee = *(Honee *)ctx;
+  MPI_Comm             comm  = honee->comm;
+  Ceed                 ceed  = honee->ceed;
   FreestreamContext    freestream_ctx;
   CeedQFunctionContext freestream_qfctx;
   RiemannFluxType      riemann = RIEMANN_HLLC;
-  PetscScalar          meter   = user->units->meter;
-  PetscScalar          second  = user->units->second;
-  PetscScalar          Kelvin  = user->units->Kelvin;
-  PetscScalar          Pascal  = user->units->Pascal;
+  PetscScalar          meter   = honee->units->meter;
+  PetscScalar          second  = honee->units->second;
+  PetscScalar          Kelvin  = honee->units->Kelvin;
+  PetscScalar          Pascal  = honee->units->Pascal;
 
   PetscFunctionBeginUser;
   // Freestream inherits reference state. We re-dimensionalize so the defaults
@@ -43,7 +43,7 @@ PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, Newtonia
   PetscCall(PetscOptionsScalar("-freestream_temperature", "Temperature at freestream condition", NULL, Y_inf.temperature, &Y_inf.temperature, NULL));
   PetscOptionsEnd();
 
-  switch (user->phys->state_var) {
+  switch (honee->phys->state_var) {
     case STATEVAR_CONSERVATIVE:
       switch (riemann) {
         case RIEMANN_HLL:
@@ -105,7 +105,7 @@ PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, Newtonia
   freestream_ctx->newtonian_ctx = *newtonian_ig_ctx;
   freestream_ctx->S_infty       = S_infty;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &freestream_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &freestream_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(freestream_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*freestream_ctx), freestream_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(freestream_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   problem->apply_freestream.qfctx = freestream_qfctx;
@@ -127,19 +127,19 @@ typedef enum {
 } OutflowType;
 
 PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference) {
-  User                 user = *(User *)ctx;
-  Ceed                 ceed = user->ceed;
+  Honee                honee = *(Honee *)ctx;
+  Ceed                 ceed  = honee->ceed;
   OutflowContext       outflow_ctx;
   OutflowType          outflow_type = OUTFLOW_RIEMANN;
   CeedQFunctionContext outflow_qfctx;
-  const PetscScalar    Kelvin = user->units->Kelvin;
-  const PetscScalar    Pascal = user->units->Pascal;
+  const PetscScalar    Kelvin = honee->units->Kelvin;
+  const PetscScalar    Pascal = honee->units->Pascal;
 
   PetscFunctionBeginUser;
   CeedScalar pressure    = reference->pressure / Pascal;
   CeedScalar temperature = reference->temperature / Kelvin;
   CeedScalar recirc = 1, softplus_velocity = 1e-2;
-  PetscOptionsBegin(user->comm, NULL, "Options for Outflow boundary condition", NULL);
+  PetscOptionsBegin(honee->comm, NULL, "Options for Outflow boundary condition", NULL);
   PetscCall(
       PetscOptionsEnum("-outflow_type", "Type of outflow condition", NULL, OutflowTypes, (PetscEnum)outflow_type, (PetscEnum *)&outflow_type, NULL));
   PetscCall(PetscOptionsScalar("-outflow_pressure", "Pressure at outflow condition", NULL, pressure, &pressure, NULL));
@@ -156,7 +156,7 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
 
   switch (outflow_type) {
     case OUTFLOW_RIEMANN:
-      switch (user->phys->state_var) {
+      switch (honee->phys->state_var) {
         case STATEVAR_CONSERVATIVE:
           problem->apply_outflow.qf_func_ptr          = RiemannOutflow_Conserv;
           problem->apply_outflow.qf_loc               = RiemannOutflow_Conserv_loc;
@@ -178,7 +178,7 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
       }
       break;
     case OUTFLOW_PRESSURE:
-      switch (user->phys->state_var) {
+      switch (honee->phys->state_var) {
         case STATEVAR_CONSERVATIVE:
           problem->apply_outflow.qf_func_ptr          = PressureOutflow_Conserv;
           problem->apply_outflow.qf_loc               = PressureOutflow_Conserv_loc;
@@ -207,7 +207,7 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
   outflow_ctx->pressure          = pressure;
   outflow_ctx->temperature       = temperature;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &outflow_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &outflow_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(outflow_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*outflow_ctx), outflow_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(outflow_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   problem->apply_outflow.qfctx = outflow_qfctx;

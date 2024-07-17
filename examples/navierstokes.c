@@ -79,8 +79,8 @@ int main(int argc, char **argv) {
   ProblemData problem;
   PetscCall(PetscCalloc1(1, &problem));
 
-  User user;
-  PetscCall(PetscCalloc1(1, &user));
+  Honee honee;
+  PetscCall(PetscCalloc1(1, &honee));
 
   CeedData ceed_data;
   PetscCall(PetscCalloc1(1, &ceed_data));
@@ -94,9 +94,9 @@ int main(int argc, char **argv) {
   Units units;
   PetscCall(PetscCalloc1(1, &units));
 
-  user->app_ctx            = app_ctx;
-  user->units              = units;
-  user->phys               = phys_ctx;
+  honee->app_ctx           = app_ctx;
+  honee->units             = units;
+  honee->phys              = phys_ctx;
   problem->set_bc_from_ics = PETSC_TRUE;
 
   PetscCall(RegisterLogEvents());
@@ -109,9 +109,9 @@ int main(int argc, char **argv) {
 
   // -- Process general command line options
   MPI_Comm comm = PETSC_COMM_WORLD;
-  user->comm    = comm;
+  honee->comm   = comm;
   PetscCall(ProcessCommandLineOptions(comm, app_ctx, bc));
-  PetscCall(BoundaryConditionSetUp(user, problem, app_ctx, bc));
+  PetscCall(BoundaryConditionSetUp(honee, problem, app_ctx, bc));
 
   // ---------------------------------------------------------------------------
   // Initialize libCEED
@@ -119,7 +119,7 @@ int main(int argc, char **argv) {
   // -- Initialize backend
   Ceed ceed;
   PetscCheck(CeedInit(app_ctx->ceed_resource, &ceed) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Ceed initialization failed");
-  user->ceed = ceed;
+  honee->ceed = ceed;
 
   PetscCheck(CeedSetErrorHandler(ceed, CeedErrorStore) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Setting libCEED error handler failed");
 
@@ -163,8 +163,8 @@ int main(int argc, char **argv) {
   else if (strstr(vec_type, VECKOKKOS)) mat_type = MATAIJKOKKOS;
   else mat_type = MATAIJ;
   PetscCall(CreateDM(comm, problem, mat_type, vec_type, &dm));
-  user->dm = dm;
-  PetscCall(DMSetApplicationContext(dm, user));
+  honee->dm = dm;
+  PetscCall(DMSetApplicationContext(dm, honee));
 
   // ---------------------------------------------------------------------------
   // Choose the problem from the list of registered problems
@@ -173,14 +173,14 @@ int main(int argc, char **argv) {
     PetscErrorCode (*p)(ProblemData, DM, void *, SimpleBC);
     PetscCall(PetscFunctionListFind(app_ctx->problems, app_ctx->problem_name, &p));
     PetscCheck(p, PETSC_COMM_SELF, 1, "Problem '%s' not found", app_ctx->problem_name);
-    PetscCall((*p)(problem, dm, &user, bc));
+    PetscCall((*p)(problem, dm, &honee, bc));
   }
 
   // -- Set up DM
   PetscCall(SetUpDM(dm, problem, app_ctx->degree, app_ctx->q_extra, bc, phys_ctx));
 
   // -- Refine DM for high-order viz
-  if (app_ctx->viz_refine) PetscCall(VizRefineDM(dm, user, problem, bc, phys_ctx));
+  if (app_ctx->viz_refine) PetscCall(VizRefineDM(dm, honee, problem, bc, phys_ctx));
 
   // ---------------------------------------------------------------------------
   // Create solution vectors
@@ -191,21 +191,21 @@ int main(int argc, char **argv) {
   PetscCall(VecZeroEntries(Q));
 
   // -- Set up local state vectors Q_loc, Q_dot_loc
-  PetscCall(DMCreateLocalVector(dm, &user->Q_loc));
-  PetscCall(DMCreateLocalVector(dm, &user->Q_dot_loc));
-  PetscCall(VecZeroEntries(user->Q_dot_loc));
+  PetscCall(DMCreateLocalVector(dm, &honee->Q_loc));
+  PetscCall(DMCreateLocalVector(dm, &honee->Q_dot_loc));
+  PetscCall(VecZeroEntries(honee->Q_dot_loc));
 
   // ---------------------------------------------------------------------------
   // Set up libCEED
   // ---------------------------------------------------------------------------
   // -- Set up libCEED objects
-  PetscCall(SetupLibceed(ceed, ceed_data, dm, user, app_ctx, problem, bc));
+  PetscCall(SetupLibceed(ceed, ceed_data, dm, honee, app_ctx, problem, bc));
 
   // ---------------------------------------------------------------------------
   // Set up ICs
   // ---------------------------------------------------------------------------
   // -- Fix multiplicity for ICs
-  PetscCall(ICs_FixMultiplicity(dm, ceed_data, user, user->Q_loc, Q, 0.0));
+  PetscCall(ICs_FixMultiplicity(dm, ceed_data, honee, honee->Q_loc, Q, 0.0));
 
   // ---------------------------------------------------------------------------
   // Record boundary values from initial condition
@@ -215,7 +215,7 @@ int main(int argc, char **argv) {
   //    communication. If we disable this, we should still get the same results due to the problem->bc function, but with potentially much slower
   //    execution.
   if (problem->set_bc_from_ics) {
-    PetscCall(SetBCsFromICs(dm, Q, user->Q_loc));
+    PetscCall(SetBCsFromICs(dm, Q, honee->Q_loc));
   }
 
   // ---------------------------------------------------------------------------
@@ -240,38 +240,38 @@ int main(int argc, char **argv) {
   }
 
   // -- Zero Q_loc
-  PetscCall(VecZeroEntries(user->Q_loc));
+  PetscCall(VecZeroEntries(honee->Q_loc));
 
   // ---------------------------------------------------------------------------
   // TS: Create, setup, and solve
   // ---------------------------------------------------------------------------
   TS          ts;
   PetscScalar final_time;
-  PetscCall(TSSolve_NS(dm, user, app_ctx, phys_ctx, problem, &Q, &final_time, &ts));
+  PetscCall(TSSolve_NS(dm, honee, app_ctx, phys_ctx, problem, &Q, &final_time, &ts));
 
   // ---------------------------------------------------------------------------
   // Post-processing
   // ---------------------------------------------------------------------------
-  PetscCall(PostProcess(ts, ceed_data, dm, problem, user, Q, final_time));
+  PetscCall(PostProcess(ts, ceed_data, dm, problem, honee, Q, final_time));
 
   // ---------------------------------------------------------------------------
   // Destroy libCEED objects
   // ---------------------------------------------------------------------------
 
-  PetscCall(TurbulenceStatisticsDestroy(user, ceed_data));
-  PetscCall(NodalProjectionDataDestroy(user->grad_velo_proj));
-  PetscCall(SgsDDDataDestroy(user->sgs_dd_data));
-  PetscCall(DifferentialFilterDataDestroy(user->diff_filter));
-  PetscCall(SGS_DD_TrainingDataDestroy(user->sgs_dd_train));
-  PetscCall(SmartSimDataDestroy(user->smartsim));
+  PetscCall(TurbulenceStatisticsDestroy(honee, ceed_data));
+  PetscCall(NodalProjectionDataDestroy(honee->grad_velo_proj));
+  PetscCall(SgsDDDataDestroy(honee->sgs_dd_data));
+  PetscCall(DifferentialFilterDataDestroy(honee->diff_filter));
+  PetscCall(SGS_DD_TrainingDataDestroy(honee->sgs_dd_train));
+  PetscCall(SmartSimDataDestroy(honee->smartsim));
   PetscCall(QDataClearStoredData());
-  PetscCall(DivDiffFluxProjectionDataDestroy(user->diff_flux_proj));
+  PetscCall(DivDiffFluxProjectionDataDestroy(honee->diff_flux_proj));
 
   // -- Vectors
   PetscCallCeed(ceed, CeedVectorDestroy(&ceed_data->x_coord));
-  PetscCallCeed(ceed, CeedVectorDestroy(&user->q_ceed));
-  PetscCallCeed(ceed, CeedVectorDestroy(&user->q_dot_ceed));
-  PetscCallCeed(ceed, CeedVectorDestroy(&user->g_ceed));
+  PetscCallCeed(ceed, CeedVectorDestroy(&honee->q_ceed));
+  PetscCallCeed(ceed, CeedVectorDestroy(&honee->q_dot_ceed));
+  PetscCallCeed(ceed, CeedVectorDestroy(&honee->g_ceed));
 
   // -- Bases
   PetscCallCeed(ceed, CeedBasisDestroy(&ceed_data->basis_q));
@@ -300,9 +300,9 @@ int main(int argc, char **argv) {
 
   // -- Operators
   PetscCall(OperatorApplyContextDestroy(ceed_data->op_ics_ctx));
-  PetscCall(OperatorApplyContextDestroy(user->op_rhs_ctx));
-  PetscCall(OperatorApplyContextDestroy(user->op_strong_bc_ctx));
-  PetscCallCeed(ceed, CeedOperatorDestroy(&user->op_ifunction));
+  PetscCall(OperatorApplyContextDestroy(honee->op_rhs_ctx));
+  PetscCall(OperatorApplyContextDestroy(honee->op_strong_bc_ctx));
+  PetscCallCeed(ceed, CeedOperatorDestroy(&honee->op_ifunction));
 
   // -- Ceed
   PetscCheck(CeedDestroy(&ceed) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Destroying Ceed object failed");
@@ -319,18 +319,18 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   // -- Vectors
   PetscCall(VecDestroy(&Q));
-  PetscCall(VecDestroy(&user->Q_loc));
-  PetscCall(VecDestroy(&user->Q_dot_loc));
+  PetscCall(VecDestroy(&honee->Q_loc));
+  PetscCall(VecDestroy(&honee->Q_dot_loc));
 
-  PetscCall(KSPDestroy(&user->mass_ksp));
+  PetscCall(KSPDestroy(&honee->mass_ksp));
 
   // -- Matrices
-  PetscCall(MatDestroy(&user->interp_viz));
-  PetscCall(MatDestroy(&user->mat_ijacobian));
+  PetscCall(MatDestroy(&honee->interp_viz));
+  PetscCall(MatDestroy(&honee->mat_ijacobian));
 
   // -- DM
   PetscCall(DMDestroy(&dm));
-  PetscCall(DMDestroy(&user->dm_viz));
+  PetscCall(DMDestroy(&honee->dm_viz));
 
   // -- TS
   PetscCall(TSDestroy(&ts));
@@ -349,7 +349,7 @@ int main(int argc, char **argv) {
   }
   PetscCall(PetscFree(problem->bc_defs));
   PetscCall(PetscFree(units));
-  PetscCall(PetscFree(user));
+  PetscCall(PetscFree(honee));
   PetscCall(PetscFree(problem));
   PetscCall(PetscFree(bc));
   PetscCall(PetscFree(phys_ctx));

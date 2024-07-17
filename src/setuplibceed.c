@@ -10,8 +10,8 @@
 #include <navierstokes.h>
 
 // @brief Create CeedOperator for unstabilized mass KSP for explicit timestepping
-static PetscErrorCode CreateKSPMassOperator_Unstabilized(User user, CeedOperator *op_mass) {
-  Ceed                ceed = user->ceed;
+static PetscErrorCode CreateKSPMassOperator_Unstabilized(Honee honee, CeedOperator *op_mass) {
+  Ceed                ceed = honee->ceed;
   CeedInt             num_comp_q, q_data_size;
   CeedQFunction       qf_mass;
   CeedElemRestriction elem_restr_q, elem_restr_qd_i;
@@ -24,7 +24,7 @@ static PetscErrorCode CreateKSPMassOperator_Unstabilized(User user, CeedOperator
     CeedOperatorField field;
     PetscInt          sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_rhs_ctx->op, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(field, &elem_restr_q));
     PetscCallCeed(ceed, CeedOperatorFieldGetBasis(field, &basis_q));
@@ -48,14 +48,14 @@ static PetscErrorCode CreateKSPMassOperator_Unstabilized(User user, CeedOperator
 }
 
 // @brief Create KSP to solve the inverse mass operator for explicit time stepping schemes
-static PetscErrorCode CreateKSPMass(User user, ProblemData problem) {
-  Ceed         ceed = user->ceed;
-  DM           dm   = user->dm;
+static PetscErrorCode CreateKSPMass(Honee honee, ProblemData problem) {
+  Ceed         ceed = honee->ceed;
+  DM           dm   = honee->dm;
   CeedOperator op_mass;
 
   PetscFunctionBeginUser;
-  if (problem->create_mass_operator) PetscCall(problem->create_mass_operator(user, &op_mass));
-  else PetscCall(CreateKSPMassOperator_Unstabilized(user, &op_mass));
+  if (problem->create_mass_operator) PetscCall(problem->create_mass_operator(honee, &op_mass));
+  else PetscCall(CreateKSPMassOperator_Unstabilized(honee, &op_mass));
 
   {  // -- Setup KSP for mass operator
     Mat      mat_mass;
@@ -67,16 +67,16 @@ static PetscErrorCode CreateKSPMass(User user, ProblemData problem) {
     PetscCall(MatCreateCeed(dm, dm, op_mass, NULL, &mat_mass));
     PetscCall(MatCeedSetLocalVectors(mat_mass, Zeros_loc, NULL));
 
-    PetscCall(KSPCreate(comm, &user->mass_ksp));
-    PetscCall(KSPSetOptionsPrefix(user->mass_ksp, "mass_"));
+    PetscCall(KSPCreate(comm, &honee->mass_ksp));
+    PetscCall(KSPSetOptionsPrefix(honee->mass_ksp, "mass_"));
     {  // lumped by default
       PC pc;
-      PetscCall(KSPGetPC(user->mass_ksp, &pc));
+      PetscCall(KSPGetPC(honee->mass_ksp, &pc));
       PetscCall(PCSetType(pc, PCJACOBI));
       PetscCall(PCJacobiSetType(pc, PC_JACOBI_ROWSUM));
-      PetscCall(KSPSetType(user->mass_ksp, KSPPREONLY));
+      PetscCall(KSPSetType(honee->mass_ksp, KSPPREONLY));
     }
-    PetscCall(KSPSetFromOptions_WithMatCeed(user->mass_ksp, mat_mass));
+    PetscCall(KSPSetFromOptions_WithMatCeed(honee->mass_ksp, mat_mass));
     PetscCall(VecDestroy(&Zeros_loc));
     PetscCall(MatDestroy(&mat_mass));
   }
@@ -171,11 +171,11 @@ static PetscErrorCode SetupBCQFunctions(Ceed ceed, PetscInt dim_sur, PetscInt nu
 }
 
 // Utility function to add boundary operators to the composite operator
-static PetscErrorCode AddBCSubOperators(User user, Ceed ceed, DM dm, SimpleBC bc, ProblemData problem, CeedData ceed_data, CeedOperator op_apply,
+static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC bc, ProblemData problem, CeedData ceed_data, CeedOperator op_apply,
                                         CeedOperator op_apply_ijacobian) {
   CeedInt       height = 1, num_comp_q, num_comp_x;
-  CeedInt       P_sur = user->app_ctx->degree + 1, Q_sur = P_sur + user->app_ctx->q_extra, dim_sur, q_data_size_sur;
-  const CeedInt jac_data_size_sur = user->phys->implicit ? problem->jac_data_size_sur : 0;
+  CeedInt       P_sur = honee->app_ctx->degree + 1, Q_sur = P_sur + honee->app_ctx->q_extra, dim_sur, q_data_size_sur;
+  const CeedInt jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
   PetscInt      dim;
   DMLabel       face_sets_label;
   CeedBasis     basis_q_sur, basis_x_sur;
@@ -270,7 +270,7 @@ static PetscErrorCode AddBCSubOperators(User user, Ceed ceed, DM dm, SimpleBC bc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, AppCtx app_ctx, ProblemData problem, SimpleBC bc) {
+PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem, SimpleBC bc) {
   const PetscInt      num_comp_q = 5;
   PetscInt            dim;
   CeedInt             jac_data_size_vol = problem->jac_data_size_vol, num_comp_x, q_data_size_vol;
@@ -302,9 +302,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jd_i, &jac_data, NULL));
     }
 
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &user->q_ceed, NULL));
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &user->q_dot_ceed, NULL));
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &user->g_ceed, NULL));
+    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &honee->q_ceed, NULL));
+    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &honee->q_dot_ceed, NULL));
+    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &honee->g_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_x, &ceed_data->x_coord, NULL));
 
     {  // -- Copy PETSc coordinate vector into CEED vector
@@ -317,7 +317,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
       } else {
         PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
       }
-      PetscCall(VecScale(X_loc, user->units->meter));
+      PetscCall(VecScale(X_loc, honee->units->meter));
       PetscCall(VecCopyPetscToCeed(X_loc, ceed_data->x_coord));
     }
 
@@ -326,9 +326,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
   }
 
   if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
-    PetscCheck(user->diff_flux_proj, user->comm, PETSC_ERR_ARG_WRONGSTATE,
+    PetscCheck(honee->diff_flux_proj, honee->comm, PETSC_ERR_ARG_WRONGSTATE,
                "Divergence of diffusive flux projection requested but object not created");
-    PetscCall(DivDiffFluxProjectionGetOperatorFieldData(user->diff_flux_proj, &elem_restr_diff_flux, &basis_diff_flux, &div_diff_flux_ceed,
+    PetscCall(DivDiffFluxProjectionGetOperatorFieldData(honee->diff_flux_proj, &elem_restr_diff_flux, &basis_diff_flux, &div_diff_flux_ceed,
                                                         &eval_mode_diff_flux));
   }
 
@@ -349,8 +349,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "x", ceed_data->elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "dx", ceed_data->elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "q0", ceed_data->elem_restr_q, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_ics, "evaluation time", &user->phys->ics_time_label));
-    PetscCall(OperatorApplyContextCreate(NULL, dm, user->ceed, op_ics, ceed_data->x_coord, NULL, NULL, user->Q_loc, &ceed_data->op_ics_ctx));
+    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_ics, "evaluation time", &honee->phys->ics_time_label));
+    PetscCall(OperatorApplyContextCreate(NULL, dm, honee->ceed, op_ics, ceed_data->x_coord, NULL, NULL, honee->Q_loc, &ceed_data->op_ics_ctx));
 
     PetscCallCeed(ceed, CeedBasisDestroy(&basis_xc));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ics));
@@ -368,7 +368,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "x", num_comp_x, CEED_EVAL_INTERP));
     if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
-      PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "div F_diff", user->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
+      PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "div F_diff", honee->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
@@ -398,7 +398,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "x", num_comp_x, CEED_EVAL_INTERP));
     if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
-      PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "div F_diff", user->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
+      PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "div F_diff", honee->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
     if (jac_data_size_vol) PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "jac_data", jac_data_size_vol, CEED_EVAL_NONE));
@@ -406,7 +406,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ifunction_vol, NULL, NULL, &op_ifunction_vol));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q dot", ceed_data->elem_restr_q, ceed_data->basis_q, user->q_dot_ceed));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q dot", ceed_data->elem_restr_q, ceed_data->basis_q, honee->q_dot_ceed));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
     if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
@@ -444,51 +444,51 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
   }
 
   // -- Create and apply CEED Composite Operator for the entire domain
-  if (!user->phys->implicit) {  // RHS
+  if (!honee->phys->implicit) {  // RHS
     CeedOperator op_rhs;
 
     PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_rhs));
     PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_rhs, op_rhs_vol));
-    PetscCall(AddBCSubOperators(user, ceed, dm, bc, problem, ceed_data, op_rhs, NULL));
+    PetscCall(AddBCSubOperators(honee, ceed, dm, bc, problem, ceed_data, op_rhs, NULL));
 
-    PetscCall(OperatorApplyContextCreate(dm, dm, ceed, op_rhs, user->q_ceed, user->g_ceed, user->Q_loc, NULL, &user->op_rhs_ctx));
+    PetscCall(OperatorApplyContextCreate(dm, dm, ceed, op_rhs, honee->q_ceed, honee->g_ceed, honee->Q_loc, NULL, &honee->op_rhs_ctx));
 
     // ----- Get Context Labels for Operator
-    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_rhs, "solution time", &user->phys->solution_time_label));
-    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_rhs, "timestep size", &user->phys->timestep_size_label));
+    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_rhs, "solution time", &honee->phys->solution_time_label));
+    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_rhs, "timestep size", &honee->phys->timestep_size_label));
 
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs));
-    PetscCall(CreateKSPMass(user, problem));
-    PetscCheck(app_ctx->sgs_model_type == SGS_MODEL_NONE, user->comm, PETSC_ERR_SUP, "SGS modeling not implemented for explicit timestepping");
+    PetscCall(CreateKSPMass(honee, problem));
+    PetscCheck(app_ctx->sgs_model_type == SGS_MODEL_NONE, honee->comm, PETSC_ERR_SUP, "SGS modeling not implemented for explicit timestepping");
   } else {  // IFunction
     CeedOperator op_ijacobian = NULL;
 
     // Create Composite Operaters
-    PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &user->op_ifunction));
-    PetscCallCeed(ceed, CeedCompositeOperatorAddSub(user->op_ifunction, op_ifunction_vol));
+    PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &honee->op_ifunction));
+    PetscCallCeed(ceed, CeedCompositeOperatorAddSub(honee->op_ifunction, op_ifunction_vol));
     if (op_ijacobian_vol) {
       PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_ijacobian));
       PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_ijacobian, op_ijacobian_vol));
     }
-    PetscCall(AddBCSubOperators(user, ceed, dm, bc, problem, ceed_data, user->op_ifunction, op_ijacobian));
+    PetscCall(AddBCSubOperators(honee, ceed, dm, bc, problem, ceed_data, honee->op_ifunction, op_ijacobian));
 
     // ----- Get Context Labels for Operator
-    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(user->op_ifunction, "solution time", &user->phys->solution_time_label));
-    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(user->op_ifunction, "timestep size", &user->phys->timestep_size_label));
+    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(honee->op_ifunction, "solution time", &honee->phys->solution_time_label));
+    PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(honee->op_ifunction, "timestep size", &honee->phys->timestep_size_label));
 
     if (op_ijacobian) {
-      PetscCall(MatCreateCeed(user->dm, user->dm, op_ijacobian, NULL, &user->mat_ijacobian));
-      PetscCall(MatCeedSetLocalVectors(user->mat_ijacobian, user->Q_dot_loc, NULL));
+      PetscCall(MatCreateCeed(honee->dm, honee->dm, op_ijacobian, NULL, &honee->mat_ijacobian));
+      PetscCall(MatCeedSetLocalVectors(honee->mat_ijacobian, honee->Q_dot_loc, NULL));
       PetscCallCeed(ceed, CeedOperatorDestroy(&op_ijacobian));
     }
-    if (app_ctx->sgs_model_type == SGS_MODEL_DATA_DRIVEN) PetscCall(SgsDDSetup(ceed, user, ceed_data, problem));
+    if (app_ctx->sgs_model_type == SGS_MODEL_DATA_DRIVEN) PetscCall(SgsDDSetup(ceed, honee, ceed_data, problem));
   }
 
-  if (problem->use_strong_bc_ceed) PetscCall(SetupStrongBC_Ceed(ceed, ceed_data, dm, user, problem, bc));
-  if (app_ctx->turb_spanstats_enable) PetscCall(TurbulenceStatisticsSetup(ceed, user, ceed_data, problem));
-  if (app_ctx->diff_filter_monitor && !user->diff_filter) PetscCall(DifferentialFilterSetup(ceed, user, ceed_data, problem));
-  if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, user, ceed_data, problem));
-  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(user, ceed_data, user->diff_flux_proj));
+  if (problem->use_strong_bc_ceed) PetscCall(SetupStrongBC_Ceed(ceed, ceed_data, dm, honee, problem, bc));
+  if (app_ctx->turb_spanstats_enable) PetscCall(TurbulenceStatisticsSetup(ceed, honee, ceed_data, problem));
+  if (app_ctx->diff_filter_monitor && !honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, ceed_data, problem));
+  if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, honee, ceed_data, problem));
+  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(honee, ceed_data, honee->diff_flux_proj));
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));

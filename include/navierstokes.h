@@ -96,7 +96,7 @@ static const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "IN
 // Structs declarations
 typedef struct AppCtx_private      *AppCtx;
 typedef struct CeedData_private    *CeedData;
-typedef struct User_private        *User;
+typedef struct Honee_private       *Honee;
 typedef struct Units_private       *Units;
 typedef struct SimpleBC_private    *SimpleBC;
 typedef struct Physics_private     *Physics;
@@ -193,8 +193,8 @@ struct DivDiffFluxProjectionData_private {
   CeedVector          div_diff_flux_ceed;
 
   // Problem specific setup functions
-  PetscErrorCode (*CreateRHSOperator_Direct)(User, CeedData, DivDiffFluxProjectionData, CeedOperator *);
-  PetscErrorCode (*CreateRHSOperator_Indirect)(User, CeedData, DivDiffFluxProjectionData, CeedOperator *);
+  PetscErrorCode (*CreateRHSOperator_Direct)(Honee, CeedData, DivDiffFluxProjectionData, CeedOperator *);
+  PetscErrorCode (*CreateRHSOperator_Indirect)(Honee, CeedData, DivDiffFluxProjectionData, CeedOperator *);
 
   // Only used for direct method:
   Vec          DivDiffFlux_loc;
@@ -205,7 +205,7 @@ struct DivDiffFluxProjectionData_private {
   OperatorApplyContext calc_div_diff_flux;
 };
 
-typedef PetscErrorCode (*SgsDDNodalStressEval)(User user, Vec Q_loc, Vec VelocityGradient, Vec SGSNodal_loc);
+typedef PetscErrorCode (*SgsDDNodalStressEval)(Honee honee, Vec Q_loc, Vec VelocityGradient, Vec SGSNodal_loc);
 typedef PetscErrorCode (*SgsDDNodalStressInference)(Vec DD_Inputs_loc, Vec DD_Outputs_loc, void *ctx);
 typedef struct {
   DM                        dm_sgs, dm_dd_inputs, dm_dd_outputs;
@@ -247,7 +247,7 @@ typedef struct {
 } *SmartSimData;
 
 // PETSc user data
-struct User_private {
+struct Honee_private {
   MPI_Comm                  comm;
   DM                        dm;
   DM                        dm_viz;
@@ -303,7 +303,7 @@ struct Physics_private {
   CeedContextFieldLabel ics_time_label;
 };
 
-PetscErrorCode BoundaryConditionSetUp(User user, ProblemData problem, AppCtx app_ctx, SimpleBC bc);
+PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx, SimpleBC bc);
 
 typedef struct {
   CeedQFunctionUser    qf_func_ptr;  // !< QFunction function pointer
@@ -320,8 +320,8 @@ struct ProblemData_private {
   PetscBool     set_bc_from_ics, use_strong_bc_ceed;
   PetscCount    num_bc_defs;
   BCDefinition *bc_defs;
-  PetscErrorCode (*print_info)(User, ProblemData, AppCtx);
-  PetscErrorCode (*create_mass_operator)(User, CeedOperator *);
+  PetscErrorCode (*print_info)(Honee, ProblemData, AppCtx);
+  PetscErrorCode (*create_mass_operator)(Honee, CeedOperator *);
 };
 
 extern int FreeContextPetsc(void *);
@@ -342,13 +342,13 @@ extern PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, Simple
 extern PetscErrorCode NS_ADVECTION2D(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
 
 // Print function for each problem
-extern PetscErrorCode PRINT_NEWTONIAN(User user, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_EULER_VORTEX(User user, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_SHOCKTUBE(User user, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_ADVECTION(User user, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_ADVECTION2D(User user, ProblemData problem, AppCtx app_ctx);
+extern PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx);
+extern PetscErrorCode PRINT_EULER_VORTEX(Honee honee, ProblemData problem, AppCtx app_ctx);
+extern PetscErrorCode PRINT_SHOCKTUBE(Honee honee, ProblemData problem, AppCtx app_ctx);
+extern PetscErrorCode PRINT_ADVECTION(Honee honee, ProblemData problem, AppCtx app_ctx);
+extern PetscErrorCode PRINT_ADVECTION2D(Honee honee, ProblemData problem, AppCtx app_ctx);
 
-PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS ts);
+PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, TS ts);
 
 // -----------------------------------------------------------------------------
 // libCEED functions
@@ -371,7 +371,7 @@ PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_
 PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_name);
 PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num_values, PetscInt **value_array);
 
-PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, AppCtx app_ctx, ProblemData problem, SimpleBC bc);
+PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem, SimpleBC bc);
 
 PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                         CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
@@ -389,15 +389,15 @@ PetscErrorCode QDataClearStoredData();
 PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data);
 PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *user_data);
 PetscErrorCode TSMonitor_NS(TS ts, PetscInt step_no, PetscReal time, Vec Q, void *ctx);
-PetscErrorCode TSSolve_NS(DM dm, User user, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts);
-PetscErrorCode UpdateBoundaryValues(User user, Vec Q_loc, PetscReal t);
+PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts);
+PetscErrorCode UpdateBoundaryValues(Honee honee, Vec Q_loc, PetscReal t);
 
 // -----------------------------------------------------------------------------
 // Setup DM
 // -----------------------------------------------------------------------------
 PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType, VecType, DM *dm);
 PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, SimpleBC bc, Physics phys);
-PetscErrorCode VizRefineDM(DM dm, User user, ProblemData problem, SimpleBC bc, Physics phys);
+PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, SimpleBC bc, Physics phys);
 
 PetscErrorCode DMSetupByOrderBegin_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
                                        PetscInt num_fields, const PetscInt *field_sizes, DM dm);
@@ -418,14 +418,14 @@ PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name
 PetscErrorCode GetInverseMultiplicity(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
                                       PetscBool get_global_multiplicity, CeedElemRestriction *elem_restr_inv_multiplicity,
                                       CeedVector *inv_multiplicity);
-PetscErrorCode ICs_FixMultiplicity(DM dm, CeedData ceed_data, User user, Vec Q_loc, Vec Q, CeedScalar time);
+PetscErrorCode ICs_FixMultiplicity(DM dm, CeedData ceed_data, Honee honee, Vec Q_loc, Vec Q, CeedScalar time);
 
 PetscErrorCode DMPlexInsertBoundaryValues_FromICs(DM dm, PetscBool insert_essential, Vec Q_loc, PetscReal time, Vec face_geom_FVM, Vec cell_geom_FVM,
                                                   Vec grad_FVM);
 
 PetscErrorCode RegressionTest(AppCtx app_ctx, Vec Q);
-PetscErrorCode PrintError(CeedData ceed_data, DM dm, User user, Vec Q, PetscScalar final_time);
-PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem, User user, Vec Q, PetscScalar final_time);
+PetscErrorCode PrintError(CeedData ceed_data, DM dm, Honee honee, Vec Q, PetscScalar final_time);
+PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem, Honee honee, Vec Q, PetscScalar final_time);
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
 PetscErrorCode CreateMassQFunction(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
@@ -433,28 +433,28 @@ PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
 // -----------------------------------------------------------------------------
 // Turbulence Statistics Collection Functions
 // -----------------------------------------------------------------------------
-PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem);
+PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem);
 PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx);
-PetscErrorCode TurbulenceStatisticsDestroy(User user, CeedData ceed_data);
+PetscErrorCode TurbulenceStatisticsDestroy(Honee honee, CeedData ceed_data);
 
 // -----------------------------------------------------------------------------
 // Data-Driven Subgrid Stress (DD-SGS) Modeling Functions
 // -----------------------------------------------------------------------------
-PetscErrorCode SgsDDSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem);
+PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem);
 PetscErrorCode SgsDDDataDestroy(SgsDDData sgs_dd_data);
-PetscErrorCode SgsDDApplyIFunction(User user, const Vec Q_loc, Vec G_loc);
-PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem, StateVariable state_var_input,
+PetscErrorCode SgsDDApplyIFunction(Honee honee, const Vec Q_loc, Vec G_loc);
+PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem, StateVariable state_var_input,
                                                CeedElemRestriction elem_restr_input, CeedBasis basis_input, NodalProjectionData *pgrad_velo_proj);
 PetscErrorCode VelocityGradientProjectionApply(NodalProjectionData grad_velo_proj, Vec Q_loc, Vec VelocityGradient);
-PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
+PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
                                                         CeedVector *grid_aniso_vector);
-PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, User user, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
+PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee honee, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
                                                              CeedVector *aniso_colloc_ceed, PetscInt *num_comp_aniso);
 
 // -----------------------------------------------------------------------------
 // Boundary Condition Related Functions
 // -----------------------------------------------------------------------------
-PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, User user, ProblemData problem, SimpleBC bc);
+PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, ProblemData problem, SimpleBC bc);
 PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
 PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
 PetscErrorCode SlipBCSetup(ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
@@ -462,18 +462,18 @@ PetscErrorCode SlipBCSetup(ProblemData problem, DM dm, void *ctx, CeedQFunctionC
 // -----------------------------------------------------------------------------
 // Differential Filtering Functions
 // -----------------------------------------------------------------------------
-PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem);
+PetscErrorCode DifferentialFilterSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem);
 PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData diff_filter);
 PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx);
-PetscErrorCode DifferentialFilterApply(User user, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution);
+PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution);
 PetscErrorCode DifferentialFilterMmsICSetup(ProblemData problem);
 
 // -----------------------------------------------------------------------------
 // SGS Data-Driven Training via SmartSim
 // -----------------------------------------------------------------------------
-PetscErrorCode SmartSimSetup(User user);
+PetscErrorCode SmartSimSetup(Honee honee);
 PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim);
-PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem);
+PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem);
 PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx);
 PetscErrorCode TSPostStep_SGS_DD_Training(TS ts);
 PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train);
@@ -481,9 +481,9 @@ PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train);
 // -----------------------------------------------------------------------------
 // Divergence of Diffusive Flux Projection
 // -----------------------------------------------------------------------------
-PetscErrorCode DivDiffFluxProjectionCreate(User user, PetscInt num_diff_flux_comps, DivDiffFluxProjectionData *pdiff_flux_proj);
+PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, PetscInt num_diff_flux_comps, DivDiffFluxProjectionData *pdiff_flux_proj);
 PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionData diff_flux_proj, CeedElemRestriction *elem_restr, CeedBasis *basis,
                                                          CeedVector *vector, CeedEvalMode *eval_mode);
-PetscErrorCode DivDiffFluxProjectionSetup(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj);
+PetscErrorCode DivDiffFluxProjectionSetup(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj);
 PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_proj, Vec Q_loc);
 PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_flux_proj);

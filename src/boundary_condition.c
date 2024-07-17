@@ -22,12 +22,12 @@ static PetscErrorCode AddBCDefinitionToSegBuffer(BCDefinition bc_def, PetscSegBu
 /**
    @brief Create and setup `BCDefinition`s and `SimpleBC` from commandline options
 
-   @param[in]     user    `User`
+   @param[in]     honee   `Honee`
    @param[in,out] problem `ProblemData`
    @param[in]     app_ctx `AppCtx`
    @param[in,out] bc      `SimpleBC`
 **/
-PetscErrorCode BoundaryConditionSetUp(User user, ProblemData problem, AppCtx app_ctx, SimpleBC bc) {
+PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx, SimpleBC bc) {
   PetscSegBuffer bc_defs_seg;
   PetscBool      flg;
   BCDefinition   bc_def;
@@ -35,7 +35,7 @@ PetscErrorCode BoundaryConditionSetUp(User user, ProblemData problem, AppCtx app
   PetscFunctionBeginUser;
   PetscCall(PetscSegBufferCreate(sizeof(BCDefinition), 4, &bc_defs_seg));
 
-  PetscOptionsBegin(user->comm, NULL, "Boundary Condition Options", NULL);
+  PetscOptionsBegin(honee->comm, NULL, "Boundary Condition Options", NULL);
 
   PetscCall(PetscOptionsBCDefinition("-bc_wall", "Face IDs to apply wall BC", NULL, "wall", &bc_def, NULL));
   PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
