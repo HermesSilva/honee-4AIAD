@@ -317,7 +317,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
       } else {
         PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
       }
-      PetscCall(VecScale(X_loc, problem->dm_scale));
+      PetscCall(VecScale(X_loc, user->units->meter));
       PetscCall(VecCopyPetscToCeed(X_loc, ceed_data->x_coord));
     }
 

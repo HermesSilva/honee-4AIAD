@@ -222,7 +222,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
     wind[i] *= (meter / second);
     domain_size[i] *= meter;
   }
-  problem->dm_scale = meter;
 
   // -- Setup Context
   setup_context->rc                     = rc;

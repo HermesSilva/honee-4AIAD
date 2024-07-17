@@ -278,7 +278,6 @@ typedef struct {
 // Problem specific data
 struct ProblemData_private {
   CeedInt              jac_data_size_sur;
-  CeedScalar           dm_scale;
   ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_outflow, apply_freestream, apply_slip,
       apply_inflow_jacobian, apply_outflow_jacobian, apply_freestream_jacobian, apply_slip_jacobian;
   bool          compute_exact_solution_error;

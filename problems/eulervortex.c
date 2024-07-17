@@ -108,7 +108,6 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
     domain_size[i] *= meter;
     mean_velocity[i] *= (meter / second);
   }
-  problem->dm_scale = meter;
 
   // -- QFunction Context
   user->phys->implicit        = implicit;

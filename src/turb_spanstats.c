@@ -214,7 +214,7 @@ PetscErrorCode SpanStatsSetupDataCreate(Ceed ceed, User user, CeedData ceed_data
       PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
     }
   }
-  PetscCall(VecScale(X_loc, problem->dm_scale));
+  PetscCall(VecScale(X_loc, user->units->meter));
   PetscCall(VecCopyPetscToCeed(X_loc, (*stats_data)->x_coord));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

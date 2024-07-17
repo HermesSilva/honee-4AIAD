@@ -104,7 +104,6 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
     domain_size[i] *= meter;
     domain_min[i] *= meter;
   }
-  problem->dm_scale    = meter;
   CeedScalar mid_point = 0.5 * (domain_size[0] + domain_min[0]);
 
   // -- Setup Context

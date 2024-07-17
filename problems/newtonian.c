@@ -397,7 +397,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   reference.pressure *= Pascal;
   for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= meter / second;
   reference.temperature *= Kelvin;
-  problem->dm_scale = meter;
 
   // -- Solver Settings
   user->phys->implicit  = implicit;
