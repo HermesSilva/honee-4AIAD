@@ -18,6 +18,7 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   DensityCurrentContext    density_current_ctx;
   CeedQFunctionContext     density_current_qfctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
+  PetscInt                 dim;
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
@@ -40,7 +41,8 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   PetscReal  center[3], dc_axis[3] = {0, 0, 0};
   PetscReal  domain_min[3], domain_max[3], domain_size[3];
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
-  for (PetscInt i = 0; i < 3; i++) domain_size[i] = domain_max[i] - domain_min[i];
+  PetscCall(DMGetDimension(dm, &dim));
+  for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
   // ------------------------------------------------------
   //              Command line Options
@@ -51,10 +53,10 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   PetscCall(PetscOptionsScalar("-P0", "Atmospheric pressure", NULL, P0, &P0, NULL));
   PetscCall(PetscOptionsScalar("-N", "Brunt-Vaisala frequency", NULL, N, &N, NULL));
   PetscCall(PetscOptionsScalar("-rc", "Characteristic radius of thermal bubble", NULL, rc, &rc, NULL));
-  for (PetscInt i = 0; i < 3; i++) center[i] = .5 * domain_size[i];
-  PetscInt n = problem->dim;
+  for (PetscInt i = 0; i < dim; i++) center[i] = .5 * domain_size[i];
+  PetscInt n = dim;
   PetscCall(PetscOptionsRealArray("-center", "Location of bubble center", NULL, center, &n, NULL));
-  n = problem->dim;
+  n = dim;
   PetscCall(PetscOptionsRealArray("-dc_axis",
                                   "Axis of density current cylindrical anomaly, "
                                   "or {0,0,0} for spherically symmetric",
@@ -62,7 +64,7 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   {
     PetscReal norm = PetscSqrtReal(PetscSqr(dc_axis[0]) + PetscSqr(dc_axis[1]) + PetscSqr(dc_axis[2]));
     if (norm > 0) {
-      for (PetscInt i = 0; i < 3; i++) dc_axis[i] /= norm;
+      for (PetscInt i = 0; i < dim; i++) dc_axis[i] /= norm;
     }
   }
 
@@ -77,19 +79,15 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   thetaC *= Kelvin;
   P0 *= Pascal;
   N *= (1. / second);
-  for (PetscInt i = 0; i < 3; i++) center[i] *= meter;
+  for (PetscInt i = 0; i < dim; i++) center[i] *= meter;
 
-  density_current_ctx->theta0     = theta0;
-  density_current_ctx->thetaC     = thetaC;
-  density_current_ctx->P0         = P0;
-  density_current_ctx->N          = N;
-  density_current_ctx->rc         = rc;
-  density_current_ctx->center[0]  = center[0];
-  density_current_ctx->center[1]  = center[1];
-  density_current_ctx->center[2]  = center[2];
-  density_current_ctx->dc_axis[0] = dc_axis[0];
-  density_current_ctx->dc_axis[1] = dc_axis[1];
-  density_current_ctx->dc_axis[2] = dc_axis[2];
+  density_current_ctx->theta0 = theta0;
+  density_current_ctx->thetaC = thetaC;
+  density_current_ctx->P0     = P0;
+  density_current_ctx->N      = N;
+  density_current_ctx->rc     = rc;
+  PetscCall(PetscArraycpy(density_current_ctx->center, center, 3));
+  PetscCall(PetscArraycpy(density_current_ctx->dc_axis, dc_axis, 3));
 
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
   density_current_ctx->newtonian_ctx = *newtonian_ig_ctx;

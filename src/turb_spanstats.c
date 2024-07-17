@@ -352,7 +352,8 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, User user, CeedData ceed_data, 
 
 // Create CeedOperator for statistics collection
 PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData ceed_data, SpanStatsSetupData stats_data, ProblemData problem) {
-  CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x = problem->dim, num_comp_q;
+  CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x, num_comp_q;
+  PetscInt                    dim;
   Turbulence_SpanStatsContext collect_ctx;
   NewtonianIdealGasContext    newtonian_ig_ctx;
   CeedQFunctionContext        collect_qfctx;
@@ -360,6 +361,8 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
   CeedOperator                op_stats_collect;
 
   PetscFunctionBeginUser;
+  PetscCall(DMGetDimension(user->dm, &dim));
+  num_comp_x = dim;
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
 
   // Create Operator for statistics collection

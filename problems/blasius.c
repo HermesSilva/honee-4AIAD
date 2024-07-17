@@ -158,14 +158,15 @@ static PetscErrorCode GetYNodeLocs(const MPI_Comm comm, const char path[PETSC_MA
  * If `node_locs` is not NULL, then the nodes will be placed at `node_locs` locations.
  * If it is NULL, then the modified coordinate values will be set in the array, along with `num_node_locs`.
  */
-static PetscErrorCode ModifyMesh(MPI_Comm comm, DM dm, PetscInt dim, PetscReal growth, PetscInt N, PetscReal refine_height, PetscReal top_angle,
+static PetscErrorCode ModifyMesh(MPI_Comm comm, DM dm, PetscReal growth, PetscInt N, PetscReal refine_height, PetscReal top_angle,
                                  PetscReal *node_locs[], PetscInt *num_node_locs) {
-  PetscInt     narr, ncoords;
+  PetscInt     narr, ncoords, dim;
   PetscReal    domain_min[3], domain_max[3], domain_size[3];
   PetscScalar *arr_coords;
   Vec          vec_coords;
 
   PetscFunctionBeginUser;
+  PetscCall(DMGetDimension(dm, &dim));
   PetscReal angle_coeff = tan(top_angle * (M_PI / 180));
   // Get domain boundary information
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
@@ -310,7 +311,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
     PetscReal *mesh_ynodes  = NULL;
     PetscInt   mesh_nynodes = 0;
     if (strcmp(mesh_ynodes_path, "")) PetscCall(GetYNodeLocs(comm, mesh_ynodes_path, &mesh_ynodes, &mesh_nynodes));
-    PetscCall(ModifyMesh(comm, dm, problem->dim, mesh_growth, mesh_Ndelta, mesh_refine_height, mesh_top_angle, &mesh_ynodes, &mesh_nynodes));
+    PetscCall(ModifyMesh(comm, dm, mesh_growth, mesh_Ndelta, mesh_refine_height, mesh_top_angle, &mesh_ynodes, &mesh_nynodes));
     PetscCall(PetscFree(mesh_ynodes));
   }
 

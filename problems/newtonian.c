@@ -224,7 +224,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   // ------------------------------------------------------
   //           Setup Generic Newtonian IG Problem
   // ------------------------------------------------------
-  problem->dim                          = 3;
   problem->jac_data_size_sur            = 11;
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
@@ -320,7 +319,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, mu, &mu, NULL));
   PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, k, &k, NULL));
 
-  PetscInt dim = problem->dim;
+  PetscInt dim = 3;
   PetscCall(PetscOptionsDeprecated("-g", "-gravity", "libCEED 0.11.1", NULL));
   PetscCall(PetscOptionsRealArray("-gravity", "Gravitational acceleration vector", NULL, g, &dim, &given_option));
   if (given_option) PetscCheck(dim == 3, comm, PETSC_ERR_ARG_SIZ, "Gravity vector must be size 3, %" PetscInt_FMT " values given", dim);

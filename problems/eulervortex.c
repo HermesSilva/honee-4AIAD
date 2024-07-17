@@ -20,6 +20,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscBool            implicit;
   EulerContext         euler_ctx;
   CeedQFunctionContext euler_qfctx;
+  PetscInt             dim;
 
   PetscFunctionBeginUser;
   PetscCall(PetscCalloc1(1, &euler_ctx));
@@ -27,7 +28,6 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   // ------------------------------------------------------
   //               SET UP DENSITY_CURRENT
   // ------------------------------------------------------
-  problem->dim                             = 3;
   problem->ics.qf_func_ptr                 = ICsEuler;
   problem->ics.qf_loc                      = ICsEuler_loc;
   problem->apply_vol_rhs.qf_func_ptr       = Euler;
@@ -47,11 +47,12 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   CeedScalar vortex_strength = 5.;   // -
   CeedScalar c_tau           = 0.5;  // -
   // c_tau = 0.5 is reported as "optimal" in Hughes et al 2010
-  PetscReal center[3],                 // m
+  PetscReal center[3]  = {0.},         // m
       mean_velocity[3] = {1., 1., 0};  // m/s
-  PetscReal domain_min[3], domain_max[3], domain_size[3];
+  PetscReal domain_min[3], domain_max[3], domain_size[3] = {0.};
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
-  for (PetscInt i = 0; i < 3; i++) domain_size[i] = domain_max[i] - domain_min[i];
+  PetscCall(DMGetDimension(dm, &dim));
+  for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
   // ------------------------------------------------------
   //             Create the PETSc context
@@ -65,11 +66,11 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscOptionsBegin(comm, NULL, "Options for EULER_VORTEX problem", NULL);
   // -- Physics
   PetscCall(PetscOptionsScalar("-vortex_strength", "Strength of Vortex", NULL, vortex_strength, &vortex_strength, NULL));
-  PetscInt  n = problem->dim;
+  PetscInt  n = dim;
   PetscBool user_velocity;
   PetscCall(PetscOptionsRealArray("-mean_velocity", "Background velocity vector", NULL, mean_velocity, &n, &user_velocity));
-  for (PetscInt i = 0; i < 3; i++) center[i] = .5 * domain_size[i];
-  n = problem->dim;
+  for (PetscInt i = 0; i < dim; i++) center[i] = .5 * domain_size[i];
+  n = dim;
   PetscCall(PetscOptionsRealArray("-center", "Location of vortex center", NULL, center, &n, NULL));
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
   PetscCall(PetscOptionsEnum("-euler_test", "Euler test option", NULL, EulerTestTypes, (PetscEnum)(euler_test = EULER_TEST_ISENTROPIC_VORTEX),

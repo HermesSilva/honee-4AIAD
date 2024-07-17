@@ -29,7 +29,6 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   //               SET UP SHOCKTUBE
   // ------------------------------------------------------
-  problem->dim                             = 3;
   problem->ics.qf_func_ptr                 = ICsShockTube;
   problem->ics.qf_loc                      = ICsShockTube_loc;
   problem->apply_vol_rhs.qf_func_ptr       = EulerShockTube;

@@ -272,14 +272,15 @@ static PetscErrorCode AddBCSubOperators(User user, Ceed ceed, DM dm, SimpleBC bc
 
 PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, AppCtx app_ctx, ProblemData problem, SimpleBC bc) {
   const PetscInt      num_comp_q = 5;
-  const CeedInt       dim = problem->dim, num_comp_x = problem->dim;
-  CeedInt             jac_data_size_vol = num_comp_q + 6 + 3;
+  PetscInt            dim;
+  CeedInt             jac_data_size_vol = num_comp_q + 6 + 3, num_comp_x;
   CeedElemRestriction elem_restr_jd_i;
   CeedVector          jac_data;
   CeedOperator        op_ifunction_vol = NULL, op_rhs_vol = NULL, op_ijacobian_vol = NULL;
 
   PetscFunctionBeginUser;
-
+  PetscCall(DMGetDimension(dm, &dim));
+  num_comp_x = dim;
   if (problem->apply_vol_ifunction.qf_func_ptr && problem->uses_newtonian) {
     NewtonianIdealGasContext gas;
     PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
