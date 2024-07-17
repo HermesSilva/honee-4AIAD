@@ -352,7 +352,7 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, User user, CeedData ceed_data, 
 
 // Create CeedOperator for statistics collection
 PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData ceed_data, SpanStatsSetupData stats_data, ProblemData problem) {
-  CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x, num_comp_q;
+  CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x, num_comp_q, q_data_size;
   PetscInt                    dim;
   Turbulence_SpanStatsContext collect_ctx;
   NewtonianIdealGasContext    newtonian_ig_ctx;
@@ -364,6 +364,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
   PetscCall(DMGetDimension(user->dm, &dim));
   num_comp_x = dim;
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
+  PetscCall(QDataGetNumComponents(user->dm, &q_data_size));
 
   // Create Operator for statistics collection
   switch (user->phys->state_var) {
@@ -404,7 +405,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
   PetscCallCeed(ceed, CeedQFunctionSetContext(qf_stats_collect, collect_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&collect_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q", num_comp_q, CEED_EVAL_INTERP));
-  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q_data", problem->q_data_size_vol, CEED_EVAL_NONE));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q_data", q_data_size, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "x", num_comp_x, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_stats_collect, "v", num_comp_stats, CEED_EVAL_NONE));
 
