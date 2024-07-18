@@ -52,46 +52,44 @@ PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
 // Surface forces function setup
 static PetscErrorCode Surface_Forces_NS(DM dm, Vec G_loc, PetscInt num_walls, const PetscInt walls[], PetscScalar *reaction_force) {
   DMLabel            face_label;
-  const PetscScalar *g;
-  PetscInt           dof, dim = 3;
-  MPI_Comm           comm;
-  PetscSection       s;
+  const PetscScalar *g_array;
+  PetscInt           dim  = 3;
+  MPI_Comm           comm = PetscObjectComm((PetscObject)dm);
+  PetscSection       section;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscArrayzero(reaction_force, num_walls * dim));
-  PetscCall(PetscObjectGetComm((PetscObject)dm, &comm));
   PetscCall(DMGetLabel(dm, "Face Sets", &face_label));
-  PetscCall(VecGetArrayRead(G_loc, &g));
+  PetscCall(VecGetArrayRead(G_loc, &g_array));
   for (PetscInt w = 0; w < num_walls; w++) {
-    const PetscInt wall = walls[w];
+    const PetscInt wall = walls[w], *points;
     IS             wall_is;
-    PetscCall(DMGetLocalSection(dm, &s));
+    PetscInt       num_points, num_comp = 0;
+
     PetscCall(DMLabelGetStratumIS(face_label, wall, &wall_is));
-    if (wall_is) {  // There exist such points on this process
-      PetscInt        num_points;
-      PetscInt        num_comp = 0;
-      const PetscInt *points;
-      PetscCall(PetscSectionGetFieldComponents(s, 0, &num_comp));
-      PetscCall(ISGetSize(wall_is, &num_points));
-      PetscCall(ISGetIndices(wall_is, &points));
-      for (PetscInt i = 0; i < num_points; i++) {
-        const PetscInt           p = points[i];
-        const StateConservative *r;
-        PetscCall(DMPlexPointLocalRead(dm, p, g, &r));
-        PetscCall(PetscSectionGetDof(s, p, &dof));
-        for (PetscInt node = 0; node < dof / num_comp; node++) {
-          for (PetscInt j = 0; j < 3; j++) {
-            reaction_force[w * dim + j] -= r[node].momentum[j];
-          }
+    if (!wall_is) continue;  // No wall points on this process, skip
+
+    PetscCall(DMGetLocalSection(dm, &section));
+    PetscCall(PetscSectionGetFieldComponents(section, 0, &num_comp));
+    PetscCall(ISGetSize(wall_is, &num_points));
+    PetscCall(ISGetIndices(wall_is, &points));
+    for (PetscInt i = 0; i < num_points; i++) {
+      const PetscInt           p = points[i];
+      const StateConservative *r;
+      PetscInt                 dof;
+
+      PetscCall(DMPlexPointLocalRead(dm, p, g_array, &r));
+      PetscCall(PetscSectionGetDof(section, p, &dof));
+      for (PetscInt node = 0; node < dof / num_comp; node++) {
+        for (PetscInt j = 0; j < dim; j++) {
+          reaction_force[w * dim + j] -= r[node].momentum[j];
         }
       }
-      PetscCall(ISRestoreIndices(wall_is, &points));
     }
+    PetscCall(ISRestoreIndices(wall_is, &points));
     PetscCall(ISDestroy(&wall_is));
   }
   PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, reaction_force, dim * num_walls, MPIU_SCALAR, MPI_SUM, comm));
-  //  Restore Vectors
-  PetscCall(VecRestoreArrayRead(G_loc, &g));
+  PetscCall(VecRestoreArrayRead(G_loc, &g_array));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -242,18 +240,18 @@ PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec 
   PetscViewer       viewer = user->app_ctx->wall_forces.viewer;
   PetscViewerFormat format = user->app_ctx->wall_forces.viewer_format;
   PetscScalar      *reaction_force;
-  PetscBool         iascii;
+  PetscBool         is_ascii;
 
   PetscFunctionBeginUser;
   if (!viewer) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(DMGetNamedLocalVector(user->dm, "ResidualLocal", &G_loc));
-  PetscCall(PetscMalloc1(num_wall * dim, &reaction_force));
+  PetscCall(PetscCalloc1(num_wall * dim, &reaction_force));
   PetscCall(Surface_Forces_NS(user->dm, G_loc, num_wall, walls, reaction_force));
   PetscCall(DMRestoreNamedLocalVector(user->dm, "ResidualLocal", &G_loc));
 
-  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &iascii));
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &is_ascii));
 
-  if (iascii) {
+  if (is_ascii) {
     if (format == PETSC_VIEWER_ASCII_CSV && !user->app_ctx->wall_forces.header_written) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "Step,Time,Wall,ForceX,ForceY,ForceZ\n"));
       user->app_ctx->wall_forces.header_written = PETSC_TRUE;
