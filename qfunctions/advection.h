@@ -278,10 +278,8 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
 
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
-  CeedScalar *jac_data               = out[2];
 
-  AdvectionContext                 context   = (AdvectionContext)ctx;
-  const CeedScalar                 zeros[14] = {0.};
+  AdvectionContext                 context = (AdvectionContext)ctx;
   NewtonianIdealGasContext         gas;
   struct NewtonianIdealGasContext_ gas_struct = {0};
   gas                                         = &gas_struct;
@@ -341,7 +339,6 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
           grad_v[j][4][i] += wdetJ * TauS * strong_res * uX[j];
           break;
       }
-    StoredValuesPack(Q, i, 0, 14, zeros, jac_data);
   }
 }
 

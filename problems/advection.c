@@ -98,6 +98,9 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   //               SET UP ADVECTION
   // ------------------------------------------------------
+  problem->print_info        = PRINT_ADVECTION;
+  problem->jac_data_size_vol = 0;
+  problem->jac_data_size_sur = 0;
   switch (dim) {
     case 2:
       problem->ics.qf_func_ptr                 = ICsAdvection2d;
@@ -109,7 +112,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
       problem->apply_inflow.qf_func_ptr        = Advection2d_InOutFlow;
       problem->apply_inflow.qf_loc             = Advection2d_InOutFlow_loc;
       problem->compute_exact_solution_error    = PETSC_TRUE;
-      problem->print_info                      = PRINT_ADVECTION;
       break;
     case 3:
       problem->ics.qf_func_ptr                 = ICsAdvection;
@@ -121,7 +123,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
       problem->apply_inflow.qf_func_ptr        = Advection_InOutFlow;
       problem->apply_inflow.qf_loc             = Advection_InOutFlow_loc;
       problem->compute_exact_solution_error    = PETSC_FALSE;
-      problem->print_info                      = PRINT_ADVECTION;
       break;
   }
 

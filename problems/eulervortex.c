@@ -38,6 +38,8 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC b
   problem->apply_inflow.qf_loc             = TravelingVortex_Inflow_loc;
   problem->apply_outflow.qf_func_ptr       = Euler_Outflow;
   problem->apply_outflow.qf_loc            = Euler_Outflow_loc;
+  problem->jac_data_size_vol               = 0;
+  problem->jac_data_size_sur               = 0;
   problem->compute_exact_solution_error    = PETSC_TRUE;
   problem->print_info                      = PRINT_EULER_VORTEX;
 

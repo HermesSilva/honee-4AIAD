@@ -386,12 +386,10 @@ CEED_QFUNCTION(IFunction_Euler)(void *ctx, CeedInt Q, const CeedScalar *const *i
   const CeedScalar(*q_data)            = in[3];
   CeedScalar(*v)[CEED_Q_VLA]           = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*dv)[5][CEED_Q_VLA]       = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
-  CeedScalar *jac_data                 = out[2];
 
-  EulerContext     context   = (EulerContext)ctx;
-  const CeedScalar c_tau     = context->c_tau;
-  const CeedScalar gamma     = 1.4;
-  const CeedScalar zeros[14] = {0.};
+  EulerContext     context = (EulerContext)ctx;
+  const CeedScalar c_tau   = context->c_tau;
+  const CeedScalar gamma   = 1.4;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     // Setup
@@ -509,7 +507,6 @@ CEED_QFUNCTION(IFunction_Euler)(void *ctx, CeedInt Q, const CeedScalar *const *i
         }
         break;
     }
-    StoredValuesPack(Q, i, 0, 14, zeros, jac_data);
   }
   return 0;
 }

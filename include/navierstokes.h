@@ -277,11 +277,11 @@ typedef struct {
 
 // Problem specific data
 struct ProblemData_private {
-  CeedInt              jac_data_size_sur;
+  CeedInt              jac_data_size_vol, jac_data_size_sur;
   ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_outflow, apply_freestream, apply_slip,
       apply_inflow_jacobian, apply_outflow_jacobian, apply_freestream_jacobian, apply_slip_jacobian;
   bool          compute_exact_solution_error;
-  PetscBool     set_bc_from_ics, use_strong_bc_ceed, uses_newtonian;
+  PetscBool     set_bc_from_ics, use_strong_bc_ceed;
   size_t        num_bc_defs;
   BCDefinition *bc_defs;
   PetscErrorCode (*print_info)(User, ProblemData, AppCtx);
