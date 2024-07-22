@@ -430,20 +430,28 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, User user,
 
 // @brief Create CeedOperator to compute SGS contribution to the residual
 static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, User user, CeedData ceed_data, SgsDDSetupData sgs_dd_setup_data) {
-  SgsDDData     sgs_dd_data = user->sgs_dd_data;
-  CeedInt       num_comp_q, num_comp_qd, num_comp_x;
-  PetscInt      dim;
-  CeedQFunction qf_sgs_apply;
-  CeedOperator  op_sgs_apply;
-  CeedBasis     basis_sgs;
+  SgsDDData           sgs_dd_data = user->sgs_dd_data;
+  CeedInt             num_comp_q, q_data_size, num_comp_x;
+  PetscInt            dim;
+  CeedQFunction       qf_sgs_apply;
+  CeedOperator        op_sgs_apply;
+  CeedBasis           basis_sgs;
+  CeedVector          q_data;
+  CeedElemRestriction elem_restr_qd;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(user->dm, &dim));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(ceed_data->elem_restr_q, &num_comp_q));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(ceed_data->elem_restr_qd_i, &num_comp_qd));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(ceed_data->elem_restr_x, &num_comp_x));
 
-  PetscCall(CreateBasisFromPlex(ceed, sgs_dd_data->dm_sgs, 0, 0, 0, 0, &basis_sgs));
+  {
+    DMLabel  domain_label = NULL;
+    PetscInt label_value = 0, height = 0, dm_field = 0;
+
+    PetscCall(CreateBasisFromPlex(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, &basis_sgs));
+    PetscCall(QDataGet(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
+                       &elem_restr_qd, &q_data, &q_data_size));
+  }
 
   switch (user->phys->state_var) {
     case STATEVAR_PRIMITIVE:
@@ -459,19 +467,21 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, User user, CeedData ceed
 
   PetscCallCeed(ceed, CeedQFunctionSetContext(qf_sgs_apply, sgs_dd_setup_data->ifunction_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_sgs_apply, "q", num_comp_q, CEED_EVAL_INTERP));
-  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_sgs_apply, "qdata", num_comp_qd, CEED_EVAL_NONE));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_sgs_apply, "qdata", q_data_size, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_sgs_apply, "km_sgs", sgs_dd_data->num_comp_sgs, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_sgs_apply, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_sgs_apply, NULL, NULL, &op_sgs_apply));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "qdata", ceed_data->elem_restr_qd_i, CEED_BASIS_NONE, ceed_data->q_data));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "km_sgs", sgs_dd_setup_data->elem_restr_sgs, basis_sgs, sgs_dd_data->sgs_nodal_ceed));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
 
   PetscCall(
       OperatorApplyContextCreate(user->dm, user->dm, ceed, op_sgs_apply, user->q_ceed, user->g_ceed, NULL, NULL, &sgs_dd_data->op_sgs_apply_ctx));
 
+  PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_sgs));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_sgs_apply));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_apply));

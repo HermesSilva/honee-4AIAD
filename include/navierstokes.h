@@ -144,9 +144,9 @@ struct AppCtx_private {
 
 // libCEED data struct
 struct CeedData_private {
-  CeedVector           x_coord, q_data;
+  CeedVector           x_coord;
   CeedBasis            basis_x, basis_q;
-  CeedElemRestriction  elem_restr_x, elem_restr_q, elem_restr_qd_i;
+  CeedElemRestriction  elem_restr_x, elem_restr_q;
   OperatorApplyContext op_ics_ctx;
 };
 

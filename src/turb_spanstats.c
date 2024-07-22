@@ -353,18 +353,20 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, User user, CeedData ceed_data, 
 // Create CeedOperator for statistics collection
 PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData ceed_data, SpanStatsSetupData stats_data, ProblemData problem) {
   CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x, num_comp_q, q_data_size;
-  PetscInt                    dim;
+  PetscInt                    dim, label_value = 0;
   Turbulence_SpanStatsContext collect_ctx;
   NewtonianIdealGasContext    newtonian_ig_ctx;
   CeedQFunctionContext        collect_qfctx;
   CeedQFunction               qf_stats_collect;
   CeedOperator                op_stats_collect;
+  CeedVector                  q_data;
+  CeedElemRestriction         elem_restr_qd;
+  DMLabel                     domain_label = NULL;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(user->dm, &dim));
   num_comp_x = dim;
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
-  PetscCall(QDataGetNumComponents(user->dm, &q_data_size));
 
   // Create Operator for statistics collection
   switch (user->phys->state_var) {
@@ -383,6 +385,9 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_stats_collect));
     PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollectionMMSTest, ChildStatsCollectionMMSTest_loc, &qf_stats_collect));
   }
+
+  PetscCall(QDataGet(ceed, user->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
 
   {  // Setup Collection Context
     PetscCall(PetscNew(&collect_ctx));
@@ -411,7 +416,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_stats_collect, NULL, NULL, &op_stats_collect));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q_data", ceed_data->elem_restr_qd_i, CEED_BASIS_NONE, ceed_data->q_data));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q_data", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "v", stats_data->elem_restr_child_colloc, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
@@ -425,6 +430,8 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
       CeedOperatorCreateLocalVecs(op_stats_collect, DMReturnVecType(user->spanstats.dm), PETSC_COMM_SELF, NULL, &user->spanstats.Child_Stats_loc));
   PetscCall(VecZeroEntries(user->spanstats.Child_Stats_loc));
 
+  PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_stats_collect));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_stats_collect));
   PetscFunctionReturn(PETSC_SUCCESS);

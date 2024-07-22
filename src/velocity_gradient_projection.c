@@ -42,7 +42,8 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ce
   CeedOperator        op_rhs_assemble, op_mass;
   CeedQFunction       qf_rhs_assemble, qf_mass;
   CeedBasis           basis_grad_velo;
-  CeedElemRestriction elem_restr_grad_velo;
+  CeedElemRestriction elem_restr_grad_velo, elem_restr_qd;
+  CeedVector          q_data;
   PetscInt            dim, label_value = 0, height = 0, dm_field = 0;
   CeedInt             num_comp_x, num_comp_input, q_data_size;
   DMLabel             domain_label = NULL;
@@ -56,10 +57,10 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ce
   PetscCall(DMGetDimension(grad_velo_proj->dm, &dim));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_x, &num_comp_x));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_input));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(ceed_data->elem_restr_qd_i, &q_data_size));
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grad_velo_proj->dm, domain_label, label_value, height, dm_field, &elem_restr_grad_velo));
-
   PetscCall(CreateBasisFromPlex(ceed, grad_velo_proj->dm, domain_label, label_value, height, dm_field, &basis_grad_velo));
+  PetscCall(QDataGet(ceed, grad_velo_proj->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
+                     &elem_restr_qd, &q_data, &q_data_size));
 
   // -- Build RHS operator
   switch (state_var_input) {
@@ -87,7 +88,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ce
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_assemble, NULL, NULL, &op_rhs_assemble));
   PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "q", elem_restr_input, basis_input, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "Grad_q", elem_restr_input, basis_input, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "qdata", ceed_data->elem_restr_qd_i, CEED_BASIS_NONE, ceed_data->q_data));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "velocity gradient", elem_restr_grad_velo, basis_grad_velo, CEED_VECTOR_ACTIVE));
 
@@ -97,7 +98,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ce
   PetscCall(CreateMassQFunction(ceed, grad_velo_proj->num_comp, q_data_size, &qf_mass));
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
   PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", elem_restr_grad_velo, basis_grad_velo, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", ceed_data->elem_restr_qd_i, CEED_BASIS_NONE, ceed_data->q_data));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", elem_restr_grad_velo, basis_grad_velo, CEED_VECTOR_ACTIVE));
 
   {  // -- Setup KSP for L^2 projection with lumped mass operator
@@ -122,6 +123,8 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, User user, CeedData ce
   *pgrad_velo_proj = grad_velo_proj;
 
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_grad_velo));
+  PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_grad_velo));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_assemble));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
