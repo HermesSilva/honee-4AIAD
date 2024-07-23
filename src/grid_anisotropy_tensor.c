@@ -9,30 +9,27 @@
 
 PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
                                                         CeedVector *grid_aniso_vector) {
-  NodalProjectionData  grid_aniso_proj;
-  OperatorApplyContext l2_rhs_ctx;
-  CeedOperator         op_rhs_assemble, op_mass;
-  CeedQFunction        qf_rhs_assemble, qf_mass;
-  CeedBasis            basis_grid_aniso;
-  CeedVector           q_data;
-  CeedElemRestriction  elem_restr_qd;
-  CeedInt              q_data_size;
-  MPI_Comm             comm = PetscObjectComm((PetscObject)user->dm);
-  KSP                  ksp;
-  DMLabel              domain_label = NULL;
-  PetscInt             label_value = 0, height = 0, dm_field = 0;
+  NodalProjectionData grid_aniso_proj;
+  CeedBasis           basis_grid_aniso;
+  CeedVector          q_data;
+  CeedElemRestriction elem_restr_qd;
+  CeedInt             q_data_size;
+  MPI_Comm            comm         = PetscObjectComm((PetscObject)user->dm);
+  DMLabel             domain_label = NULL;
+  PetscInt            label_value = 0, height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&grid_aniso_proj));
 
-  // -- Create DM for Anisotropic tensor L^2 projection
-  grid_aniso_proj->num_comp = 7;
-  PetscCall(DMClone(user->dm, &grid_aniso_proj->dm));
-  PetscCall(DMSetMatrixPreallocateSkip(grid_aniso_proj->dm, PETSC_TRUE));
-  PetscCall(PetscObjectSetName((PetscObject)grid_aniso_proj->dm, "Grid Anisotropy Tensor Projection"));
-
-  {  // -- Setup DM
+  {  // -- Create DM for Anisotropic tensor L^2 projection
     PetscSection section;
+
+    PetscCall(DMClone(user->dm, &grid_aniso_proj->dm));
+    PetscCall(DMSetMatrixPreallocateSkip(grid_aniso_proj->dm, PETSC_TRUE));
+    PetscCall(PetscObjectSetName((PetscObject)grid_aniso_proj->dm, "Grid Anisotropy Tensor Projection"));
+
+    // -- Setup DM
+    grid_aniso_proj->num_comp = 7;
     PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, user->app_ctx->degree, 1, user->app_ctx->q_extra, 1, &grid_aniso_proj->num_comp,
                                  grid_aniso_proj->dm));
 
@@ -53,55 +50,62 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, Ce
   PetscCall(QDataGet(ceed, grid_aniso_proj->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
                      &elem_restr_qd, &q_data, &q_data_size));
 
-  // -- Build RHS operator
-  //TODO: Fix scoping of functions
-  PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, AnisotropyTensorProjection, AnisotropyTensorProjection_loc, &qf_rhs_assemble));
-  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_assemble, "qdata", q_data_size, CEED_EVAL_NONE));
-  PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_assemble, "v", grid_aniso_proj->num_comp, CEED_EVAL_INTERP));
+  {  // -- Build RHS operator
+    CeedOperator  op_rhs_assemble;
+    CeedQFunction qf_rhs_assemble;
 
-  PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_assemble, NULL, NULL, &op_rhs_assemble));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "v", *elem_restr_grid_aniso, basis_grid_aniso, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, AnisotropyTensorProjection, AnisotropyTensorProjection_loc, &qf_rhs_assemble));
+    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_assemble, "qdata", q_data_size, CEED_EVAL_NONE));
+    PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_assemble, "v", grid_aniso_proj->num_comp, CEED_EVAL_INTERP));
 
-  PetscCall(OperatorApplyContextCreate(user->dm, grid_aniso_proj->dm, ceed, op_rhs_assemble, CEED_VECTOR_NONE, NULL, NULL, NULL, &l2_rhs_ctx));
+    PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_assemble, NULL, NULL, &op_rhs_assemble));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_assemble, "v", *elem_restr_grid_aniso, basis_grid_aniso, CEED_VECTOR_ACTIVE));
 
-  // -- Build Mass Operator
-  PetscCall(CreateMassQFunction(ceed, grid_aniso_proj->num_comp, q_data_size, &qf_mass));
-  PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", *elem_restr_grid_aniso, basis_grid_aniso, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", *elem_restr_grid_aniso, basis_grid_aniso, CEED_VECTOR_ACTIVE));
+    PetscCall(OperatorApplyContextCreate(user->dm, grid_aniso_proj->dm, ceed, op_rhs_assemble, CEED_VECTOR_NONE, NULL, NULL, NULL,
+                                         &grid_aniso_proj->l2_rhs_ctx));
 
-  {  // -- Setup KSP for L^2 projection
-    Mat mat_mass;
+    PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_assemble));
+    PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs_assemble));
+  }
+
+  {  // Setup KSP for L^2 projection
+    CeedOperator  op_mass;
+    CeedQFunction qf_mass;
+    Mat           mat_mass;
+
+    PetscCall(CreateMassQFunction(ceed, grid_aniso_proj->num_comp, q_data_size, &qf_mass));
+    PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", *elem_restr_grid_aniso, basis_grid_aniso, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", *elem_restr_grid_aniso, basis_grid_aniso, CEED_VECTOR_ACTIVE));
 
     PetscCall(MatCreateCeed(grid_aniso_proj->dm, grid_aniso_proj->dm, op_mass, NULL, &mat_mass));
 
-    PetscCall(KSPCreate(comm, &ksp));
-    PetscCall(KSPSetOptionsPrefix(ksp, "grid_anisotropy_tensor_projection_"));
+    PetscCall(KSPCreate(comm, &grid_aniso_proj->ksp));
+    PetscCall(KSPSetOptionsPrefix(grid_aniso_proj->ksp, "grid_anisotropy_tensor_projection_"));
     {
       PC pc;
-      PetscCall(KSPGetPC(ksp, &pc));
+      PetscCall(KSPGetPC(grid_aniso_proj->ksp, &pc));
       PetscCall(PCSetType(pc, PCJACOBI));
       PetscCall(PCJacobiSetType(pc, PC_JACOBI_DIAGONAL));
-      PetscCall(KSPSetType(ksp, KSPCG));
-      PetscCall(KSPSetNormType(ksp, KSP_NORM_NATURAL));
-      PetscCall(KSPSetTolerances(ksp, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
+      PetscCall(KSPSetType(grid_aniso_proj->ksp, KSPCG));
+      PetscCall(KSPSetNormType(grid_aniso_proj->ksp, KSP_NORM_NATURAL));
+      PetscCall(KSPSetTolerances(grid_aniso_proj->ksp, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
     }
-    PetscCall(KSPSetFromOptions_WithMatCeed(ksp, mat_mass));
+    PetscCall(KSPSetFromOptions_WithMatCeed(grid_aniso_proj->ksp, mat_mass));
+
+    PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
+    PetscCallCeed(ceed, CeedOperatorDestroy(&op_mass));
     PetscCall(MatDestroy(&mat_mass));
   }
 
   {  // -- Project anisotropy data and store in CeedVector
     Vec Grid_Anisotropy, grid_anisotropy_loc;
 
-    // Get L^2 Projection RHS
     PetscCall(DMGetGlobalVector(grid_aniso_proj->dm, &Grid_Anisotropy));
-
-    PetscCall(ApplyCeedOperatorLocalToGlobal(NULL, Grid_Anisotropy, l2_rhs_ctx));
-
-    // Solve projection problem
-    PetscCall(KSPSolve(ksp, Grid_Anisotropy, Grid_Anisotropy));
+    PetscCall(ApplyCeedOperatorLocalToGlobal(NULL, Grid_Anisotropy, grid_aniso_proj->l2_rhs_ctx));
+    PetscCall(KSPSolve(grid_aniso_proj->ksp, Grid_Anisotropy, Grid_Anisotropy));
 
     // Copy anisotropy tensor data to CeedVector
     PetscCall(DMGetLocalVector(grid_aniso_proj->dm, &grid_anisotropy_loc));
@@ -112,17 +116,10 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, User user, Ce
     PetscCall(DMRestoreGlobalVector(grid_aniso_proj->dm, &Grid_Anisotropy));
   }
 
-  // -- Cleanup
   PetscCall(NodalProjectionDataDestroy(grid_aniso_proj));
-  PetscCall(OperatorApplyContextDestroy(l2_rhs_ctx));
-  PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_assemble));
-  PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_grid_aniso));
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
-  PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs_assemble));
-  PetscCallCeed(ceed, CeedOperatorDestroy(&op_mass));
-  PetscCall(KSPDestroy(&ksp));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
