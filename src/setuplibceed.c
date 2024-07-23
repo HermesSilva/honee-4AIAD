@@ -272,20 +272,15 @@ static PetscErrorCode AddBCSubOperators(User user, Ceed ceed, DM dm, SimpleBC bc
 
 PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, AppCtx app_ctx, ProblemData problem, SimpleBC bc) {
   const PetscInt      num_comp_q = 5;
-  const CeedInt       dim = problem->dim, num_comp_x = problem->dim;
-  CeedInt             jac_data_size_vol = num_comp_q + 6 + 3;
-  CeedElemRestriction elem_restr_jd_i;
-  CeedVector          jac_data;
+  PetscInt            dim;
+  CeedInt             jac_data_size_vol = problem->jac_data_size_vol, num_comp_x, q_data_size_vol;
+  CeedElemRestriction elem_restr_jd_i   = NULL;
+  CeedVector          jac_data          = NULL;
   CeedOperator        op_ifunction_vol = NULL, op_rhs_vol = NULL, op_ijacobian_vol = NULL;
 
   PetscFunctionBeginUser;
-
-  if (problem->apply_vol_ifunction.qf_func_ptr && problem->uses_newtonian) {
-    NewtonianIdealGasContext gas;
-    PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
-    jac_data_size_vol += (gas->idl_enable ? 1 : 0);
-    PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
-  }
+  PetscCall(DMGetDimension(dm, &dim));
+  num_comp_x = dim;
 
   {  // Create bases and element restrictions
     DMLabel  domain_label = NULL;
@@ -298,13 +293,15 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
 
     PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, 0, &ceed_data->elem_restr_q));
     PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &ceed_data->elem_restr_x));
-    PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height, jac_data_size_vol, &elem_restr_jd_i));
+    if (jac_data_size_vol) {
+      PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height, jac_data_size_vol, &elem_restr_jd_i));
+      PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jd_i, &jac_data, NULL));
+    }
 
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &user->q_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &user->q_dot_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &user->g_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_x, &ceed_data->x_coord, NULL));
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jd_i, &jac_data, NULL));
 
     {  // -- Copy PETSc coordinate vector into CEED vector
       Vec X_loc;
@@ -316,12 +313,12 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
       } else {
         PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
       }
-      PetscCall(VecScale(X_loc, problem->dm_scale));
+      PetscCall(VecScale(X_loc, user->units->meter));
       PetscCall(VecCopyPetscToCeed(X_loc, ceed_data->x_coord));
     }
 
     PetscCall(QDataGet(ceed, dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
-                       &ceed_data->elem_restr_qd_i, &ceed_data->q_data, &problem->q_data_size_vol));
+                       &ceed_data->elem_restr_qd_i, &ceed_data->q_data, &q_data_size_vol));
   }
 
   {  // -- Create QFunction for ICs
@@ -357,7 +354,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_rhs_vol, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
-    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "qdata", problem->q_data_size_vol, CEED_EVAL_NONE));
+    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "x", num_comp_x, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
@@ -383,11 +380,11 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "q dot", num_comp_q, CEED_EVAL_INTERP));
-    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "qdata", problem->q_data_size_vol, CEED_EVAL_NONE));
+    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "x", num_comp_x, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
-    PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "jac_data", jac_data_size_vol, CEED_EVAL_NONE));
+    if (jac_data_size_vol) PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "jac_data", jac_data_size_vol, CEED_EVAL_NONE));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ifunction_vol, NULL, NULL, &op_ifunction_vol));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
@@ -397,7 +394,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));
+    if (jac_data_size_vol) PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));
 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ifunction_vol));
   }
@@ -411,8 +408,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ijacobian_vol, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "dq", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "Grad_dq", num_comp_q * dim, CEED_EVAL_GRAD));
-    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "qdata", problem->q_data_size_vol, CEED_EVAL_NONE));
-    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "jac_data", jac_data_size_vol, CEED_EVAL_NONE));
+    PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
+    if (jac_data_size_vol) PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "jac_data", jac_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ijacobian_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ijacobian_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
@@ -420,7 +417,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "dq", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "Grad_dq", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "qdata", ceed_data->elem_restr_qd_i, CEED_BASIS_NONE, ceed_data->q_data));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));
+    if (jac_data_size_vol) PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
 
@@ -473,8 +470,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
   if (app_ctx->diff_filter_monitor && !user->diff_filter) PetscCall(DifferentialFilterSetup(ceed, user, ceed_data, problem));
   if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, user, ceed_data, problem));
 
-  PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_jd_i));
+  if (jac_data) PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));
+  if (elem_restr_jd_i) PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_jd_i));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_ijacobian_vol));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_ifunction_vol));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs_vol));

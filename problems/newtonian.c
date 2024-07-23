@@ -224,11 +224,10 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   // ------------------------------------------------------
   //           Setup Generic Newtonian IG Problem
   // ------------------------------------------------------
-  problem->dim                          = 3;
+  problem->jac_data_size_vol            = 14;
   problem->jac_data_size_sur            = 11;
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
-  problem->uses_newtonian               = PETSC_TRUE;
 
   // ------------------------------------------------------
   //             Create the libCEED context
@@ -320,7 +319,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, mu, &mu, NULL));
   PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, k, &k, NULL));
 
-  PetscInt dim = problem->dim;
+  PetscInt dim = 3;
   PetscCall(PetscOptionsDeprecated("-g", "-gravity", "libCEED 0.11.1", NULL));
   PetscCall(PetscOptionsRealArray("-gravity", "Gravitational acceleration vector", NULL, g, &dim, &given_option));
   if (given_option) PetscCheck(dim == 3, comm, PETSC_ERR_ARG_SIZ, "Gravity vector must be size 3, %" PetscInt_FMT " values given", dim);
@@ -358,6 +357,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
                                NULL, idl_decay_time, &idl_decay_time, &idl_enable));
   PetscCheck(!(idl_enable && idl_decay_time == 0), comm, PETSC_ERR_SUP, "idl_decay_time may not be equal to zero.");
   if (idl_decay_time < 0) idl_enable = PETSC_FALSE;
+  if (idl_enable) problem->jac_data_size_vol++;
   PetscCall(PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, idl_start, &idl_start, NULL));
   PetscCall(PetscOptionsScalar("-idl_length", "Length of IDL in the positive x direction", NULL, idl_length, &idl_length, NULL));
   idl_pressure = reference.pressure;
@@ -398,7 +398,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   reference.pressure *= Pascal;
   for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= meter / second;
   reference.temperature *= Kelvin;
-  problem->dm_scale = meter;
 
   // -- Solver Settings
   user->phys->implicit  = implicit;

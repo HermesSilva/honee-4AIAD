@@ -272,17 +272,22 @@ PetscErrorCode PrintRunInfo(User user, Physics phys_ctx, ProblemData problem, TS
                         "    libCEED Backend MemType            : %s\n",
                         used_resource, CeedMemTypes[mem_type_backend]));
   // PETSc
-  VecType vec_type;
-  char    box_faces_str[PETSC_MAX_PATH_LEN] = "3,3,3";
-  if (problem->dim == 2) box_faces_str[3] = '\0';
-  PetscCall(PetscOptionsGetString(NULL, NULL, "-dm_plex_box_faces", box_faces_str, sizeof(box_faces_str), NULL));
-  PetscCall(DMGetVecType(user->dm, &vec_type));
-  PetscCall(PetscPrintf(comm,
-                        "  PETSc:\n"
-                        "    Box Faces                          : %s\n"
-                        "    DM VecType                         : %s\n"
-                        "    Time Stepping Scheme               : %s\n",
-                        box_faces_str, vec_type, phys_ctx->implicit ? "implicit" : "explicit"));
+  {
+    VecType  vec_type;
+    char     box_faces_str[PETSC_MAX_PATH_LEN] = "3,3,3";
+    PetscInt dim;
+
+    PetscCall(DMGetDimension(user->dm, &dim));
+    if (dim == 2) box_faces_str[3] = '\0';
+    PetscCall(PetscOptionsGetString(NULL, NULL, "-dm_plex_box_faces", box_faces_str, sizeof(box_faces_str), NULL));
+    PetscCall(DMGetVecType(user->dm, &vec_type));
+    PetscCall(PetscPrintf(comm,
+                          "  PETSc:\n"
+                          "    Box Faces                          : %s\n"
+                          "    DM VecType                         : %s\n"
+                          "    Time Stepping Scheme               : %s\n",
+                          box_faces_str, vec_type, phys_ctx->implicit ? "implicit" : "explicit"));
+  }
   {
     char           pmat_type_str[PETSC_MAX_PATH_LEN];
     MatType        amat_type, pmat_type;

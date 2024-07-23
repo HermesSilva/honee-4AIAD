@@ -10,7 +10,7 @@
 #include "../problems/stg_shur14.h"
 
 PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, ProblemData problem, SimpleBC bc, Physics phys, CeedOperator op_strong_bc) {
-  CeedInt             num_comp_x = problem->dim, num_comp_q = 5, stg_data_size = 1, dXdx_size;
+  CeedInt             num_comp_x, num_comp_q = 5, stg_data_size = 1, dXdx_size;
   CeedVector          multiplicity, x_stored, scale_stored, stg_data, dXdx;
   CeedBasis           basis_x_to_q_face;
   CeedElemRestriction elem_restr_x_face, elem_restr_q_face, elem_restr_x_stored, elem_restr_scale, elem_restr_stgdata, elem_restr_dXdx;
@@ -23,7 +23,8 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Problem
   PetscFunctionBeginUser;
   PetscCall(DMGetLabel(dm, "Face Sets", &domain_label));
   PetscCall(DMGetDimension(dm, &dim));
-  dXdx_size = num_comp_x * (dim - height_cell);
+  num_comp_x = dim;
+  dXdx_size  = num_comp_x * (dim - height_cell);
 
   {  // Basis
     CeedBasis basis_x_face, basis_q_face;

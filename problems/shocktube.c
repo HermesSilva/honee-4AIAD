@@ -29,13 +29,14 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   //               SET UP SHOCKTUBE
   // ------------------------------------------------------
-  problem->dim                             = 3;
   problem->ics.qf_func_ptr                 = ICsShockTube;
   problem->ics.qf_loc                      = ICsShockTube_loc;
   problem->apply_vol_rhs.qf_func_ptr       = EulerShockTube;
   problem->apply_vol_rhs.qf_loc            = EulerShockTube_loc;
   problem->apply_vol_ifunction.qf_func_ptr = NULL;
   problem->apply_vol_ifunction.qf_loc      = NULL;
+  problem->jac_data_size_vol               = 0;
+  problem->jac_data_size_sur               = 0;
   problem->compute_exact_solution_error    = PETSC_FALSE;
   problem->print_info                      = PRINT_SHOCKTUBE;
 
@@ -105,7 +106,6 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
     domain_size[i] *= meter;
     domain_min[i] *= meter;
   }
-  problem->dm_scale    = meter;
   CeedScalar mid_point = 0.5 * (domain_size[0] + domain_min[0]);
 
   // -- Setup Context

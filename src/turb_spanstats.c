@@ -214,7 +214,7 @@ PetscErrorCode SpanStatsSetupDataCreate(Ceed ceed, User user, CeedData ceed_data
       PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
     }
   }
-  PetscCall(VecScale(X_loc, problem->dm_scale));
+  PetscCall(VecScale(X_loc, user->units->meter));
   PetscCall(VecCopyPetscToCeed(X_loc, (*stats_data)->x_coord));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -352,7 +352,8 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, User user, CeedData ceed_data, 
 
 // Create CeedOperator for statistics collection
 PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData ceed_data, SpanStatsSetupData stats_data, ProblemData problem) {
-  CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x = problem->dim, num_comp_q;
+  CeedInt                     num_comp_stats = user->spanstats.num_comp_stats, num_comp_x, num_comp_q, q_data_size;
+  PetscInt                    dim;
   Turbulence_SpanStatsContext collect_ctx;
   NewtonianIdealGasContext    newtonian_ig_ctx;
   CeedQFunctionContext        collect_qfctx;
@@ -360,7 +361,10 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
   CeedOperator                op_stats_collect;
 
   PetscFunctionBeginUser;
+  PetscCall(DMGetDimension(user->dm, &dim));
+  num_comp_x = dim;
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
+  PetscCall(QDataGetNumComponents(user->dm, &q_data_size));
 
   // Create Operator for statistics collection
   switch (user->phys->state_var) {
@@ -401,7 +405,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, User user, CeedData 
   PetscCallCeed(ceed, CeedQFunctionSetContext(qf_stats_collect, collect_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&collect_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q", num_comp_q, CEED_EVAL_INTERP));
-  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q_data", problem->q_data_size_vol, CEED_EVAL_NONE));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "q_data", q_data_size, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_stats_collect, "x", num_comp_x, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_stats_collect, "v", num_comp_stats, CEED_EVAL_NONE));
 
