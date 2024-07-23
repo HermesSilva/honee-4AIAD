@@ -98,6 +98,7 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size) {
     DM           dm_coord;
     PetscSection section_coord;
     PetscInt     field = 0;  // Default field has the coordinates
+
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
     PetscCall(DMGetLocalSection(dm_coord, &section_coord));
     PetscCall(PetscSectionGetFieldComponents(section_coord, field, &num_comp_x));
@@ -140,7 +141,7 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size) {
  * @param[in]  x_coord       CeedVector of the coordinates
  * @param[out] elem_restr_qd CeedElemRestriction of the quadrature data
  * @param[out] q_data        CeedVector of the quadrature data
- * @param[out] q_data_size   number of components of quadrature data
+ * @param[out] q_data_size   Number of components of quadrature data
  */
 PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                         CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
@@ -233,7 +234,7 @@ PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size) {
  * @param[in]  x_coord       CeedVector of the coordinates
  * @param[out] elem_restr_qd CeedElemRestriction of the quadrature data
  * @param[out] q_data        CeedVector of the quadrature data
- * @param[out] q_data_size   number of components of quadrature data
+ * @param[out] q_data_size   Number of components of quadrature data
  */
 PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                                 CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
