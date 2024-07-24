@@ -144,9 +144,9 @@ struct AppCtx_private {
 
 // libCEED data struct
 struct CeedData_private {
-  CeedVector           x_coord, q_data;
+  CeedVector           x_coord;
   CeedBasis            basis_x, basis_q;
-  CeedElemRestriction  elem_restr_x, elem_restr_q, elem_restr_qd_i;
+  CeedElemRestriction  elem_restr_x, elem_restr_q;
   OperatorApplyContext op_ics_ctx;
 };
 
@@ -342,6 +342,7 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                                 CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size);
+PetscErrorCode QDataClearStoredData();
 
 // -----------------------------------------------------------------------------
 // Time-stepping functions
