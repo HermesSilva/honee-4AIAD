@@ -319,6 +319,53 @@ Note that this wave speed is specific to ideal gases as $\gamma$ is an ideal gas
 Currently, this demo provides three types of problems/physical models that can be selected at run time via the option `-problem`.
 {ref}`problem-advection`, the problem of the transport of energy in a uniform vector velocity field, {ref}`problem-euler-vortex`, the exact solution to the Euler equations, and the so called {ref}`problem-density-current` problem.
 
+### Divergence of Diffusive Flux Projection
+
+The strong residual in the SUPG operator in {eq}`eq-weak-vector-ns-supg` and {eq}`eq-weak-vector-ns-su` features the term $\nabla \cdot \bm F_{\text{diff}}(\bm{q}_N)$, the divergence of the diffusive flux.
+This term requires a second derivative to evaluate; first to evaluate $\bm \sigma$ and $\nabla T$ for $F_{\text{diff}}$, the second for the divergence of the flux.
+For linear elements, the flux is constant within each element so the second derivative is zero, leading to accuracy issues.
+Additionally, libCEED does not currently support calculating double-derivatives.
+To circumvent these issues, we (optionally) perform a projection operation to get $\nabla \cdot \bm F_{\text{diff}}(\bm{q}_N)$ at quadrature points.
+This was first proposed in {cite}`jansenDiffFluxProjection1999`.
+There are two methods of achieving this implemented in HONEE, denoted as the direct and indirect methods.
+
+#### Indirect Projection
+
+Indirect projection is the method presented in {cite}`jansenDiffFluxProjection1999`.
+Here, $\bm F_{\text{diff}}$ is $L^2$ projected onto the finite element space and then the divergence is taken from that FEM function.
+For linear basis functions, this leads to constant values of $\nabla \cdot \bm F_{\text{diff}}$ within each element.
+
+For compressible Navier-Stokes, this requires projecting 12 scalars-per-node: 4 conserved scalars (mass conservation does not have a diffusive flux term) in 3 dimensional directions.
+These 12 scalar finite element functions' derivatives are then evaluated at quadrature points and the divergence is calculated.
+This method can be selected with `-div_diff_flux_projection_method indirect`.
+
+#### Direct Projection
+In the direct projection method, we perform an $L^2$ projection of the divergence of the diffusive flux itself, $\nabla \cdot \bm F_{\text{diff}}(\bm{q}_N)$.
+Then $\nabla \cdot \bm F_{\text{diff}}$ itself is a function on the finite element space and can be interpolated onto quadrature points.
+
+To do this, look at the RHS of the $L^2$ projection of $\nabla \cdot \bm F_{\text{diff}}(\bm{q}_N)$:
+
+$$
+\int_{\Omega} \bm v \cdot \nabla \cdot \bm F_{\text{diff}}(\bm{q}_N) \,dV
+$$
+
+As noted, we can't calculate $\nabla \cdot \bm F_{\text{diff}}(\bm{q}_N)$ at quadrature points, so we apply integration-by-parts to achieve a calculable RHS:
+
+$$
+\int_{\partial \Omega} \bm v \cdot \bm{F}_{\text{diff}}(\bm q_N) \cdot \widehat{\bm{n}} \,dS
+- \int_{\Omega} \nabla \bm v \!:\! \bm{F}_{\text{diff}}(\bm{q}_N)\,dV
+$$
+
+This form is what is used for calculating the RHS of the projection.
+After the projection, $\nabla \cdot \bm F_{\text{diff}}(\bm{q}_N)$ is interpolated directly to quadrature points without any extra calculations necessary.
+For compressible Navier-Stokes, this means only projecting only 4 scalars-per-node.
+
+The projection can be enabled using `-div_diff_flux_projection_method direct`.
+
+#### General Information
+The $L^2$ projection in either method uses the standard mass matrix, which is rowsum lumped for performance by default.
+The linear solve for the projection can be controlled via `-div_diff_flux_projection_ksp*` flags.
+
 ### Statistics Collection
 For scale-resolving simulations (such as LES and DNS), statistics for a simulation are more often useful than time-instantaneous snapshots of the simulation itself.
 To make this process more computationally efficient, averaging in the spanwise direction, if physically correct, can help reduce the amount of simulation time needed to get converged statistics.
