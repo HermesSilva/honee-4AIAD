@@ -150,6 +150,26 @@ CEED_QFUNCTION_HELPER void MatMat3(const CeedScalar A[3][3], const CeedScalar B[
   MatMatN((const CeedScalar *)A, (const CeedScalar *)B, 3, transpose_A, transpose_B, (CeedScalar *)C);
 }
 
+/**
+  @brief MxN Matrix-Matrix product, C = AB + C
+
+  C is NxM, A is NxP, B is PxM
+
+  @param[in]  mat_A Row-major matrix `A`
+  @param[in]  mat_B Row-major matrix `B`
+  @param[out] mat_C Row-major output matrix `C`
+  @param[in]  N     Number of rows of `C`
+  @param[in]  M     Number of columns of `C`
+  @param[in]  P     Number of columns of `A`/rows of `B`
+**/
+CEED_QFUNCTION_HELPER void MatMatNM(const CeedScalar *mat_A, const CeedScalar *mat_B, CeedScalar *mat_C, CeedInt N, CeedInt M, CeedInt P) {
+  for (CeedInt i = 0; i < N; i++) {
+    for (CeedInt j = 0; j < M; j++) {
+      for (CeedInt k = 0; k < P; k++) mat_C[i * M + j] += mat_A[i * P + k] * mat_B[k * M + j];
+    }
+  }
+}
+
 // @brief Unpack Kelvin-Mandel notation symmetric tensor into full tensor
 CEED_QFUNCTION_HELPER void KMUnpack(const CeedScalar v[6], CeedScalar A[3][3]) {
   const CeedScalar weight = 1 / sqrt(2.);
@@ -360,4 +380,35 @@ CEED_QFUNCTION_HELPER int QdataUnpack_2D(CeedInt Q, CeedInt i, const CeedScalar 
 CEED_QFUNCTION_HELPER int QdataBoundaryUnpack_2D(CeedInt Q, CeedInt i, const CeedScalar *q_data, CeedScalar *wdetJ, CeedScalar normal[2]) {
   QdataBoundaryUnpack_ND(3, Q, i, q_data, wdetJ, NULL, normal);
   return CEED_ERROR_SUCCESS;
+}
+
+/**
+  @brief Unpack `CEED_EVAL_GRAD` QF input into quadrature-point local array
+
+  @param[in]  Q        Number of quadrature points
+  @param[in]  i        Current quadrature point
+  @param[in]  num_comp Number of components of the input
+  @param[in]  dim      Topological dimension of the element (ie. number of derivative terms per component)
+  @param[in]  grad     QF gradient input, shape `[dim][num_comp][Q]`
+  @param[out] local    Gradient array at quadrature point Q, shape `[num_comp][dim]`
+**/
+CEED_QFUNCTION_HELPER void GradUnpackN(CeedInt Q, CeedInt i, CeedInt num_comp, CeedInt dim, const CeedScalar *grad, CeedScalar *local) {
+  for (CeedInt d = 0; d < dim; d++) {
+    for (CeedInt c = 0; c < num_comp; c++) {
+      local[dim * c + d] = grad[(Q * num_comp) * d + Q * c + i];
+    }
+  }
+}
+
+/**
+  @brief Unpack `CEED_EVAL_GRAD` QF input into quadrature-point local array for 3D elements
+
+  @param[in]  Q        Number of quadrature points
+  @param[in]  i        Current quadrature point
+  @param[in]  num_comp Number of components of the input
+  @param[in]  grad     QF gradient input, shape `[dim][num_comp][Q]`
+  @param[out] local    Gradient array at quadrature point Q, shape `[num_comp][dim]`
+**/
+CEED_QFUNCTION_HELPER void GradUnpack3(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*local)[3]) {
+  GradUnpackN(Q, i, num_comp, 3, grad, (CeedScalar *)local);
 }

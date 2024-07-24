@@ -580,13 +580,15 @@ CEED_QFUNCTION_HELPER void Vorticity(const State grad_s[3], CeedScalar vorticity
 
 CEED_QFUNCTION_HELPER void StatePhysicalGradientFromReference(CeedInt Q, CeedInt i, NewtonianIdealGasContext gas, State s, StateVariable state_var,
                                                               const CeedScalar *grad_q, const CeedScalar dXdx[3][3], State grad_s[3]) {
-  for (CeedInt k = 0; k < 3; k++) {
+  CeedScalar grad_qi[5][3], dq[5][3] = {{0.}};
+
+  GradUnpack3(Q, i, 5, grad_q, grad_qi);
+  MatMatNM((CeedScalar *)grad_qi, (CeedScalar *)dXdx, (CeedScalar *)dq, 5, 3, 3);
+  for (CeedInt j = 0; j < 3; j++) {
     CeedScalar dqi[5];
-    for (CeedInt j = 0; j < 5; j++) {
-      dqi[j] =
-          grad_q[(Q * 5) * 0 + Q * j + i] * dXdx[0][k] + grad_q[(Q * 5) * 1 + Q * j + i] * dXdx[1][k] + grad_q[(Q * 5) * 2 + Q * j + i] * dXdx[2][k];
-    }
-    grad_s[k] = StateFromQ_fwd(gas, s, dqi, state_var);
+
+    for (CeedInt k = 0; k < 5; k++) dqi[k] = dq[k][j];
+    grad_s[j] = StateFromQ_fwd(gas, s, dqi, state_var);
   }
 }
 
