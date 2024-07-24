@@ -186,37 +186,6 @@ CEED_QFUNCTION(ICsAdvection2d)(void *ctx, CeedInt Q, const CeedScalar *const *in
   return 0;
 }
 
-CEED_QFUNCTION_HELPER void QdataUnpack_ND(CeedInt N, CeedInt Q, CeedInt i, const CeedScalar *q_data, CeedScalar *wdetJ, CeedScalar *dXdx) {
-  // Cannot directly use QdataUnpack* helper functions due to SYCL online compiler incompatabilities
-  switch (N) {
-    case 2:
-      StoredValuesUnpack(Q, i, 0, 1, q_data, wdetJ);
-      StoredValuesUnpack(Q, i, 1, 4, q_data, dXdx);
-      break;
-    case 3:
-      StoredValuesUnpack(Q, i, 0, 1, q_data, wdetJ);
-      StoredValuesUnpack(Q, i, 1, 9, q_data, dXdx);
-      break;
-  }
-}
-
-CEED_QFUNCTION_HELPER int QdataBoundaryUnpack_ND(CeedInt N, CeedInt Q, CeedInt i, const CeedScalar *q_data, CeedScalar *wdetJ, CeedScalar *dXdx,
-                                                 CeedScalar *normal) {
-  // Cannot directly use QdataBoundaryUnpack* helper functions due to SYCL online compiler incompatabilities
-  switch (N) {
-    case 2:
-      if (wdetJ) StoredValuesUnpack(Q, i, 0, 1, q_data, wdetJ);
-      if (normal) StoredValuesUnpack(Q, i, 1, 2, q_data, normal);
-      break;
-    case 3:
-      if (wdetJ) StoredValuesUnpack(Q, i, 0, 1, q_data, wdetJ);
-      if (normal) StoredValuesUnpack(Q, i, 1, 3, q_data, normal);
-      if (dXdx) StoredValuesUnpack(Q, i, 4, 6, q_data, (CeedScalar *)dXdx);
-      break;
-  }
-  return CEED_ERROR_SUCCESS;
-}
-
 CEED_QFUNCTION_HELPER void StatePhysicalGradientFromReference_ND(CeedInt N, CeedInt Q, CeedInt i, NewtonianIdealGasContext gas, State s,
                                                                  StateVariable state_var, const CeedScalar *grad_q, const CeedScalar *dXdx,
                                                                  State *grad_s) {
