@@ -10,6 +10,7 @@ PetscLogEvent FLUIDS_CeedOperatorApply;
 PetscLogEvent FLUIDS_CeedOperatorAssemble;
 PetscLogEvent FLUIDS_CeedOperatorAssembleDiagonal;
 PetscLogEvent FLUIDS_CeedOperatorAssemblePointBlockDiagonal;
+PetscLogEvent FLUIDS_DivDiffFluxProjection;
 PetscLogEvent FLUIDS_SmartRedis_Init;
 PetscLogEvent FLUIDS_SmartRedis_Meta;
 PetscLogEvent FLUIDS_SmartRedis_Train;
@@ -42,5 +43,6 @@ PetscErrorCode RegisterLogEvents() {
   PetscCall(PetscClassIdRegister("Miscellaneous", &misc_classid));
   PetscCall(PetscLogEventRegister("DiffFilter", misc_classid, &FLUIDS_DifferentialFilter));
   PetscCall(PetscLogEventRegister("VeloGradProj", misc_classid, &FLUIDS_VelocityGradientProjection));
+  PetscCall(PetscLogEventRegister("DivDiffFluxProj", misc_classid, &FLUIDS_DivDiffFluxProjection));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

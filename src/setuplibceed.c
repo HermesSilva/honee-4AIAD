@@ -282,6 +282,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
   PetscCall(DMGetDimension(dm, &dim));
   num_comp_x = dim;
 
+  CeedElemRestriction elem_restr_diff_flux = NULL;
+  CeedBasis           basis_diff_flux      = NULL;
+  CeedEvalMode        eval_mode_diff_flux  = -1;
   {  // Create bases and element restrictions
     DMLabel  domain_label = NULL;
     PetscInt label_value = 0, height = 0, dm_field = 0;
@@ -319,6 +322,10 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
 
     PetscCall(QDataGet(ceed, dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd, &q_data,
                        &q_data_size_vol));
+  }
+
+  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
+    PetscCall(DiffFluxProjectionInitialize(user, &elem_restr_diff_flux, &basis_diff_flux, &eval_mode_diff_flux));
   }
 
   {  // -- Create QFunction for ICs
@@ -382,6 +389,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "q dot", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "x", num_comp_x, CEED_EVAL_INTERP));
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
+      PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "div F_diff", user->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
+    }
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
     if (jac_data_size_vol) PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "jac_data", jac_data_size_vol, CEED_EVAL_NONE));
@@ -392,6 +402,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q dot", ceed_data->elem_restr_q, ceed_data->basis_q, user->q_dot_ceed));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+      PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "div F_diff", elem_restr_diff_flux, basis_diff_flux,
+                                               user->diff_flux_proj->div_diff_flux_ceed));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     if (jac_data_size_vol) PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));
@@ -469,11 +482,14 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
   if (app_ctx->turb_spanstats_enable) PetscCall(TurbulenceStatisticsSetup(ceed, user, ceed_data, problem));
   if (app_ctx->diff_filter_monitor && !user->diff_filter) PetscCall(DifferentialFilterSetup(ceed, user, ceed_data, problem));
   if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, user, ceed_data, problem));
+  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(ceed, user, ceed_data, problem));
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+  PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
-  if (jac_data) PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));
-  if (elem_restr_jd_i) PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_jd_i));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_jd_i));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_diff_flux));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_diff_flux));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_ijacobian_vol));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_ifunction_vol));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs_vol));

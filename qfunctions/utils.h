@@ -412,3 +412,38 @@ CEED_QFUNCTION_HELPER void GradUnpackN(CeedInt Q, CeedInt i, CeedInt num_comp, C
 CEED_QFUNCTION_HELPER void GradUnpack3(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*local)[3]) {
   GradUnpackN(Q, i, num_comp, 3, grad, (CeedScalar *)local);
 }
+
+/**
+  @brief Calculate divergence from reference gradient
+
+  Given gradient array G_{ij} and inverse element mapping X_{ij}, then the divergence is
+
+  G_{ij} X{ji}
+
+  @param[in]  grad_qn    Gradient array, orientation [vector component][gradient direction]
+  @param[in]  dXdx       Inverse of the mapping Jacobian (shape [dim][dim])
+  @param[in]  dim        Dimension of the problem
+  @param[out] divergence The divergence
+**/
+CEED_QFUNCTION_HELPER void DivergenceND(const CeedScalar *grad_qn, const CeedScalar *dXdx, const CeedInt dim, CeedScalar *divergence) {
+  for (CeedInt i = 0; i < dim; i++) {
+    for (CeedInt j = 0; j < dim; j++) {
+      *divergence += grad_qn[i * dim + j] * dXdx[j * dim + i];
+    }
+  }
+}
+
+/**
+  @brief Calculate divergence from reference gradient for 3D problem
+
+  Given gradient array G_{ij} and inverse element mapping X_{ij}, then the divergence is
+
+  G_{ij} X{ji}
+
+  @param[in]  grad_qn    Gradient array, orientation [vector component][gradient direction]
+  @param[in]  dXdx       Inverse of the mapping Jacobian (shape [3][3])
+  @param[out] divergence The divergence
+**/
+CEED_QFUNCTION_HELPER void Divergence3D(const CeedScalar grad_qn[3][3], const CeedScalar dXdx[3][3], CeedScalar *divergence) {
+  DivergenceND((const CeedScalar *)grad_qn, (const CeedScalar *)dXdx, 3, divergence);
+}

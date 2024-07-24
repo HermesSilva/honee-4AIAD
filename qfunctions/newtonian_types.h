@@ -12,6 +12,12 @@ typedef enum {
   STATEVAR_ENTROPY      = 2,
 } StateVariable;
 
+typedef enum {
+  DIV_DIFF_FLUX_PROJ_NONE     = 0,
+  DIV_DIFF_FLUX_PROJ_DIRECT   = 1,
+  DIV_DIFF_FLUX_PROJ_INDIRECT = 2,
+} DivDiffFluxProjectionMethod;
+
 typedef struct NewtonianIdealGasContext_ *NewtonianIdealGasContext;
 struct NewtonianIdealGasContext_ {
   CeedScalar        lambda;
@@ -37,6 +43,8 @@ struct NewtonianIdealGasContext_ {
   CeedScalar        idl_amplitude;
   CeedScalar        idl_start;
   CeedScalar        idl_length;
+
+  DivDiffFluxProjectionMethod divFdiff_method;
 };
 
 typedef struct {
