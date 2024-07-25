@@ -56,6 +56,23 @@ PetscErrorCode DiffFluxProjectionInitialize(User user, CeedElemRestriction *elem
       PetscCallCeed(user->ceed, CeedElemRestrictionCreateVector(*elem_restr_div_diff_flux, &diff_flux_proj->div_diff_flux_ceed, NULL));
       PetscCall(CreateBasisFromPlex(user->ceed, projection->dm, domain_label, label_value, height, dm_field, basis_div_diff_flux));
       *eval_mode_diff_flux = CEED_EVAL_INTERP;
+
+      {  // Create face labels on projection->dm for boundary integrals
+        DMLabel  face_sets_label;
+        PetscInt num_face_set_values, *face_set_values;
+
+        PetscCall(DMGetLabel(user->dm, "Face Sets", &face_sets_label));
+        PetscCall(DMLabelCreateGlobalValueArray(user->dm, face_sets_label, &num_face_set_values, &face_set_values));
+        for (PetscInt f = 0; f < num_face_set_values; f++) {
+          DMLabel face_orientation_label;
+          char   *face_orientation_label_name;
+
+          PetscCall(DMPlexCreateFaceLabel(user->dm, face_set_values[f], &face_orientation_label_name));
+          PetscCall(DMGetLabel(user->dm, face_orientation_label_name, &face_orientation_label));
+          PetscCall(DMAddLabel(projection->dm, face_orientation_label));
+          PetscCall(PetscFree(face_orientation_label_name));
+        }
+      }
     } break;
     case DIV_DIFF_FLUX_PROJ_INDIRECT: {
       projection->num_comp = diff_flux_proj->num_diff_flux_comps * dim;
@@ -195,8 +212,8 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, Ce
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "qdata", q_data_size, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_boundary, "diffusive flux RHS", projection->num_comp, CEED_EVAL_INTERP));
 
-    PetscCall(DMGetLabel(user->dm, "Face Sets", &face_sets_label));
-    PetscCall(DMLabelCreateGlobalValueArray(user->dm, face_sets_label, &num_face_set_values, &face_set_values));
+    PetscCall(DMGetLabel(projection->dm, "Face Sets", &face_sets_label));
+    PetscCall(DMLabelCreateGlobalValueArray(projection->dm, face_sets_label, &num_face_set_values, &face_set_values));
     for (PetscInt f = 0; f < num_face_set_values; f++) {
       DMLabel  face_orientation_label;
       PetscInt num_orientations_values, *orientation_values;
@@ -204,12 +221,11 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, Ce
       {
         char *face_orientation_label_name;
 
-        PetscCall(DMPlexCreateFaceLabel(user->dm, face_set_values[f], &face_orientation_label_name));
-        PetscCall(DMGetLabel(user->dm, face_orientation_label_name, &face_orientation_label));
-        PetscCall(DMAddLabel(projection->dm, face_orientation_label));
+        PetscCall(DMPlexCreateFaceLabel(projection->dm, face_set_values[f], &face_orientation_label_name));
+        PetscCall(DMGetLabel(projection->dm, face_orientation_label_name, &face_orientation_label));
         PetscCall(PetscFree(face_orientation_label_name));
       }
-      PetscCall(DMLabelCreateGlobalValueArray(user->dm, face_orientation_label, &num_orientations_values, &orientation_values));
+      PetscCall(DMLabelCreateGlobalValueArray(projection->dm, face_orientation_label, &num_orientations_values, &orientation_values));
       for (PetscInt o = 0; o < num_orientations_values; o++) {
         CeedOperator        op_rhs_boundary;
         CeedBasis           basis_q, basis_diff_flux_boundary;
