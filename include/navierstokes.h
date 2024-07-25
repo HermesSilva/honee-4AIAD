@@ -362,7 +362,7 @@ PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt
 PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGradientGetNumComponents(DM dm, CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedVector x_coord,
-                                        CeedElemRestriction *restriction, CeedVector *q_data, CeedInt *q_data_size);
+                                        CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
 PetscErrorCode QDataClearStoredData();
 // -----------------------------------------------------------------------------
 // Time-stepping functions
