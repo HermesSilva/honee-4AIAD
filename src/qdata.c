@@ -310,21 +310,22 @@ PetscErrorCode QDataBoundaryGradientGetNumComponents(DM dm, CeedInt *q_data_size
 
   Collective across MPI processes.
 
-  @param[in]  ceed         `Ceed` object
-  @param[in]  dm           `DMPlex` grid
-  @param[in]  domain_label `DMLabel` for surface
-  @param[in]  label_value  `DMPlex` label value for surface
-  @param[in]  x_coord      `CeedVector` for coordinates
-  @param[out] restriction  `CeedElemRestriction` for QData
-  @param[out] q_data       `CeedVector` holding QData
-  @param[out] q_data_size  Number of QData components per quadrature point
+  @param[in]  ceed          `Ceed` object
+  @param[in]  dm            `DMPlex` grid
+  @param[in]  domain_label  `DMLabel` for surface
+  @param[in]  label_value   `DMPlex` label value for surface
+  @param[in]  x_coord       `CeedVector` for coordinates
+  @param[out] elem_restr_qd `CeedElemRestriction` for QData
+  @param[out] q_data        `CeedVector` holding QData
+  @param[out] q_data_size   Number of QData components per quadrature point
 **/
 PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedVector x_coord,
-                                        CeedElemRestriction *restriction, CeedVector *q_data, CeedInt *q_data_size) {
+                                        CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
   PetscInt            dim;
   const PetscInt      height_cell = 0, height_face = 1;
   CeedInt             num_comp_x;
-  CeedElemRestriction restriction_x_cell, elem_restr_x_face;
+  CeedElemRestriction elem_restr_x_cell, elem_restr_x_face, elem_restr_qd_created;
+  CeedVector          q_data_created;
   CeedBasis           basis_x_cell_to_face, basis_x_face;
   CeedQFunction       qf_setup_sur;
   CeedOperator        op_setup_sur;
@@ -332,12 +333,12 @@ PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, 
   PetscFunctionBeginUser;
   PetscCall(CreateCoordinateBasisFromPlex(ceed, dm, domain_label, label_value, height_face, &basis_x_face));
   PetscCall(DMPlexCeedBasisCellToFaceCoordinateCreate(ceed, dm, domain_label, label_value, label_value, &basis_x_cell_to_face));
-  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_cell, &restriction_x_cell));
+  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_cell, &elem_restr_x_cell));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_face, &elem_restr_x_face));
 
   PetscCall(QDataBoundaryGradientGetNumComponents(dm, q_data_size));
-  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height_face, *q_data_size, restriction));
-  PetscCallCeed(ceed, CeedElemRestrictionCreateVector(*restriction, q_data, NULL));
+  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height_face, *q_data_size, &elem_restr_qd_created));
+  PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_qd_created, &q_data_created, NULL));
 
   PetscCall(DMGetDimension(dm, &dim));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_x_face, &num_comp_x));
@@ -349,17 +350,21 @@ PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, 
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_setup_sur, "q data", *q_data_size, CEED_EVAL_NONE));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_setup_sur, CEED_QFUNCTION_NONE, CEED_QFUNCTION_NONE, &op_setup_sur));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_setup_sur, "dx/dX cell", restriction_x_cell, basis_x_cell_to_face, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_setup_sur, "dx/dX cell", elem_restr_x_cell, basis_x_cell_to_face, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_setup_sur, "dx/dX face", elem_restr_x_face, basis_x_face, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_setup_sur, "weight", CEED_ELEMRESTRICTION_NONE, basis_x_face, CEED_VECTOR_NONE));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_setup_sur, "q data", *restriction, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_setup_sur, "q data", elem_restr_qd_created, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
-  PetscCallCeed(ceed, CeedOperatorApply(op_setup_sur, x_coord, *q_data, CEED_REQUEST_IMMEDIATE));
+  PetscCallCeed(ceed, CeedOperatorApply(op_setup_sur, x_coord, q_data_created, CEED_REQUEST_IMMEDIATE));
+
+  PetscCall(QDataGetStored(q_data_created, elem_restr_qd_created, q_data, elem_restr_qd));
 
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_setup_sur));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_setup_sur));
+  PetscCallCeed(ceed, CeedVectorDestroy(&q_data_created));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd_created));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x_face));
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&restriction_x_cell));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x_cell));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_face));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_cell_to_face));
   PetscFunctionReturn(PETSC_SUCCESS);
