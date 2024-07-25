@@ -352,6 +352,8 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   // -- Warnings
   PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
              "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
+  PetscCheck(!(user->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE && !implicit), comm, PETSC_ERR_SUP,
+             "Projection of divergence of diffusive flux is not implemented for explicit timestepping");
 
   PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
                                NULL, idl_decay_time, &idl_decay_time, &idl_enable));
@@ -404,25 +406,26 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   user->phys->state_var = state_var;
 
   // -- QFunction Context
-  newtonian_ig_ctx->lambda        = lambda;
-  newtonian_ig_ctx->mu            = mu;
-  newtonian_ig_ctx->k             = k;
-  newtonian_ig_ctx->cv            = cv;
-  newtonian_ig_ctx->cp            = cp;
-  newtonian_ig_ctx->c_tau         = c_tau;
-  newtonian_ig_ctx->Ctau_t        = Ctau_t;
-  newtonian_ig_ctx->Ctau_v        = Ctau_v;
-  newtonian_ig_ctx->Ctau_C        = Ctau_C;
-  newtonian_ig_ctx->Ctau_M        = Ctau_M;
-  newtonian_ig_ctx->Ctau_E        = Ctau_E;
-  newtonian_ig_ctx->stabilization = stab;
-  newtonian_ig_ctx->is_implicit   = implicit;
-  newtonian_ig_ctx->state_var     = state_var;
-  newtonian_ig_ctx->idl_enable    = idl_enable;
-  newtonian_ig_ctx->idl_amplitude = 1 / (idl_decay_time * second);
-  newtonian_ig_ctx->idl_start     = idl_start * meter;
-  newtonian_ig_ctx->idl_length    = idl_length * meter;
-  newtonian_ig_ctx->idl_pressure  = idl_pressure;
+  newtonian_ig_ctx->lambda          = lambda;
+  newtonian_ig_ctx->mu              = mu;
+  newtonian_ig_ctx->k               = k;
+  newtonian_ig_ctx->cv              = cv;
+  newtonian_ig_ctx->cp              = cp;
+  newtonian_ig_ctx->c_tau           = c_tau;
+  newtonian_ig_ctx->Ctau_t          = Ctau_t;
+  newtonian_ig_ctx->Ctau_v          = Ctau_v;
+  newtonian_ig_ctx->Ctau_C          = Ctau_C;
+  newtonian_ig_ctx->Ctau_M          = Ctau_M;
+  newtonian_ig_ctx->Ctau_E          = Ctau_E;
+  newtonian_ig_ctx->stabilization   = stab;
+  newtonian_ig_ctx->is_implicit     = implicit;
+  newtonian_ig_ctx->state_var       = state_var;
+  newtonian_ig_ctx->idl_enable      = idl_enable;
+  newtonian_ig_ctx->idl_amplitude   = 1 / (idl_decay_time * second);
+  newtonian_ig_ctx->idl_start       = idl_start * meter;
+  newtonian_ig_ctx->idl_length      = idl_length * meter;
+  newtonian_ig_ctx->idl_pressure    = idl_pressure;
+  newtonian_ig_ctx->divFdiff_method = user->app_ctx->divFdiffproj_method;
   PetscCall(PetscArraycpy(newtonian_ig_ctx->g, g, 3));
 
   // -- Setup Context

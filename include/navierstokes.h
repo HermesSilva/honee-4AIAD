@@ -83,6 +83,8 @@ static const char *const MeshTransformTypes[] = {"NONE", "PLATEMESH", "MeshTrans
 static const char *const DifferentialFilterDampingFunctions[] = {
     "NONE", "VAN_DRIEST", "MMS", "DifferentialFilterDampingFunction", "DIFF_FILTER_DAMP_", NULL};
 
+static const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "INDIRECT", "DivDiffFluxProjectionMethod", "DIV_DIFF_FLUX_PROJ_", NULL};
+
 // -----------------------------------------------------------------------------
 // Structs
 // -----------------------------------------------------------------------------
@@ -140,6 +142,8 @@ struct AppCtx_private {
   // Differential Filtering
   PetscBool         diff_filter_monitor;
   MeshTransformType mesh_transform_type;
+  // Divergence of Diffusive Flux Projection
+  DivDiffFluxProjectionMethod divFdiffproj_method;
 };
 
 // libCEED data struct
@@ -169,6 +173,18 @@ typedef struct {
   OperatorApplyContext l2_rhs_ctx;
   KSP                  ksp;
 } *NodalProjectionData;
+
+typedef struct {
+  PetscInt                    num_diff_flux_comps;
+  DivDiffFluxProjectionMethod method;
+  NodalProjectionData         projection;
+  OperatorApplyContext        calc_div_diff_flux;
+  CeedVector                  div_diff_flux_ceed;
+  // Only used for direct method:
+  Vec          DivDiffFlux_loc;
+  PetscMemType DivDiffFlux_memtype;
+  PetscBool    ceed_vec_has_array;
+} *DivDiffFluxProjectionData;
 
 typedef PetscErrorCode (*SgsDDNodalStressEval)(User user, Vec Q_loc, Vec VelocityGradient, Vec SGSNodal_loc);
 typedef PetscErrorCode (*SgsDDNodalStressInference)(Vec DD_Inputs_loc, Vec DD_Outputs_loc, void *ctx);
@@ -213,27 +229,28 @@ typedef struct {
 
 // PETSc user data
 struct User_private {
-  MPI_Comm             comm;
-  DM                   dm;
-  DM                   dm_viz;
-  Mat                  interp_viz;
-  Ceed                 ceed;
-  Units                units;
-  Vec                  Q_loc, Q_dot_loc;
-  Physics              phys;
-  AppCtx               app_ctx;
-  CeedVector           q_ceed, q_dot_ceed, g_ceed, x_ceed;
-  CeedOperator         op_ifunction;
-  Mat                  mat_ijacobian;
-  KSP                  mass_ksp;
-  OperatorApplyContext op_rhs_ctx, op_strong_bc_ctx;
-  CeedScalar           time_bc_set;
-  SpanStatsData        spanstats;
-  NodalProjectionData  grad_velo_proj;
-  SgsDDData            sgs_dd_data;
-  DiffFilterData       diff_filter;
-  SmartSimData         smartsim;
-  SGS_DD_TrainingData  sgs_dd_train;
+  MPI_Comm                  comm;
+  DM                        dm;
+  DM                        dm_viz;
+  Mat                       interp_viz;
+  Ceed                      ceed;
+  Units                     units;
+  Vec                       Q_loc, Q_dot_loc;
+  Physics                   phys;
+  AppCtx                    app_ctx;
+  CeedVector                q_ceed, q_dot_ceed, g_ceed, x_ceed;
+  CeedOperator              op_ifunction;
+  Mat                       mat_ijacobian;
+  KSP                       mass_ksp;
+  OperatorApplyContext      op_rhs_ctx, op_strong_bc_ctx;
+  CeedScalar                time_bc_set;
+  SpanStatsData             spanstats;
+  NodalProjectionData       grad_velo_proj;
+  SgsDDData                 sgs_dd_data;
+  DiffFilterData            diff_filter;
+  SmartSimData              smartsim;
+  SGS_DD_TrainingData       sgs_dd_train;
+  DivDiffFluxProjectionData diff_flux_proj;
 };
 
 // Units
@@ -327,6 +344,7 @@ PetscErrorCode DMPlexCeedElemRestrictionCollocatedCreate(Ceed ceed, DM dm, DMLab
                                                          PetscInt q_data_size, CeedElemRestriction *restriction);
 
 PetscErrorCode CreateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, CeedInt label_value, CeedInt height, CeedInt dm_field, CeedBasis *basis);
+PetscErrorCode CreateCoordinateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis);
 PetscErrorCode DMPlexCeedBasisCellToFaceCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face,
                                                          CeedBasis *basis);
 PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face, PetscInt dm_field,
@@ -342,8 +360,10 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                                 CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size);
+PetscErrorCode QDataBoundaryGradientGetNumComponents(DM dm, CeedInt *q_data_size);
+PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedVector x_coord,
+                                        CeedElemRestriction *restriction, CeedVector *q_data, CeedInt *q_data_size);
 PetscErrorCode QDataClearStoredData();
-
 // -----------------------------------------------------------------------------
 // Time-stepping functions
 // -----------------------------------------------------------------------------
@@ -438,3 +458,12 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, User user, CeedData ceed_data, Pr
 PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx);
 PetscErrorCode TSPostStep_SGS_DD_Training(TS ts);
 PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train);
+
+// -----------------------------------------------------------------------------
+// Divergence of Diffusive Flux Projection
+// -----------------------------------------------------------------------------
+PetscErrorCode DiffFluxProjectionInitialize(User user, CeedElemRestriction *elem_restr_div_diff_flux, CeedBasis *basis_div_diff_flux,
+                                            CeedEvalMode *eval_mode);
+PetscErrorCode DivDiffFluxProjectionSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem);
+PetscErrorCode DiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_proj, Vec Q_loc);
+PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_flux_proj);

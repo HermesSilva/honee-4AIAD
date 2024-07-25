@@ -395,6 +395,28 @@ PetscErrorCode CreateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, CeedI
 }
 
 /**
+  @brief Create `CeedBasis` for coordinate space of `DMPlex`.
+
+  Collective across MPI processes.
+
+  @param[in]   ceed          `Ceed` context
+  @param[in]   dm            `DMPlex` holding mesh
+  @param[in]   domain_label  `DMLabel` for `DMPlex` domain
+  @param[in]   label_value   Stratum value
+  @param[in]   height        Height of `DMPlex` topology
+  @param[out]  basis         `CeedBasis` for coordinate space of `DMPlex`
+**/
+PetscErrorCode CreateCoordinateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis) {
+  DM dm_coord = NULL;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetCellCoordinateDM(dm, &dm_coord));
+  if (!dm_coord) PetscCall(DMGetCoordinateDM(dm, &dm_coord));
+  PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, 0, basis));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Get the permutation and field offset for a given depth.
 
   Not collective across MPI processes.

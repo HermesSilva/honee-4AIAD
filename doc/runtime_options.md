@@ -551,6 +551,16 @@ For the Density Current, Channel, and Blasius problems, the following common com
   - `1.0`
   -
 
+* - `-div_diff_flux_projection_method`
+  - Method used to calculate divergence of diffusive flux projection (`none`, `direct`, or `indirect`)
+  - `none`
+  -
+
+* - `-div_diff_flux_projection_ksp*`
+  - Control the KSP object for the projection of the divergence of diffusive flux
+  - N/A
+  -
+
 * - `-cv`
   - Heat capacity at constant volume
   - `717`

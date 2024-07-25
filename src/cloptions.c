@@ -161,6 +161,10 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
   PetscCall(
       PetscOptionsBool("-sgs_train_enable", "Enable Data-Driven SGS training", NULL, app_ctx->sgs_train_enable, &app_ctx->sgs_train_enable, NULL));
 
+  PetscCall(PetscOptionsEnum("-div_diff_flux_projection_method", "Method of divergence of diffusive flux projection", NULL,
+                             DivDiffFluxProjectionMethods, (PetscEnum)(app_ctx->divFdiffproj_method), (PetscEnum *)&app_ctx->divFdiffproj_method,
+                             NULL));
+
   PetscOptionsEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
 }
