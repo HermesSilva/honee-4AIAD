@@ -325,7 +325,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
   }
 
   if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
-    PetscCall(DiffFluxProjectionInitialize(user, &elem_restr_diff_flux, &basis_diff_flux, &eval_mode_diff_flux));
+    elem_restr_diff_flux = user->diff_flux_proj->elem_restr_div_diff_flux;
+    basis_diff_flux      = user->diff_flux_proj->basis_div_diff_flux;
+    eval_mode_diff_flux  = user->diff_flux_proj->eval_mode_div_diff_flux;
   }
 
   {  // -- Create QFunction for ICs
