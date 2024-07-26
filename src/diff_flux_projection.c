@@ -137,22 +137,22 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, Ce
   {  // -- Build Mass operator
     CeedQFunction       qf_mass;
     CeedOperator        op_mass;
-    CeedBasis           basis_diff_flux             = NULL;
-    CeedElemRestriction elem_restr_diff_flux_volume = NULL, elem_restr_qd;
+    CeedBasis           basis_div_diff_flux             = NULL;
+    CeedElemRestriction elem_restr_div_diff_flux_volume = NULL, elem_restr_qd;
     CeedVector          q_data;
     CeedInt             q_data_size;
     PetscInt            label_value  = 0;
     DMLabel             domain_label = NULL;
 
-    PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_diff_flux_volume, &basis_diff_flux, NULL, NULL));
+    PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_div_diff_flux_volume, &basis_div_diff_flux, NULL, NULL));
     PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
                        &elem_restr_qd, &q_data, &q_data_size));
 
     PetscCall(CreateMassQFunction(ceed, projection->num_comp, q_data_size, &qf_mass));
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", elem_restr_diff_flux_volume, basis_diff_flux, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", elem_restr_div_diff_flux_volume, basis_div_diff_flux, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", elem_restr_diff_flux_volume, basis_diff_flux, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", elem_restr_div_diff_flux_volume, basis_div_diff_flux, CEED_VECTOR_ACTIVE));
 
     {  // -- Setup KSP for L^2 projection
       Mat mat_mass;
@@ -172,8 +172,8 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, Ce
       PetscCall(MatDestroy(&mat_mass));
     }
 
-    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_diff_flux_volume));
-    PetscCallCeed(ceed, CeedBasisDestroy(&basis_diff_flux));
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_div_diff_flux_volume));
+    PetscCallCeed(ceed, CeedBasisDestroy(&basis_div_diff_flux));
     PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
     PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
