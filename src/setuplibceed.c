@@ -481,7 +481,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
   if (app_ctx->turb_spanstats_enable) PetscCall(TurbulenceStatisticsSetup(ceed, user, ceed_data, problem));
   if (app_ctx->diff_filter_monitor && !user->diff_filter) PetscCall(DifferentialFilterSetup(ceed, user, ceed_data, problem));
   if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, user, ceed_data, problem));
-  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(ceed, user, ceed_data, problem));
+  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(user, ceed_data, user->diff_flux_proj));
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));

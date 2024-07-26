@@ -110,15 +110,14 @@ PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionDa
 /**
   @brief Setup direct projection of divergence of diffusive flux
 
-  @param[in] ceed      `Ceed` context
-  @param[in] user      `User` context
-  @param[in] ceed_data `CeedData` context
-  @param[in] problem   `ProblemData` context
+  @param[in]     user           `User` context
+  @param[in]     ceed_data      `CeedData` context
+  @param[in,out] diff_flux_proj Flux projection object to setup
 **/
-static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, CeedData ceed_data, ProblemData problem) {
-  DivDiffFluxProjectionData diff_flux_proj = user->diff_flux_proj;
-  NodalProjectionData       projection     = diff_flux_proj->projection;
-  MPI_Comm                  comm           = PetscObjectComm((PetscObject)projection->dm);
+static PetscErrorCode DivDiffFluxProjectionSetup_Direct(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj) {
+  Ceed                ceed       = user->ceed;
+  NodalProjectionData projection = diff_flux_proj->projection;
+  MPI_Comm            comm       = PetscObjectComm((PetscObject)projection->dm);
 
   PetscFunctionBeginUser;
   {  // Create Projection RHS OperatorApplyContext
@@ -185,19 +184,18 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, Ce
 /**
   @brief Setup indirect projection of divergence of diffusive flux
 
-  @param[in]     ceed      `Ceed` context
-  @param[in,out] user      `User` context
-  @param[in]     ceed_data `CeedData` context
-  @param[in]     problem   `ProblemData` context
+  @param[in]     user           `User` context
+  @param[in]     ceed_data      `CeedData` context
+  @param[in,out] diff_flux_proj Flux projection object to setup
 **/
-static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Ceed ceed, User user, CeedData ceed_data, ProblemData problem) {
-  DivDiffFluxProjectionData diff_flux_proj = user->diff_flux_proj;
-  NodalProjectionData       projection     = diff_flux_proj->projection;
-  CeedBasis                 basis_diff_flux;
-  CeedElemRestriction       elem_restr_diff_flux, elem_restr_qd;
-  CeedVector                q_data;
-  CeedInt                   q_data_size;
-  MPI_Comm                  comm = PetscObjectComm((PetscObject)projection->dm);
+static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj) {
+  Ceed                ceed       = user->ceed;
+  NodalProjectionData projection = diff_flux_proj->projection;
+  CeedBasis           basis_diff_flux;
+  CeedElemRestriction elem_restr_diff_flux, elem_restr_qd;
+  CeedVector          q_data;
+  CeedInt             q_data_size;
+  MPI_Comm            comm = PetscObjectComm((PetscObject)projection->dm);
 
   PetscFunctionBeginUser;
   {
@@ -289,19 +287,18 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Ceed ceed, User user, 
 /**
   @brief Setup projection of divergence of diffusive flux
 
-  @param[in]     ceed      `Ceed` context
-  @param[in,out] user      `User` context
-  @param[in]     ceed_data `CeedData` context
-  @param[in]     problem   `ProblemData` context
+  @param[in]     user           `User` context
+  @param[in]     ceed_data      `CeedData` context
+  @param[in,out] diff_flux_proj Flux projection object to setup
 **/
-PetscErrorCode DivDiffFluxProjectionSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem) {
+PetscErrorCode DivDiffFluxProjectionSetup(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj) {
   PetscFunctionBeginUser;
   switch (user->app_ctx->divFdiffproj_method) {
     case DIV_DIFF_FLUX_PROJ_DIRECT:
-      PetscCall(DivDiffFluxProjectionSetup_Direct(ceed, user, ceed_data, problem));
+      PetscCall(DivDiffFluxProjectionSetup_Direct(user, ceed_data, diff_flux_proj));
       break;
     case DIV_DIFF_FLUX_PROJ_INDIRECT:
-      PetscCall(DivDiffFluxProjectionSetup_Indirect(ceed, user, ceed_data, problem));
+      PetscCall(DivDiffFluxProjectionSetup_Indirect(user, ceed_data, diff_flux_proj));
       break;
     case DIV_DIFF_FLUX_PROJ_NONE:
       SETERRQ(PetscObjectComm((PetscObject)user->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",

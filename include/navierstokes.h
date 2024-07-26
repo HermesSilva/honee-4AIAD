@@ -479,6 +479,6 @@ PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train);
 PetscErrorCode DivDiffFluxProjectionCreate(User user, PetscInt num_diff_flux_comps, DivDiffFluxProjectionData *pdiff_flux_proj);
 PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionData diff_flux_proj, CeedElemRestriction *elem_restr, CeedBasis *basis,
                                                          CeedVector *vector, CeedEvalMode *eval_mode);
-PetscErrorCode DivDiffFluxProjectionSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem);
+PetscErrorCode DivDiffFluxProjectionSetup(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj);
 PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_proj, Vec Q_loc);
 PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_flux_proj);

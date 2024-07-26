@@ -508,7 +508,7 @@ CEED_QFUNCTION(BoundaryIntegral_Jacobian_Entropy)(void *ctx, CeedInt Q, const Ce
   return BoundaryIntegral_Jacobian(ctx, Q, in, out, STATEVAR_ENTROPY);
 }
 
-// @brief Volume integral for RHS of divergence of diffusive flux projection
+// @brief Volume integral for RHS of divergence of diffusive flux direct projection
 CEED_QFUNCTION_HELPER int DivDiffusiveFluxVolumeRHS_NS(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
                                                        StateVariable state_var) {
   const CeedScalar(*q)[CEED_Q_VLA]   = (const CeedScalar(*)[CEED_Q_VLA])in[0];
@@ -560,7 +560,7 @@ CEED_QFUNCTION(DivDiffusiveFluxVolumeRHS_NS_Entropy)(void *ctx, CeedInt Q, const
   return DivDiffusiveFluxVolumeRHS_NS(ctx, Q, in, out, STATEVAR_ENTROPY);
 }
 
-// @brief Boundary integral for RHS of divergence of diffusive flux projection
+// @brief Boundary integral for RHS of divergence of diffusive flux direct projection
 CEED_QFUNCTION_HELPER int DivDiffusiveFluxBoundaryRHS_NS(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
                                                          StateVariable state_var) {
   const CeedScalar(*q)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
@@ -609,7 +609,7 @@ CEED_QFUNCTION(DivDiffusiveFluxBoundaryRHS_NS_Entropy)(void *ctx, CeedInt Q, con
   return DivDiffusiveFluxBoundaryRHS_NS(ctx, Q, in, out, STATEVAR_ENTROPY);
 }
 
-// @brief Integral for RHS of diffusive flux projection
+// @brief Integral for RHS of diffusive flux indirect projection
 CEED_QFUNCTION_HELPER int DiffusiveFluxRHS_NS(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
   const CeedScalar(*q)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*Grad_q)        = in[1];
