@@ -87,6 +87,27 @@ PetscErrorCode DivDiffFluxProjectionCreate(User user, PetscInt num_diff_flux_com
 };
 
 /**
+  @brief Return the objects required for the Divergence of Diffusive flux to be read by a `CeedOperator`
+
+  @param[in]  diff_flux_proj Projection object
+  @param[out] elem_restr     Element restriction for the divergence of diffusive flux, or `NULL`
+  @param[out] basis          Basis for the divergence of diffusive flux, or `NULL`
+  @param[out] vector         Vector for the divergence of diffusive flux, or `NULL`
+  @param[out] eval_mode      Eval mode for the divergence of diffusive flux, or `NULL`
+**/
+PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionData diff_flux_proj, CeedElemRestriction *elem_restr, CeedBasis *basis,
+                                                         CeedVector *vector, CeedEvalMode *eval_mode) {
+  Ceed ceed = CeedVectorReturnCeed(diff_flux_proj->div_diff_flux_ceed);
+
+  PetscFunctionBeginUser;
+  if (elem_restr) PetscCallCeed(ceed, CeedElemRestrictionReferenceCopy(diff_flux_proj->elem_restr_div_diff_flux, elem_restr));
+  if (basis) PetscCallCeed(ceed, CeedBasisReferenceCopy(diff_flux_proj->basis_div_diff_flux, basis));
+  if (vector) PetscCallCeed(ceed, CeedVectorReferenceCopy(diff_flux_proj->div_diff_flux_ceed, vector));
+  if (eval_mode) *eval_mode = diff_flux_proj->eval_mode_div_diff_flux;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Setup direct projection of divergence of diffusive flux
 
   @param[in] ceed      `Ceed` context
@@ -97,33 +118,9 @@ PetscErrorCode DivDiffFluxProjectionCreate(User user, PetscInt num_diff_flux_com
 static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, CeedData ceed_data, ProblemData problem) {
   DivDiffFluxProjectionData diff_flux_proj = user->diff_flux_proj;
   NodalProjectionData       projection     = diff_flux_proj->projection;
-  CeedOperator              op_rhs;
-  CeedBasis                 basis_diff_flux;
-  CeedElemRestriction       elem_restr_diff_flux_volume, elem_restr_qd;
-  CeedVector                q_data;
-  CeedInt                   num_comp_q, q_data_size;
-  PetscInt                  dim, label_value = 0;
-  DMLabel                   domain_label = NULL;
-  MPI_Comm                  comm         = PetscObjectComm((PetscObject)projection->dm);
+  MPI_Comm                  comm           = PetscObjectComm((PetscObject)projection->dm);
 
   PetscFunctionBeginUser;
-  // -- Get Pre-requisite things
-  PetscCall(DMGetDimension(projection->dm, &dim));
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
-
-  {  // Get elem_restr_diff_flux and basis_diff_flux
-    CeedOperator     *sub_ops;
-    CeedOperatorField op_field;
-    PetscInt          sub_op_index = 0;  // will be 0 for the volume op
-
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "div F_diff", &op_field));
-    PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_diff_flux_volume));
-    PetscCallCeed(ceed, CeedOperatorFieldGetBasis(op_field, &basis_diff_flux));
-  }
-  PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
-
   {  // Create Projection RHS OperatorApplyContext
     CeedOperator op_rhs;
 
@@ -138,8 +135,18 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, Ce
   }
 
   {  // -- Build Mass operator
-    CeedQFunction qf_mass;
-    CeedOperator  op_mass;
+    CeedQFunction       qf_mass;
+    CeedOperator        op_mass;
+    CeedBasis           basis_diff_flux             = NULL;
+    CeedElemRestriction elem_restr_diff_flux_volume = NULL, elem_restr_qd;
+    CeedVector          q_data;
+    CeedInt             q_data_size;
+    PetscInt            label_value  = 0;
+    DMLabel             domain_label = NULL;
+
+    PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_diff_flux_volume, &basis_diff_flux, NULL, NULL));
+    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
+                       &elem_restr_qd, &q_data, &q_data_size));
 
     PetscCall(CreateMassQFunction(ceed, projection->num_comp, q_data_size, &qf_mass));
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
@@ -164,12 +171,14 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Ceed ceed, User user, Ce
       PetscCall(KSPSetFromOptions_WithMatCeed(projection->ksp, mat_mass));
       PetscCall(MatDestroy(&mat_mass));
     }
+
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_diff_flux_volume));
+    PetscCallCeed(ceed, CeedBasisDestroy(&basis_diff_flux));
+    PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_mass));
   }
-  PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
-  PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -187,20 +196,19 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Ceed ceed, User user, 
   CeedBasis                 basis_diff_flux;
   CeedElemRestriction       elem_restr_diff_flux, elem_restr_qd;
   CeedVector                q_data;
-  CeedInt                   num_comp_q, q_data_size;
-  PetscInt                  dim;
-  PetscInt                  label_value = 0, height = 0, dm_field = 0;
-  DMLabel                   domain_label = NULL;
-  MPI_Comm                  comm         = PetscObjectComm((PetscObject)projection->dm);
+  CeedInt                   q_data_size;
+  MPI_Comm                  comm = PetscObjectComm((PetscObject)projection->dm);
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetDimension(projection->dm, &dim));
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
+  {
+    PetscInt label_value = 0, height = 0, dm_field = 0;
+    DMLabel  domain_label = NULL;
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
-  PetscCall(CreateBasisFromPlex(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
-  PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
+    PetscCall(CreateBasisFromPlex(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
+    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
+                       &elem_restr_qd, &q_data, &q_data_size));
+  }
 
   {
     CeedOperator op_rhs;
@@ -246,17 +254,11 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Ceed ceed, User user, 
   {  // Create OperatorApplyContext to calculate divergence at quadrature points
     CeedQFunction       qf_calc_divergence;
     CeedOperator        op_calc_divergence;
-    CeedElemRestriction elem_restr_div_diff_flux;
+    CeedElemRestriction elem_restr_div_diff_flux = NULL;
+    PetscInt            dim;
 
-    {  // Get elem_restr_div_diff_flux
-      CeedOperator     *sub_ops;
-      CeedOperatorField op_field;
-      PetscInt          sub_op_index = 0;  // will be 0 for the volume op
-
-      PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
-      PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "div F_diff", &op_field));
-      PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_div_diff_flux));
-    }
+    PetscCall(DMGetDimension(projection->dm, &dim));
+    PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_div_diff_flux, NULL, NULL, NULL));
 
     PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ComputeDivDiffusiveFlux3D_4, ComputeDivDiffusiveFlux3D_4_loc, &qf_calc_divergence));
 
@@ -273,6 +275,7 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Ceed ceed, User user, 
     PetscCall(
         OperatorApplyContextCreate(projection->dm, NULL, ceed, op_calc_divergence, NULL, NULL, NULL, NULL, &diff_flux_proj->calc_div_diff_flux));
 
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_div_diff_flux));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_calc_divergence));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_calc_divergence));
   }
@@ -373,13 +376,17 @@ PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_pr
 PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_flux_proj) {
   PetscFunctionBeginUser;
   if (diff_flux_proj == NULL) PetscFunctionReturn(PETSC_SUCCESS);
+  Ceed ceed = CeedVectorReturnCeed(diff_flux_proj->div_diff_flux_ceed);
+
   PetscCall(NodalProjectionDataDestroy(diff_flux_proj->projection));
   PetscCall(OperatorApplyContextDestroy(diff_flux_proj->calc_div_diff_flux));
   if (diff_flux_proj->ceed_vec_has_array) {
     PetscCall(VecReadCeedToPetsc(diff_flux_proj->div_diff_flux_ceed, diff_flux_proj->DivDiffFlux_memtype, diff_flux_proj->DivDiffFlux_loc));
     diff_flux_proj->ceed_vec_has_array = PETSC_FALSE;
   }
-  PetscCall(CeedVectorDestroy(&diff_flux_proj->div_diff_flux_ceed));
+  PetscCallCeed(ceed, CeedVectorDestroy(&diff_flux_proj->div_diff_flux_ceed));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&diff_flux_proj->elem_restr_div_diff_flux));
+  PetscCallCeed(ceed, CeedBasisDestroy(&diff_flux_proj->basis_div_diff_flux));
   PetscCall(VecDestroy(&diff_flux_proj->DivDiffFlux_loc));
   PetscCall(PetscFree(diff_flux_proj));
   PetscFunctionReturn(PETSC_SUCCESS);

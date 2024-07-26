@@ -216,8 +216,6 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
                                                                CeedOperator *op_rhs) {
   Ceed                 ceed       = user->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
-  CeedBasis            basis_diff_flux;
-  CeedElemRestriction  elem_restr_diff_flux_volume;
   CeedInt              num_comp_q;
   PetscInt             dim, label_value = 0;
   DMLabel              domain_label     = NULL;
@@ -228,15 +226,11 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
   PetscCall(DMGetDimension(projection->dm, &dim));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
 
-  {  // Get elem_restr_diff_flux and basis_diff_flux
-    CeedOperator     *sub_ops;
-    CeedOperatorField op_field;
-    PetscInt          sub_op_index = 0;  // will be 0 for the volume op
+  {  // Get newtonian QF context
+    CeedOperator *sub_ops;
+    PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
     PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "div F_diff", &op_field));
-    PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_diff_flux_volume));
-    PetscCallCeed(ceed, CeedOperatorFieldGetBasis(op_field, &basis_diff_flux));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qf_ctx));
   }
   PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, op_rhs));
@@ -244,9 +238,11 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
     CeedQFunction       qf_rhs_volume;
     CeedOperator        op_rhs_volume;
     CeedVector          q_data;
-    CeedElemRestriction elem_restr_qd;
+    CeedElemRestriction elem_restr_qd, elem_restr_diff_flux_volume = NULL;
+    CeedBasis           basis_diff_flux = NULL;
     CeedInt             q_data_size;
 
+    PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_diff_flux_volume, &basis_diff_flux, NULL, NULL));
     PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
                        &elem_restr_qd, &q_data, &q_data_size));
     switch (user->phys->state_var) {
@@ -280,6 +276,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
 
     PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
     PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_diff_flux_volume));
+    PetscCallCeed(ceed, CeedBasisDestroy(&basis_diff_flux));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs_volume));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_volume));
   }
@@ -336,12 +334,12 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
         PetscInt            orientation = orientation_values[o], dm_field_q = 0, height_cell = 0, height_face = 1;
 
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, user->dm, face_orientation_label, orientation, height_cell, dm_field_q, &elem_restr_q));
+        PetscCall(DMPlexCeedBasisCellToFaceCreate(ceed, user->dm, face_orientation_label, orientation, orientation, dm_field_q, &basis_q));
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
+        PetscCall(CreateBasisFromPlex(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
         PetscCall(QDataBoundaryGradientGet(ceed, user->dm, face_orientation_label, orientation, ceed_data->x_coord, &elem_restr_qdata, &q_data,
                                            &q_data_size));
-        PetscCall(DMPlexCeedBasisCellToFaceCreate(ceed, user->dm, face_orientation_label, orientation, orientation, dm_field_q, &basis_q));
-        PetscCall(CreateBasisFromPlex(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
         PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_boundary, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
