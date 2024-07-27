@@ -325,9 +325,12 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
                        &q_data_size_vol));
   }
 
-  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
+    PetscCheck(user->diff_flux_proj, user->comm, PETSC_ERR_ARG_WRONGSTATE,
+               "Divergence of diffusive flux projection requested but object not created");
     PetscCall(DivDiffFluxProjectionGetOperatorFieldData(user->diff_flux_proj, &elem_restr_diff_flux, &basis_diff_flux, &div_diff_flux_ceed,
                                                         &eval_mode_diff_flux));
+  }
 
   {  // -- Create QFunction for ICs
     CeedBasis     basis_xc;
