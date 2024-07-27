@@ -174,17 +174,31 @@ typedef struct {
   KSP                  ksp;
 } *NodalProjectionData;
 
-typedef struct {
+typedef struct DivDiffFluxProjectionData_private *DivDiffFluxProjectionData;
+
+struct DivDiffFluxProjectionData_private {
   PetscInt                    num_diff_flux_comps;
   DivDiffFluxProjectionMethod method;
   NodalProjectionData         projection;
-  OperatorApplyContext        calc_div_diff_flux;
-  CeedVector                  div_diff_flux_ceed;
+
+  // CeedOperator Objects
+  CeedElemRestriction elem_restr_div_diff_flux;
+  CeedBasis           basis_div_diff_flux;
+  CeedEvalMode        eval_mode_div_diff_flux;
+  CeedVector          div_diff_flux_ceed;
+
+  // Problem specific setup functions
+  PetscErrorCode (*CreateRHSOperator_Direct)(User, CeedData, DivDiffFluxProjectionData, CeedOperator *);
+  PetscErrorCode (*CreateRHSOperator_Indirect)(User, CeedData, DivDiffFluxProjectionData, CeedOperator *);
+
   // Only used for direct method:
   Vec          DivDiffFlux_loc;
   PetscMemType DivDiffFlux_memtype;
   PetscBool    ceed_vec_has_array;
-} *DivDiffFluxProjectionData;
+
+  // Only used for indirect method:
+  OperatorApplyContext calc_div_diff_flux;
+};
 
 typedef PetscErrorCode (*SgsDDNodalStressEval)(User user, Vec Q_loc, Vec VelocityGradient, Vec SGSNodal_loc);
 typedef PetscErrorCode (*SgsDDNodalStressInference)(Vec DD_Inputs_loc, Vec DD_Outputs_loc, void *ctx);
@@ -462,8 +476,9 @@ PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train);
 // -----------------------------------------------------------------------------
 // Divergence of Diffusive Flux Projection
 // -----------------------------------------------------------------------------
-PetscErrorCode DiffFluxProjectionInitialize(User user, CeedElemRestriction *elem_restr_div_diff_flux, CeedBasis *basis_div_diff_flux,
-                                            CeedEvalMode *eval_mode);
-PetscErrorCode DivDiffFluxProjectionSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem);
-PetscErrorCode DiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_proj, Vec Q_loc);
+PetscErrorCode DivDiffFluxProjectionCreate(User user, PetscInt num_diff_flux_comps, DivDiffFluxProjectionData *pdiff_flux_proj);
+PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionData diff_flux_proj, CeedElemRestriction *elem_restr, CeedBasis *basis,
+                                                         CeedVector *vector, CeedEvalMode *eval_mode);
+PetscErrorCode DivDiffFluxProjectionSetup(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj);
+PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_proj, Vec Q_loc);
 PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_flux_proj);
