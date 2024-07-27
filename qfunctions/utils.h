@@ -50,6 +50,9 @@ CEED_QFUNCTION_HELPER CeedScalar Dot3(const CeedScalar *u, const CeedScalar *v) 
 // @brief \ell^2 norm of 3 element vectors
 CEED_QFUNCTION_HELPER CeedScalar Norm3(const CeedScalar *u) { return sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]); }
 
+// @brief \ell^2 norm of 2 element vectors
+CEED_QFUNCTION_HELPER CeedScalar Norm2(const CeedScalar *u) { return sqrt(u[0] * u[0] + u[1] * u[1]); }
+
 // @brief Cross product of vectors with 3 elements
 CEED_QFUNCTION_HELPER void Cross3(const CeedScalar u[3], const CeedScalar v[3], CeedScalar w[3]) {
   w[0] = (u[1] * v[2]) - (u[2] * v[1]);
@@ -411,11 +414,24 @@ CEED_QFUNCTION_HELPER void GradUnpackN(CeedInt Q, CeedInt i, CeedInt num_comp, C
   @param[in]  Q        Number of quadrature points
   @param[in]  i        Current quadrature point
   @param[in]  num_comp Number of components of the input
-  @param[in]  grad     QF gradient input, shape `[dim][num_comp][Q]`
-  @param[out] local    Gradient array at quadrature point Q, shape `[num_comp][dim]`
+  @param[in]  grad     QF gradient input, shape `[3][num_comp][Q]`
+  @param[out] local    Gradient array at quadrature point Q, shape `[num_comp][3]`
 **/
 CEED_QFUNCTION_HELPER void GradUnpack3(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*local)[3]) {
   GradUnpackN(Q, i, num_comp, 3, grad, (CeedScalar *)local);
+}
+
+/**
+  @brief Unpack `CEED_EVAL_GRAD` QF input into quadrature-point local array for 2D elements
+
+  @param[in]  Q        Number of quadrature points
+  @param[in]  i        Current quadrature point
+  @param[in]  num_comp Number of components of the input
+  @param[in]  grad     QF gradient input, shape `[2][num_comp][Q]`
+  @param[out] local    Gradient array at quadrature point Q, shape `[num_comp][2]`
+**/
+CEED_QFUNCTION_HELPER void GradUnpack2(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*local)[2]) {
+  GradUnpackN(Q, i, num_comp, 2, grad, (CeedScalar *)local);
 }
 
 /**
