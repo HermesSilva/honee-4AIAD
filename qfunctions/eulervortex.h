@@ -72,7 +72,7 @@ CEED_QFUNCTION_HELPER int Exact_Euler(CeedInt dim, CeedScalar time, const CeedSc
 
   const CeedScalar x0       = x - xc;
   const CeedScalar y0       = y - yc;
-  const CeedScalar r        = sqrt(x0 * x0 + y0 * y0);
+  const CeedScalar r        = sqrt(Square(x0) + Square(y0));
   const CeedScalar C        = vortex_strength * exp((1. - r * r) / 2.) / (2. * M_PI);
   const CeedScalar delta_T  = -(gamma - 1.) * vortex_strength * vortex_strength * exp(1 - r * r) / (8. * gamma * M_PI * M_PI);
   const CeedScalar S_vortex = 1;  // no perturbation in the entropy P / rho^gamma
@@ -209,7 +209,7 @@ CEED_QFUNCTION_HELPER void Tau_spatial(CeedScalar Tau_x[3], const CeedScalar dXd
                                        const CeedScalar c_tau) {
   for (CeedInt i = 0; i < 3; i++) {
     // length of element in direction i
-    CeedScalar h = 2 / sqrt(dXdx[0][i] * dXdx[0][i] + dXdx[1][i] * dXdx[1][i] + dXdx[2][i] * dXdx[2][i]);
+    CeedScalar h = 2 / sqrt(Square(dXdx[0][i]) + Square(dXdx[1][i]) + Square(dXdx[2][i]));
     // fastest wave in direction i
     CeedScalar fastest_wave = fabs(u[i]) + sound_speed;
     Tau_x[i]                = c_tau * h / fastest_wave;
