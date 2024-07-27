@@ -103,6 +103,7 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size) {
     PetscCall(DMGetLocalSection(dm_coord, &section_coord));
     PetscCall(PetscSectionGetFieldComponents(section_coord, field, &num_comp_x));
   }
+  *q_data_size = 0;
   switch (dim) {
     case 2:
       switch (num_comp_x) {
@@ -112,20 +113,14 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size) {
         case 3:
           *q_data_size = 7;
           break;
-        default:
-          SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP,
-                  "QData not valid for DM of dimension %" PetscInt_FMT " and coordinates with dimension %" PetscInt_FMT, dim, num_comp_x);
-          break;
       }
       break;
     case 3:
       *q_data_size = 10;
       break;
-    default:
-      SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP,
-              "QData not valid for DM of dimension %" PetscInt_FMT " and coordinates with dimension %" PetscInt_FMT, dim, num_comp_x);
-      break;
   }
+  PetscCheck(*q_data_size, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP,
+             "QData not valid for DM of dimension %" PetscInt_FMT " and coordinates with dimension %" PetscInt_FMT, dim, num_comp_x);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -171,6 +166,7 @@ PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_v
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Setup, Setup_loc, &qf_setup));
       break;
   }
+  PetscCheck(qf_setup, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
 
   // -- Create QFunction for quadrature data
   PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_setup, 0));
@@ -208,6 +204,7 @@ PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size) {
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(dm, &dim));
+  *q_data_size = 0;
   switch (dim) {
     case 2:
       *q_data_size = 3;
@@ -215,10 +212,8 @@ PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size) {
     case 3:
       *q_data_size = 10;
       break;
-    default:
-      SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "QDataBoundary not valid for DM of dimension %" PetscInt_FMT, dim);
-      break;
   }
+  PetscCheck(*q_data_size, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -257,6 +252,7 @@ PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, SetupBoundary, SetupBoundary_loc, &qf_setup_sur));
       break;
   }
+  PetscCheck(qf_setup_sur, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
 
   // -- Create QFunction for quadrature data
   PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_setup_sur, 0));
@@ -294,14 +290,16 @@ PetscErrorCode QDataBoundaryGradientGetNumComponents(DM dm, CeedInt *q_data_size
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(dm, &dim));
+  *q_data_size = 0;
   switch (dim) {
+    case 2:
+      *q_data_size = 7;
+      break;
     case 3:
       *q_data_size = 13;
       break;
-    default:
-      SETERRQ(PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "QDataBoundary not valid for DM of dimension %" PetscInt_FMT, dim);
-      break;
   }
+  PetscCheck(*q_data_size, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -327,7 +325,7 @@ PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, 
   CeedElemRestriction elem_restr_x_cell, elem_restr_x_face, elem_restr_qd_created;
   CeedVector          q_data_created;
   CeedBasis           basis_x_cell_to_face, basis_x_face;
-  CeedQFunction       qf_setup_sur;
+  CeedQFunction       qf_setup_sur = NULL;
   CeedOperator        op_setup_sur;
 
   PetscFunctionBeginUser;
@@ -339,11 +337,19 @@ PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, 
   PetscCall(QDataBoundaryGradientGetNumComponents(dm, q_data_size));
   PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height_face, *q_data_size, &elem_restr_qd_created));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_qd_created, &q_data_created, NULL));
-
-  PetscCall(DMGetDimension(dm, &dim));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_x_face, &num_comp_x));
 
-  PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, SetupBoundaryGradient, SetupBoundaryGradient_loc, &qf_setup_sur));
+  PetscCall(DMGetDimension(dm, &dim));
+  switch (dim) {
+    case 2:
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Setup2DBoundaryGradient, Setup2DBoundaryGradient_loc, &qf_setup_sur));
+      break;
+    case 3:
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, SetupBoundaryGradient, SetupBoundaryGradient_loc, &qf_setup_sur));
+      break;
+  }
+  PetscCheck(qf_setup_sur, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
+
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup_sur, "dx/dX cell", num_comp_x * (dim - height_cell), CEED_EVAL_GRAD));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup_sur, "dx/dX face", num_comp_x * (dim - height_face), CEED_EVAL_GRAD));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup_sur, "weight", 1, CEED_EVAL_WEIGHT));
