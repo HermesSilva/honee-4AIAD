@@ -129,15 +129,18 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   //             Create the libCEED context
   // ------------------------------------------------------
-  CeedScalar rc              = 1000.;  // m (Radius of bubble)
-  CeedScalar CtauS           = 0.;     // dimensionless
-  PetscBool  strong_form     = PETSC_FALSE;
-  CeedScalar E_wind          = 1.e6;  // J
-  CeedScalar Ctau_a          = PetscPowScalarInt(user->app_ctx->degree, 2);
-  CeedScalar Ctau_t          = 0.;
-  PetscReal  wind[3]         = {1., 0, 0};  // m/s
-  CeedScalar diffusion_coeff = 0.;
-  PetscReal  domain_min[3], domain_max[3], domain_size[3] = {0.};
+  CeedScalar     rc              = 1000.;  // m (Radius of bubble)
+  CeedScalar     CtauS           = 0.;     // dimensionless
+  PetscBool      strong_form     = PETSC_FALSE;
+  CeedScalar     E_wind          = 1.e6;  // J
+  CeedScalar     Ctau_a          = PetscPowScalarInt(user->app_ctx->degree, 2);
+  CeedScalar     Ctau_t          = 0.;
+  PetscReal      wind[3]         = {1., 0, 0};  // m/s
+  CeedScalar     diffusion_coeff = 0.;
+  CeedScalar     wave_frequency  = 2 * M_PI;
+  CeedScalar     wave_phase      = 0;
+  AdvDifWaveType wave_type;
+  PetscReal      domain_min[3], domain_max[3], domain_size[3] = {0.};
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
   for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
@@ -177,6 +180,11 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, Ctau_t, &Ctau_t, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_a", "Coefficient for the stabilization ", NULL, Ctau_a, &Ctau_a, NULL));
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
+
+  PetscCall(PetscOptionsEnum("-wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)(wave_type = ADVDIF_WAVE_SINE), (PetscEnum *)&wave_type,
+                             NULL));
+  PetscCall(PetscOptionsScalar("-wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
+  PetscCall(PetscOptionsScalar("-wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
 
   // -- Units
   PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, meter, &meter, NULL));
@@ -236,6 +244,9 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   setup_context->initial_condition_type = advectionic_type;
   setup_context->bubble_continuity_type = bubble_continuity_type;
   setup_context->time                   = 0;
+  setup_context->wave_frequency         = wave_frequency;
+  setup_context->wave_phase             = wave_phase;
+  setup_context->wave_type              = wave_type;
 
   // -- QFunction Context
   user->phys->implicit             = implicit;

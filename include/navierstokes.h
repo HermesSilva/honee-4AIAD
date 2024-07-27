@@ -37,7 +37,10 @@ static const char *const EulerTestTypes[] = {"ISENTROPIC_VORTEX", "1", "2", "3",
 static const char *const WindTypes[] = {"ROTATION", "TRANSLATION", "WindType", "WIND_", NULL};
 
 // Advection - Initial Condition Types
-static const char *const AdvectionICTypes[] = {"SPHERE", "CYLINDER", "COSINE_HILL", "SKEW", "AdvectionICType", "ADVECTIONIC_", NULL};
+static const char *const AdvectionICTypes[] = {"SPHERE", "CYLINDER", "COSINE_HILL", "SKEW", "WAVE", "AdvectionICType", "ADVECTIONIC_", NULL};
+
+// Advection - Wave Types
+static const char *const AdvDifWaveTypes[] = {"SINE", "SQUARE", "AdvDifWaveType", "ADVDIF_WAVE_", NULL};
 
 // Advection - Bubble Continuity Types
 static const char *const BubbleContinuityTypes[] = {"SMOOTH", "BACK_SHARP", "THICK", "COSINE", "BubbleContinuityType", "BUBBLE_CONTINUITY_", NULL};

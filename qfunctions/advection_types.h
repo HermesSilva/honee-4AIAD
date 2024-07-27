@@ -16,7 +16,14 @@ typedef enum {
   ADVECTIONIC_BUBBLE_CYLINDER = 1,  // dim=2
   ADVECTIONIC_COSINE_HILL     = 2,  // dim=2
   ADVECTIONIC_SKEW            = 3,
+  ADVECTIONIC_WAVE            = 4,
 } AdvectionICType;
+
+// Advection-Diffusion wave types
+typedef enum {
+  ADVDIF_WAVE_SINE   = 0,
+  ADVDIF_WAVE_SQUARE = 1,
+} AdvDifWaveType;
 
 // Advection - Bubble Continuity Types
 typedef enum {
@@ -48,6 +55,8 @@ struct SetupContextAdv_ {
   CeedScalar           lz;
   CeedScalar           wind[3];
   CeedScalar           time;
+  CeedScalar           wave_frequency, wave_phase;
+  AdvDifWaveType       wave_type;
   WindType             wind_type;
   AdvectionICType      initial_condition_type;
   BubbleContinuityType bubble_continuity_type;
