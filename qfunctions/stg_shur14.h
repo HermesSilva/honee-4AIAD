@@ -297,11 +297,11 @@ CEED_QFUNCTION(ICsStg)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedSc
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar x_i[3] = {x[0][i], x[1][i], x[2][i]};
     CeedScalar       dXdx[3][3];
+    CeedScalar       h_node_sep[3];
+
     InvertMappingJacobian_3D(Q, i, J, dXdx, NULL);
-    CeedScalar h_node_sep[3];
-    h_node_sep[0] = dx;
-    for (CeedInt j = 1; j < 3; j++) h_node_sep[j] = 2 / sqrt(Square(dXdx[0][j]) + Square(dXdx[1][j]) + Square(dXdx[2][j]));
-    ScaleN(h_node_sep, stg_ctx->h_scale_factor, 3);
+    CalculateElementLengths(dXdx, stg_ctx->h_scale_factor, h_node_sep);
+    h_node_sep[0] = dx * stg_ctx->h_scale_factor;
 
     InterpolateProfile(x_i[1], ubar, cij, &eps, &lt, stg_ctx);
     if (stg_ctx->use_fluctuating_IC) {

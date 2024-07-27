@@ -144,22 +144,11 @@ CEED_QFUNCTION(SetupBoundaryGradient)(void *ctx, CeedInt Q, const CeedScalar *co
   const CeedScalar(*w)                     = in[2];
   CeedScalar(*q_data_sur)                  = out[0];
 
-  const CeedInt dim = 3;
-
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    // N_1, N_2, and N_3 are given by the cross product of the columns of dxdX
-    CeedScalar normal[3];
+    CeedScalar detJ_face, normal[3], dXdx[3][3];
 
-    for (CeedInt j = 0; j < dim; j++) {
-      // Equivalent code with no mod operations:
-      // normal[j] = J_face[0][j+1]*J_face[1][j+2] - J_face[0][j+2]*J_face[1][j+1]
-      normal[j] = J_face[0][(j + 1) % dim][i] * J_face[1][(j + 2) % dim][i] - J_face[0][(j + 2) % dim][i] * J_face[1][(j + 1) % dim][i];
-    }
-    const CeedScalar detJ_face = Norm3(normal);
-    ScaleN(normal, 1 / detJ_face, 3);
+    NormalVectorFromdxdX_3D(Q, i, J_face, normal, &detJ_face);
     const CeedScalar wdetJ = w[i] * detJ_face;
-
-    CeedScalar dXdx[3][3];
     InvertMappingJacobian_3D(Q, i, J_cell, dXdx, NULL);
 
     StoredValuesPack(Q, i, 0, 1, &wdetJ, q_data_sur);

@@ -33,10 +33,10 @@ PetscErrorCode CalcCholeskyDecomp(MPI_Comm comm, PetscInt nprofs, const CeedScal
   for (PetscInt i = 0; i < nprofs; i++) {
     Cij[0][i] = sqrt(Rij[0][i]);
     Cij[3][i] = Rij[3][i] / Cij[0][i];
-    Cij[1][i] = sqrt(Rij[1][i] - pow(Cij[3][i], 2));
+    Cij[1][i] = sqrt(Rij[1][i] - Square(Cij[3][i]));
     Cij[4][i] = Rij[4][i] / Cij[0][i];
     Cij[5][i] = (Rij[5][i] - Cij[3][i] * Cij[4][i]) / Cij[1][i];
-    Cij[2][i] = sqrt(Rij[2][i] - pow(Cij[4][i], 2) - pow(Cij[5][i], 2));
+    Cij[2][i] = sqrt(Rij[2][i] - Square(Cij[4][i]) - Square(Cij[5][i]));
 
     PetscCheck(!isnan(Cij[0][i]) && !isnan(Cij[1][i]) && !isnan(Cij[2][i]), comm, PETSC_ERR_FP,
                "Cholesky decomposition failed at profile point %" PetscInt_FMT ". Either STGInflow has non-SPD matrix or contains nan.", i + 1);

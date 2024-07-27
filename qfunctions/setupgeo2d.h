@@ -95,7 +95,9 @@ CEED_QFUNCTION(SetupBoundary2d)(void *ctx, CeedInt Q, const CeedScalar *const *i
 }
 
 // *****************************************************************************
-// This QFunction sets up the geometric factor required for integration when reference coordinates are in 2D and the physical coordinates are in 3D
+// This QFunction sets up the geometric factor required for integration when reference coordinates are 2D and the physical coordinates are in 3D
+//
+// In otherwords, when a 2D topology element is embedded in a 3D physical space.
 //
 // Reference (parent) 2D coordinates: X
 // Physical (current) 3D coordinates: x

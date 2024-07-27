@@ -34,40 +34,27 @@
  */
 CEED_QFUNCTION_HELPER void InvertMappingJacobian_3D(CeedInt Q, CeedInt i, const CeedScalar (*dxdX_q)[3][CEED_Q_VLA], CeedScalar dXdx[3][3],
                                                     CeedScalar *detJ_ptr) {
-  const CeedScalar dxdX_11 = dxdX_q[0][0][i];
-  const CeedScalar dxdX_21 = dxdX_q[0][1][i];
-  const CeedScalar dxdX_31 = dxdX_q[0][2][i];
-  const CeedScalar dxdX_12 = dxdX_q[1][0][i];
-  const CeedScalar dxdX_22 = dxdX_q[1][1][i];
-  const CeedScalar dxdX_32 = dxdX_q[1][2][i];
-  const CeedScalar dxdX_13 = dxdX_q[2][0][i];
-  const CeedScalar dxdX_23 = dxdX_q[2][1][i];
-  const CeedScalar dxdX_33 = dxdX_q[2][2][i];
-  const CeedScalar A11     = dxdX_22 * dxdX_33 - dxdX_23 * dxdX_32;
-  const CeedScalar A12     = dxdX_13 * dxdX_32 - dxdX_12 * dxdX_33;
-  const CeedScalar A13     = dxdX_12 * dxdX_23 - dxdX_13 * dxdX_22;
-  const CeedScalar A21     = dxdX_23 * dxdX_31 - dxdX_21 * dxdX_33;
-  const CeedScalar A22     = dxdX_11 * dxdX_33 - dxdX_13 * dxdX_31;
-  const CeedScalar A23     = dxdX_13 * dxdX_21 - dxdX_11 * dxdX_23;
-  const CeedScalar A31     = dxdX_21 * dxdX_32 - dxdX_22 * dxdX_31;
-  const CeedScalar A32     = dxdX_12 * dxdX_31 - dxdX_11 * dxdX_32;
-  const CeedScalar A33     = dxdX_11 * dxdX_22 - dxdX_12 * dxdX_21;
-  const CeedScalar detJ    = dxdX_11 * A11 + dxdX_21 * A12 + dxdX_31 * A13;
+  CeedScalar dxdX[3][3];
 
-  dXdx[0][0] = A11 / detJ;
-  dXdx[0][1] = A12 / detJ;
-  dXdx[0][2] = A13 / detJ;
-  dXdx[1][0] = A21 / detJ;
-  dXdx[1][1] = A22 / detJ;
-  dXdx[1][2] = A23 / detJ;
-  dXdx[2][0] = A31 / detJ;
-  dXdx[2][1] = A32 / detJ;
-  dXdx[2][2] = A33 / detJ;
+  GradUnpack3(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
+  // Compute Adjugate of dxdX
+  dXdx[0][0] = dxdX[1][1] * dxdX[2][2] - dxdX[1][2] * dxdX[2][1];
+  dXdx[0][1] = dxdX[0][2] * dxdX[2][1] - dxdX[0][1] * dxdX[2][2];
+  dXdx[0][2] = dxdX[0][1] * dxdX[1][2] - dxdX[0][2] * dxdX[1][1];
+  dXdx[1][0] = dxdX[1][2] * dxdX[2][0] - dxdX[1][0] * dxdX[2][2];
+  dXdx[1][1] = dxdX[0][0] * dxdX[2][2] - dxdX[0][2] * dxdX[2][0];
+  dXdx[1][2] = dxdX[0][2] * dxdX[1][0] - dxdX[0][0] * dxdX[1][2];
+  dXdx[2][0] = dxdX[1][0] * dxdX[2][1] - dxdX[1][1] * dxdX[2][0];
+  dXdx[2][1] = dxdX[0][1] * dxdX[2][0] - dxdX[0][0] * dxdX[2][1];
+  dXdx[2][2] = dxdX[0][0] * dxdX[1][1] - dxdX[0][1] * dxdX[1][0];
+
+  const CeedScalar detJ = dxdX[0][0] * dXdx[0][0] + dxdX[1][0] * dXdx[0][1] + dxdX[2][0] * dXdx[0][2];
+  ScaleN((CeedScalar *)dXdx, 1 / detJ, 9);
   if (detJ_ptr) *detJ_ptr = detJ;
 }
 
 /**
- * @brief Calculate dXdx from dxdX for 3D elements
+ * @brief Calculate dXdx from dxdX for 2D elements
  *
  * Reference (parent) coordinates: X
  * Physical (current) coordinates: x
@@ -75,7 +62,7 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_3D(CeedInt Q, CeedInt i, const 
  * Inverse of change of coordinate matrix: dXdx_{i,j} = (detJ^-1) * X_{i,j}
  *
  * Determinant of Jacobian:
- *   detJ = J11*A11 + J21*A12 + J31*A13
+ *   detJ = J11*J22 - J21*J12
  *     Jij = Jacobian entry ij
  *     Aij = Adjugate ij
  *
@@ -90,16 +77,15 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_3D(CeedInt Q, CeedInt i, const 
  */
 CEED_QFUNCTION_HELPER void InvertMappingJacobian_2D(CeedInt Q, CeedInt i, const CeedScalar (*dxdX_q)[2][CEED_Q_VLA], CeedScalar dXdx[2][2],
                                                     CeedScalar *detJ_ptr) {
-  const CeedScalar dxdX_11 = dxdX_q[0][0][i];
-  const CeedScalar dxdX_21 = dxdX_q[0][1][i];
-  const CeedScalar dxdX_12 = dxdX_q[1][0][i];
-  const CeedScalar dxdX_22 = dxdX_q[1][1][i];
-  const CeedScalar detJ    = dxdX_11 * dxdX_22 - dxdX_21 * dxdX_12;
+  CeedScalar dxdX[2][2];
 
-  dXdx[0][0] = dxdX_22 / detJ;
-  dXdx[0][1] = -dxdX_12 / detJ;
-  dXdx[1][0] = -dxdX_21 / detJ;
-  dXdx[1][1] = dxdX_11 / detJ;
+  GradUnpack2(Q, i, 2, (CeedScalar *)dxdX_q, dxdX);
+  const CeedScalar detJ = dxdX[0][0] * dxdX[1][1] - dxdX[1][0] * dxdX[0][1];
+
+  dXdx[0][0] = dxdX[1][1] / detJ;
+  dXdx[0][1] = -dxdX[0][1] / detJ;
+  dXdx[1][0] = -dxdX[1][0] / detJ;
+  dXdx[1][1] = dxdX[0][0] / detJ;
   if (detJ_ptr) *detJ_ptr = detJ;
 }
 
@@ -113,11 +99,11 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_2D(CeedInt Q, CeedInt i, const 
  * Inverse change of coordinate matrix:
  *   dXdx_{i,j} = dX_i/dx_j (indicial notation) [2 * 3]
  *
- * (J1,J2,J3) is given by the cross product of the columns of dxdX_{i,j}
+ * (N1,N2,N3) is given by the cross product of the columns of dxdX_{i,j}
  *
- * detJb is the magnitude of (J1,J2,J3)
+ * detJb is the magnitude of (N1,N2,N3)
  *
- * Normal vector = (J1,J2,J3) / detJb
+ * Normal vector = (N1,N2,N3) / detJb
  *
  * @param[in]  Q        Number of quadrature points
  * @param[in]  i        Current quadrature point
@@ -127,21 +113,16 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_2D(CeedInt Q, CeedInt i, const 
  */
 CEED_QFUNCTION_HELPER void NormalVectorFromdxdX_3D(CeedInt Q, CeedInt i, const CeedScalar (*dxdX_q)[3][CEED_Q_VLA], CeedScalar normal[3],
                                                    CeedScalar *detJ_ptr) {
-  const CeedScalar dxdX[3][2] = {
-      {dxdX_q[0][0][i], dxdX_q[1][0][i]},
-      {dxdX_q[0][1][i], dxdX_q[1][1][i]},
-      {dxdX_q[0][2][i], dxdX_q[1][2][i]}
-  };
-  // J1, J2, and J3 are given by the cross product of the columns of dxdX
-  const CeedScalar J1 = dxdX[1][0] * dxdX[2][1] - dxdX[2][0] * dxdX[1][1];
-  const CeedScalar J2 = dxdX[2][0] * dxdX[0][1] - dxdX[0][0] * dxdX[2][1];
-  const CeedScalar J3 = dxdX[0][0] * dxdX[1][1] - dxdX[1][0] * dxdX[0][1];
+  CeedScalar dxdX[3][2];
 
-  const CeedScalar detJ = sqrt(J1 * J1 + J2 * J2 + J3 * J3);
+  GradUnpack2(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
+  // N1, N2, and N3 are given by the cross product of the columns of dxdX
+  normal[0] = dxdX[1][0] * dxdX[2][1] - dxdX[2][0] * dxdX[1][1];
+  normal[1] = dxdX[2][0] * dxdX[0][1] - dxdX[0][0] * dxdX[2][1];
+  normal[2] = dxdX[0][0] * dxdX[1][1] - dxdX[1][0] * dxdX[0][1];
 
-  normal[0] = J1 / detJ;
-  normal[1] = J2 / detJ;
-  normal[2] = J3 / detJ;
+  const CeedScalar detJ = Norm3(normal);
+  ScaleN(normal, 1 / detJ, 3);
   if (detJ_ptr) *detJ_ptr = detJ;
 }
 
@@ -151,14 +132,14 @@ CEED_QFUNCTION_HELPER void NormalVectorFromdxdX_3D(CeedInt Q, CeedInt i, const C
  * Reference (parent) 1D coordinates: X
  * Physical (current) 2D coordinates: x
  * Change of coordinate vector:
- *           J1 = dx_1/dX
- *           J2 = dx_2/dX
+ *           N1 = dx_1/dX
+ *           N2 = dx_2/dX
  *
- * detJb is the magnitude of (J1,J2)
+ * detJb is the magnitude of (N1,N2)
  *
  * We require the determinant of the Jacobian to properly compute integrals of the form: int( u v )
  *
- * Normal vector is given by the cross product of (J1,J2)/detJ and ẑ
+ * Normal vector is given by the cross product of (N1,N2)/detJ and ẑ
  *
  * @param[in]  Q        Number of quadrature points
  * @param[in]  i        Current quadrature point
@@ -168,12 +149,10 @@ CEED_QFUNCTION_HELPER void NormalVectorFromdxdX_3D(CeedInt Q, CeedInt i, const C
  */
 CEED_QFUNCTION_HELPER void NormalVectorFromdxdX_2D(CeedInt Q, CeedInt i, const CeedScalar (*dxdX_q)[CEED_Q_VLA], CeedScalar normal[2],
                                                    CeedScalar *detJ_ptr) {
-  const CeedScalar J1 = dxdX_q[0][i];
-  const CeedScalar J2 = dxdX_q[1][i];
-
-  CeedScalar detJb = sqrt(J1 * J1 + J2 * J2);
-  normal[0]        = J2 / detJb;
-  normal[1]        = -J1 / detJb;
+  normal[0]              = dxdX_q[1][i];
+  normal[1]              = -dxdX_q[0][i];
+  const CeedScalar detJb = Norm2(normal);
+  ScaleN(normal, 1 / detJb, 2);
   if (detJ_ptr) *detJ_ptr = detJb;
 }
 
@@ -198,11 +177,8 @@ CEED_QFUNCTION_HELPER void NormalVectorFromdxdX_2D(CeedInt Q, CeedInt i, const C
  * @param[out] dXdx   Inverse of mapping Jacobian at quadrature point i
  */
 CEED_QFUNCTION_HELPER void InvertBoundaryMappingJacobian_3D(CeedInt Q, CeedInt i, const CeedScalar (*dxdX_q)[3][CEED_Q_VLA], CeedScalar dXdx[2][3]) {
-  const CeedScalar dxdX[3][2] = {
-      {dxdX_q[0][0][i], dxdX_q[1][0][i]},
-      {dxdX_q[0][1][i], dxdX_q[1][1][i]},
-      {dxdX_q[0][2][i], dxdX_q[1][2][i]}
-  };
+  CeedScalar dxdX[3][2];
+  GradUnpack2(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
 
   // dxdX_k,j * dxdX_j,k
   CeedScalar dxdXTdxdX[2][2] = {{0.}};
