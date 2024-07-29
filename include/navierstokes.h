@@ -34,16 +34,17 @@ typedef enum {
 static const char *const EulerTestTypes[] = {"ISENTROPIC_VORTEX", "1", "2", "3", "4", "5", "EulerTestType", "EULER_TEST_", NULL};
 
 // Advection - Wind types
-static const char *const WindTypes[] = {"ROTATION", "TRANSLATION", "WindType", "WIND_", NULL};
+static const char *const AdvDifWindTypes[] = {"ROTATION", "TRANSLATION", "WindType", "ADVDIF_WIND_", NULL};
 
 // Advection - Initial Condition Types
-static const char *const AdvectionICTypes[] = {"SPHERE", "CYLINDER", "COSINE_HILL", "SKEW", "WAVE", "AdvectionICType", "ADVECTIONIC_", NULL};
+static const char *const AdvDifICTypes[] = {"SPHERE", "CYLINDER", "COSINE_HILL", "SKEW", "WAVE", "AdvectionICType", "ADVDIF_IC_", NULL};
 
 // Advection - Wave Types
 static const char *const AdvDifWaveTypes[] = {"SINE", "SQUARE", "AdvDifWaveType", "ADVDIF_WAVE_", NULL};
 
 // Advection - Bubble Continuity Types
-static const char *const BubbleContinuityTypes[] = {"SMOOTH", "BACK_SHARP", "THICK", "COSINE", "BubbleContinuityType", "BUBBLE_CONTINUITY_", NULL};
+static const char *const AdvDifBubbleContinuityTypes[] = {
+    "SMOOTH", "BACK_SHARP", "THICK", "COSINE", "BubbleContinuityType", "ADVDIF_BUBBLE_CONTINUITY_", NULL};
 
 // Stabilization methods
 static const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationType", "STAB_", NULL};
