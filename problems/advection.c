@@ -76,19 +76,19 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
 }
 
 PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
-  WindType             wind_type;
-  AdvectionICType      advectionic_type;
-  BubbleContinuityType bubble_continuity_type;
-  StabilizationType    stab;
-  StabilizationTauType stab_tau;
-  SetupContextAdv      setup_context;
-  User                 user = *(User *)ctx;
-  MPI_Comm             comm = user->comm;
-  Ceed                 ceed = user->ceed;
-  PetscBool            implicit;
-  AdvectionContext     advection_ctx;
-  CeedQFunctionContext advection_qfctx;
-  PetscInt             dim;
+  AdvDifWindType             wind_type;
+  AdvDifICType               advectionic_type;
+  AdvDifBubbleContinuityType bubble_continuity_type = -1;
+  StabilizationType          stab;
+  StabilizationTauType       stab_tau;
+  SetupContextAdv            setup_context;
+  User                       user = *(User *)ctx;
+  MPI_Comm                   comm = user->comm;
+  Ceed                       ceed = user->ceed;
+  PetscBool                  implicit;
+  AdvectionContext           advection_ctx;
+  CeedQFunctionContext       advection_qfctx;
+  PetscInt                   dim;
 
   PetscFunctionBeginUser;
   PetscCall(PetscCalloc1(1, &setup_context));
@@ -129,15 +129,18 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   //             Create the libCEED context
   // ------------------------------------------------------
-  CeedScalar rc              = 1000.;  // m (Radius of bubble)
-  CeedScalar CtauS           = 0.;     // dimensionless
-  PetscBool  strong_form     = PETSC_FALSE;
-  CeedScalar E_wind          = 1.e6;  // J
-  CeedScalar Ctau_a          = PetscPowScalarInt(user->app_ctx->degree, 2);
-  CeedScalar Ctau_t          = 0.;
-  PetscReal  wind[3]         = {1., 0, 0};  // m/s
-  CeedScalar diffusion_coeff = 0.;
-  PetscReal  domain_min[3], domain_max[3], domain_size[3] = {0.};
+  CeedScalar     rc              = 1000.;  // m (Radius of bubble)
+  CeedScalar     CtauS           = 0.;     // dimensionless
+  PetscBool      strong_form     = PETSC_FALSE;
+  CeedScalar     E_wind          = 1.e6;  // J
+  CeedScalar     Ctau_a          = PetscPowScalarInt(user->app_ctx->degree, 2);
+  CeedScalar     Ctau_t          = 0.;
+  PetscReal      wind[3]         = {1., 0, 0};  // m/s
+  CeedScalar     diffusion_coeff = 0.;
+  CeedScalar     wave_frequency  = 2 * M_PI;
+  CeedScalar     wave_phase      = 0;
+  AdvDifWaveType wave_type       = -1;
+  PetscReal      domain_min[3], domain_max[3], domain_size[3] = {0.};
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
   for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
@@ -156,8 +159,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // -- Physics
   PetscCall(PetscOptionsScalar("-rc", "Characteristic radius of thermal bubble", NULL, rc, &rc, NULL));
   PetscBool translation;
-  PetscCall(PetscOptionsEnum("-wind_type", "Wind type in Advection", NULL, WindTypes, (PetscEnum)(wind_type = WIND_ROTATION), (PetscEnum *)&wind_type,
-                             &translation));
+  PetscCall(PetscOptionsEnum("-wind_type", "Wind type in Advection", NULL, AdvDifWindTypes, (PetscEnum)(wind_type = ADVDIF_WIND_ROTATION),
+                             (PetscEnum *)&wind_type, &translation));
   PetscInt  n = dim;
   PetscBool user_wind;
   PetscCall(PetscOptionsRealArray("-wind_translation", "Constant wind vector", NULL, wind, &n, &user_wind));
@@ -166,17 +169,27 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscCall(PetscOptionsBool("-strong_form", "Strong (true) or weak/integrated by parts (false) advection residual", NULL, strong_form, &strong_form,
                              NULL));
   PetscCall(PetscOptionsScalar("-E_wind", "Total energy of inflow wind", NULL, E_wind, &E_wind, NULL));
-  PetscCall(PetscOptionsEnum("-advection_ic_type", "Initial condition for Advection problem", NULL, AdvectionICTypes,
-                             (PetscEnum)(advectionic_type = ADVECTIONIC_BUBBLE_SPHERE), (PetscEnum *)&advectionic_type, NULL));
-  bubble_continuity_type = dim == 3 ? BUBBLE_CONTINUITY_SMOOTH : BUBBLE_CONTINUITY_COSINE;
-  PetscCall(PetscOptionsEnum("-bubble_continuity", "Smooth, back_sharp, or thick", NULL, BubbleContinuityTypes, (PetscEnum)bubble_continuity_type,
-                             (PetscEnum *)&bubble_continuity_type, NULL));
+  PetscCall(PetscOptionsEnum("-advection_ic_type", "Initial condition for Advection problem", NULL, AdvDifICTypes,
+                             (PetscEnum)(advectionic_type = ADVDIF_IC_BUBBLE_SPHERE), (PetscEnum *)&advectionic_type, NULL));
   PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
   PetscCall(PetscOptionsEnum("-stab_tau", "Stabilization constant, tau", NULL, StabilizationTauTypes, (PetscEnum)(stab_tau = STAB_TAU_CTAU),
                              (PetscEnum *)&stab_tau, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, Ctau_t, &Ctau_t, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_a", "Coefficient for the stabilization ", NULL, Ctau_a, &Ctau_a, NULL));
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
+
+  if (advectionic_type == ADVDIF_IC_WAVE) {
+    PetscCall(PetscOptionsEnum("-wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)(wave_type = ADVDIF_WAVE_SINE),
+                               (PetscEnum *)&wave_type, NULL));
+    PetscCall(PetscOptionsScalar("-wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
+    PetscCall(PetscOptionsScalar("-wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
+  }
+
+  if (advectionic_type == ADVDIF_IC_BUBBLE_CYLINDER || advectionic_type == ADVDIF_IC_BUBBLE_SPHERE) {
+    bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
+    PetscCall(PetscOptionsEnum("-bubble_continuity", "Smooth, back_sharp, or thick", NULL, AdvDifBubbleContinuityTypes,
+                               (PetscEnum)bubble_continuity_type, (PetscEnum *)&bubble_continuity_type, NULL));
+  }
 
   // -- Units
   PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, meter, &meter, NULL));
@@ -187,10 +200,10 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   second = fabs(second);
 
   // -- Warnings
-  if (wind_type == WIND_ROTATION && user_wind) {
+  if (wind_type == ADVDIF_WIND_ROTATION && user_wind) {
     PetscCall(PetscPrintf(comm, "Warning! Use -wind_translation only with -wind_type translation\n"));
   }
-  if (wind_type == WIND_TRANSLATION && advectionic_type == ADVECTIONIC_BUBBLE_CYLINDER && wind[2] != 0.) {
+  if (wind_type == ADVDIF_WIND_TRANSLATION && advectionic_type == ADVDIF_IC_BUBBLE_CYLINDER && wind[2] != 0.) {
     wind[2] = 0;
     PetscCall(
         PetscPrintf(comm, "Warning! Background wind in the z direction should be zero (-wind_translation x,x,0) with -advection_ic_type cylinder\n"));
@@ -236,6 +249,9 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   setup_context->initial_condition_type = advectionic_type;
   setup_context->bubble_continuity_type = bubble_continuity_type;
   setup_context->time                   = 0;
+  setup_context->wave_frequency         = wave_frequency;
+  setup_context->wave_phase             = wave_phase;
+  setup_context->wave_type              = wave_type;
 
   // -- QFunction Context
   user->phys->implicit             = implicit;
@@ -279,23 +295,37 @@ PetscErrorCode PRINT_ADVECTION(User user, ProblemData problem, AppCtx app_ctx) {
                         "  Problem:\n"
                         "    Problem Name                       : %s\n"
                         "    Stabilization                      : %s\n"
-                        "    Initial Condition Type             : %s\n"
-                        "    Bubble Continuity                  : %s\n"
+                        "    Stabilization Tau                  : %s\n"
                         "    Wind Type                          : %s\n",
-                        app_ctx->problem_name, StabilizationTypes[advection_ctx->stabilization], AdvectionICTypes[setup_ctx->initial_condition_type],
-                        BubbleContinuityTypes[setup_ctx->bubble_continuity_type], WindTypes[setup_ctx->wind_type]));
+                        app_ctx->problem_name, StabilizationTypes[advection_ctx->stabilization],
+                        StabilizationTauTypes[advection_ctx->stabilization_tau], AdvDifWindTypes[setup_ctx->wind_type]));
 
-  if (setup_ctx->wind_type == WIND_TRANSLATION) {
+  if (setup_ctx->wind_type == ADVDIF_WIND_TRANSLATION) {
+    CeedScalar *wind = setup_ctx->wind;
     switch (dim) {
       case 2:
-        PetscCall(PetscPrintf(comm, "    Background Wind                    : %f,%f\n", setup_ctx->wind[0], setup_ctx->wind[1]));
+        PetscCall(PetscPrintf(comm, "    Background Wind                    : %f,%f\n", wind[0], wind[1]));
         break;
       case 3:
-        PetscCall(
-            PetscPrintf(comm, "    Background Wind                    : %f,%f,%f\n", setup_ctx->wind[0], setup_ctx->wind[1], setup_ctx->wind[2]));
+        PetscCall(PetscPrintf(comm, "    Background Wind                    : %f,%f,%f\n", wind[0], wind[1], wind[2]));
         break;
     }
   }
+
+  PetscCall(PetscPrintf(comm, "    Initial Condition Type             : %s\n", AdvDifICTypes[setup_ctx->initial_condition_type]));
+  switch (setup_ctx->initial_condition_type) {
+    case ADVDIF_IC_SKEW:
+    case ADVDIF_IC_COSINE_HILL:
+      break;
+    case ADVDIF_IC_BUBBLE_SPHERE:
+    case ADVDIF_IC_BUBBLE_CYLINDER:
+      PetscCall(PetscPrintf(comm, "    Bubble Continuity                  : %s\n", AdvDifBubbleContinuityTypes[setup_ctx->bubble_continuity_type]));
+      break;
+    case ADVDIF_IC_WAVE:
+      PetscCall(PetscPrintf(comm, "    Wave Type                          : %s\n", AdvDifWaveTypes[setup_ctx->wave_type]));
+      break;
+  }
+
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &setup_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &advection_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);

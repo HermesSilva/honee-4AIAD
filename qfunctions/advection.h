@@ -76,27 +76,14 @@ CEED_QFUNCTION_HELPER CeedInt Exact_AdvectionGeneric(CeedInt dim, CeedScalar tim
 
   const CeedScalar x = X[0], y = X[1], z = dim == 2 ? 0. : X[2];
 
-  CeedScalar r = 0.;
-  switch (context->initial_condition_type) {
-    case ADVECTIONIC_BUBBLE_SPHERE:
-    case ADVECTIONIC_BUBBLE_CYLINDER:
-      r = sqrt(Square(x - x0[0]) + Square(y - x0[1]) + Square(z - x0[2]));
-      break;
-    case ADVECTIONIC_COSINE_HILL:
-      r = sqrt(Square(x - center[0]) + Square(y - center[1]));
-      break;
-    case ADVECTIONIC_SKEW:
-      break;
-  }
-
   switch (context->wind_type) {
-    case WIND_ROTATION:
+    case ADVDIF_WIND_ROTATION:
       q[0] = 1.;
       q[1] = -(y - center[1]);
       q[2] = (x - center[0]);
       q[3] = 0;
       break;
-    case WIND_TRANSLATION:
+    case ADVDIF_WIND_TRANSLATION:
       q[0] = 1.;
       q[1] = wind[0];
       q[2] = wind[1];
@@ -107,31 +94,37 @@ CEED_QFUNCTION_HELPER CeedInt Exact_AdvectionGeneric(CeedInt dim, CeedScalar tim
   }
 
   switch (context->initial_condition_type) {
-    case ADVECTIONIC_BUBBLE_SPHERE:
-    case ADVECTIONIC_BUBBLE_CYLINDER:
+    case ADVDIF_IC_BUBBLE_SPHERE:
+    case ADVDIF_IC_BUBBLE_CYLINDER: {
+      CeedScalar r = sqrt(Square(x - x0[0]) + Square(y - x0[1]) + Square(z - x0[2]));
+
       switch (context->bubble_continuity_type) {
         // original continuous, smooth shape
-        case BUBBLE_CONTINUITY_SMOOTH:
+        case ADVDIF_BUBBLE_CONTINUITY_SMOOTH:
           q[4] = r <= rc ? (1. - r / rc) : 0.;
           break;
         // discontinuous, sharp back half shape
-        case BUBBLE_CONTINUITY_BACK_SHARP:
+        case ADVDIF_BUBBLE_CONTINUITY_BACK_SHARP:
           q[4] = ((r <= rc) && (y < center[1])) ? (1. - r / rc) : 0.;
           break;
         // attempt to define a finite thickness that will get resolved under grid refinement
-        case BUBBLE_CONTINUITY_THICK:
+        case ADVDIF_BUBBLE_CONTINUITY_THICK:
           q[4] = ((r <= rc) && (y < center[1])) ? (1. - r / rc) * fmin(1.0, (center[1] - y) / 1.25) : 0.;
           break;
-        case BUBBLE_CONTINUITY_COSINE:
+        case ADVDIF_BUBBLE_CONTINUITY_COSINE:
           q[4] = r <= rc ? .5 + .5 * cos(r * M_PI / rc) : 0;
           break;
       }
       break;
-    case ADVECTIONIC_COSINE_HILL: {
+    }
+
+    case ADVDIF_IC_COSINE_HILL: {
+      CeedScalar r          = sqrt(Square(x - center[0]) + Square(y - center[1]));
       CeedScalar half_width = context->lx / 2;
       q[4]                  = r > half_width ? 0. : cos(2 * M_PI * r / half_width + M_PI) + 1.;
     } break;
-    case ADVECTIONIC_SKEW: {
+
+    case ADVDIF_IC_SKEW: {
       CeedScalar       skewed_barrier[3]  = {wind[0], wind[1], 0};
       CeedScalar       inflow_to_point[3] = {x - context->lx / 2, y, 0};
       CeedScalar       cross_product[3]   = {0};
@@ -147,6 +140,18 @@ CEED_QFUNCTION_HELPER CeedInt Exact_AdvectionGeneric(CeedInt dim, CeedScalar tim
         q[4] = 0;
       }
     } break;
+
+    case ADVDIF_IC_WAVE: {
+      CeedScalar theta = context->wave_frequency * DotN(X, wind, dim) + context->wave_phase;
+      switch (context->wave_type) {
+        case ADVDIF_WAVE_SINE:
+          q[4] = sin(theta);
+          break;
+        case ADVDIF_WAVE_SQUARE:
+          q[4] = sin(theta) > 100 * CEED_EPSILON ? 1 : -1;
+          break;
+      }
+    }
   }
   return 0;
 }

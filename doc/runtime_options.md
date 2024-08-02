@@ -274,9 +274,9 @@ Isoperiodicity enables standard boundary integrals, and is recommended for gener
 At the time of this writing, it only supports one direction of periodicity.
 The `zbox` method uses [Z-ordering](https://en.wikipedia.org/wiki/Z-order_curve) to construct the mesh in parallel and provide an adequate initial partition, which makes it higher performance and avoids needing a partitioning package.
 
-## Advection
+## Advection-Diffusion
 
-For testing purposes, there is a reduced mode for pure advection, which holds density $\rho$ and momentum density $\rho \bm u$ constant while advecting "total energy density" $E$.
+There is a reduced mode for pure advection, which holds density $\rho$ and momentum density $\rho \bm u$ constant while advecting "total energy density" $E$.
 The advection problems can be run in both 2D and 3D, based on the DM defined for the problem.
 The following additional command-line options are available:
 
@@ -359,13 +359,28 @@ The following additional command-line options are available:
   - `J`
 
 * - `-advection_ic_type`
-  - Initial condition type, from `sphere`, `cylinder`, `cosine_hill`, and `skew`
+  - Initial condition type, (`sphere`, `cylinder`, `cosine_hill`, `skew`, `wave`)
   - `sphere`
   -
 
 * - `-bubble_continuity`
   - Different shapes for `sphere` and `cylinder` initial conditions, from `smooth`, `back_sharp`, `thick`, or `cosine`
   - `smooth`
+  -
+
+* - `-wave_type`
+  - The wave form used for `-advection_ic_type wave` (`sine`, `square`)
+  - `sine`
+  -
+
+* - `-wave_frequency`
+  - Frequency of the wave
+  - $2\pi$
+  - `1/s`
+
+* - `-wave_phase`
+  - Phase angle of the wave
+  - $2\pi$
   -
 :::
 
