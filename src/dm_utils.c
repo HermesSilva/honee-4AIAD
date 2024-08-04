@@ -102,6 +102,36 @@ PetscErrorCode DMPlexCeedElemRestrictionCoordinateCreate(Ceed ceed, DM dm, DMLab
 }
 
 /**
+  @brief Get the points in a label stratum which have requested height
+
+  Example, from the "Face Sets" label (which contains face, edge, and vertex points), return points that correspond to face points (height = 1) and have a label value of 3:
+  ```
+  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", 3, 1, &is_face_points));
+  ```
+
+  @param[in]  dm     DM which has the label
+  @param[in]  name   Name fo the label
+  @param[in]  value  Label value of points to return
+  @param[in]  height Height of points to return
+  @param[out] points `IS` of points
+**/
+static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt value, PetscInt height, IS *points) {
+  PetscInt depth;
+  DMLabel  depth_label;
+  IS       label_is, depth_is;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMPlexGetDepth(dm, &depth));
+  PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
+  PetscCall(DMLabelGetStratumIS(depth_label, depth - height, &depth_is));
+  PetscCall(DMGetStratumIS(dm, name, value, &label_is));
+  PetscCall(ISIntersect(depth_is, label_is, points));
+  PetscCall(ISDestroy(&depth_is));
+  PetscCall(ISDestroy(&label_is));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Create `CeedElemRestriction` from `DMPlex` domain for auxilury `QFunction` data.
 
   Not collective across MPI processes.
@@ -816,9 +846,9 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
   @param[out]     face_label_name   Label name for newly created label, or `NULL` if no elements match the `material` and `dm_face`
 **/
 PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_name) {
-  PetscInt        num_label_points = 0, face_height = 1;
-  const PetscInt *label_points;
-  IS              is_label_points;
+  PetscInt        num_face_points = 0, face_height = 1;
+  const PetscInt *face_points;
+  IS              is_face_points;
   DMLabel         face_label = NULL;
   MPI_Comm        comm       = PetscObjectComm((PetscObject)dm);
 
@@ -837,24 +867,16 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_
     PetscCall(DMGetLabel(dm, *face_label_name, &face_label));
   }
 
-  PetscCall(DMGetStratumIS(dm, "Face Sets", dm_face, &is_label_points));
-  if (is_label_points) {
-    PetscCall(ISGetLocalSize(is_label_points, &num_label_points));
-    PetscCall(ISGetIndices(is_label_points, &label_points));
+  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", dm_face, face_height, &is_face_points));
+  if (is_face_points) {
+    PetscCall(ISGetLocalSize(is_face_points, &num_face_points));
+    PetscCall(ISGetIndices(is_face_points, &face_points));
   }
 
-  for (PetscInt face_index = 0; face_index < num_label_points; face_index++) {
+  for (PetscInt face_index = 0; face_index < num_face_points; face_index++) {
     const PetscInt *face_support, *cell_cone;
     PetscInt        face_support_size = 0, cell_cone_size = 0, fe_face_on_cell = -1;
-    PetscInt        face_point;
-
-    {  // Verify label point is a face point
-      PetscInt label_point = label_points[face_index], label_point_height = -1;
-
-      PetscCall(DMPlexGetPointHeight(dm, label_point, &label_point_height));
-      if (label_point_height != face_height) continue;
-      else face_point = label_point;
-    }
+    PetscInt        face_point = face_points[face_index];
 
     // Get cell supporting face
     PetscCall(DMPlexGetSupport(dm, face_point, &face_support));
@@ -875,7 +897,7 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_
     PetscCall(DMLabelSetValue(face_label, face_point, fe_face_on_cell));
   }
   PetscCall(DMPlexLabelAddFaceCells(dm, face_label));
-  PetscCall(ISDestroy(&is_label_points));
+  PetscCall(ISDestroy(&is_face_points));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
