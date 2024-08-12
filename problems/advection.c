@@ -21,7 +21,7 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
   CeedElemRestriction  elem_restr_q, elem_restr_qd_i;
   CeedBasis            basis_q;
   CeedVector           q_data;
-  CeedQFunctionContext qf_ctx = NULL;
+  CeedQFunctionContext qfctx = NULL;
   PetscInt             dim;
 
   PetscFunctionBeginUser;
@@ -40,7 +40,7 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(field, &elem_restr_qd_i));
     PetscCallCeed(ceed, CeedOperatorFieldGetVector(field, &q_data));
 
-    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &qf_ctx));
+    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &qfctx));
   }
 
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
@@ -55,7 +55,7 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
       break;
   }
 
-  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_mass, qf_ctx));
+  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_mass, qfctx));
   PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_mass, 0));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_mass, "q_dot", 5, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_mass, "q", 5, CEED_EVAL_INTERP));
@@ -70,7 +70,7 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
 
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&qf_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&qfctx));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
