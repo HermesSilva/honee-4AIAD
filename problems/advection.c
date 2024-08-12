@@ -453,6 +453,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   advection_ctx->Ctau_d            = Ctau_d;
   advection_ctx->Ctau_t            = Ctau_t;
   advection_ctx->diffusion_coeff   = diffusion_coeff;
+  advection_ctx->divFdiff_method   = user->app_ctx->divFdiffproj_method;
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &problem->ics.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));

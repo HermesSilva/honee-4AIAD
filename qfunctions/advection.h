@@ -246,15 +246,17 @@ CEED_QFUNCTION_HELPER CeedScalar Tau(AdvectionContext context, const State s, co
 // This QFunction implements Advection for implicit time stepping method
 // *****************************************************************************
 CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+  AdvectionContext context = (AdvectionContext)ctx;
+
   const CeedScalar(*q)[CEED_Q_VLA]     = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*grad_q)            = in[1];
   const CeedScalar(*q_dot)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[2];
   const CeedScalar(*q_data)            = in[3];
+  const CeedScalar(*divFdiff)          = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? in[5] : NULL;
 
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
-  AdvectionContext                 context = (AdvectionContext)ctx;
   NewtonianIdealGasContext         gas;
   struct NewtonianIdealGasContext_ gas_struct = {0};
   gas                                         = &gas_struct;
@@ -281,14 +283,11 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
         div_u += grad_s[k].Y.velocity[j];
       }
     }
-    CeedScalar strong_conv = s.U.E_total * div_u + DotN(s.Y.velocity, Grad_E, dim);
-    CeedScalar strong_res  = q_dot[4][i] + strong_conv;
-
-    v[4][i] = wdetJ * q_dot[4][i];  // transient part (ALWAYS)
-
     CeedScalar uX[3] = {0.};
     MatVecNM(dXdx, s.Y.velocity, dim, dim, CEED_NOTRANSPOSE, uX);
+    CeedScalar strong_conv = s.U.E_total * div_u + DotN(s.Y.velocity, Grad_E, dim);
 
+    v[4][i] = wdetJ * q_dot[4][i];  // transient part (ALWAYS)
     if (context->strong_form) {  // Strong Galerkin convection term: v div(E u)
       v[4][i] += wdetJ * strong_conv;
     } else {  // Weak Galerkin convection term: -dv \cdot (E u)
@@ -304,16 +303,19 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
     }
 
     const CeedScalar TauS = Tau(context, s, dXdx, dim);
-    for (CeedInt j = 0; j < dim; j++) switch (context->stabilization) {
+    for (CeedInt j = 0; j < dim; j++) {
+      switch (context->stabilization) {
         case STAB_NONE:
           break;
         case STAB_SU:
-          grad_v[j][4][i] += wdetJ * TauS * strong_conv * uX[j];
+          grad_v[j][4][i] += wdetJ * TauS * uX[j] * strong_conv;
           break;
-        case STAB_SUPG:
-          grad_v[j][4][i] += wdetJ * TauS * strong_res * uX[j];
-          break;
+        case STAB_SUPG: {
+          CeedScalar divFdiff_i = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? divFdiff[i] : 0.;
+          grad_v[j][4][i] += wdetJ * TauS * uX[j] * (q_dot[4][i] + strong_conv + divFdiff_i);
+        } break;
       }
+    }
   }
 }
 
