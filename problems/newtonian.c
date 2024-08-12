@@ -158,8 +158,8 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator
   CeedElemRestriction  elem_restr_q, elem_restr_qd_i;
   CeedBasis            basis_q;
   CeedVector           q_data;
-  CeedQFunctionContext qf_ctx = NULL;
-  PetscInt             dim    = 3;
+  CeedQFunctionContext qfctx = NULL;
+  PetscInt             dim   = 3;
 
   PetscFunctionBeginUser;
   {  // Get restriction and basis from the RHS function
@@ -176,7 +176,7 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(field, &elem_restr_qd_i));
     PetscCallCeed(ceed, CeedOperatorFieldGetVector(field, &q_data));
 
-    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &qf_ctx));
+    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &qfctx));
   }
 
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
@@ -184,7 +184,7 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator
 
   PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, MassFunction_Newtonian_Conserv, MassFunction_Newtonian_Conserv_loc, &qf_mass));
 
-  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_mass, qf_ctx));
+  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_mass, qfctx));
   PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_mass, 0));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_mass, "q_dot", 5, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_mass, "q", 5, CEED_EVAL_INTERP));
@@ -199,7 +199,7 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
 
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&qf_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&qfctx));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -218,8 +218,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedInt              num_comp_q;
   PetscInt             dim, label_value = 0;
-  DMLabel              domain_label     = NULL;
-  CeedQFunctionContext newtonian_qf_ctx = NULL;
+  DMLabel              domain_label    = NULL;
+  CeedQFunctionContext newtonian_qfctx = NULL;
 
   PetscFunctionBeginUser;
   // -- Get Pre-requisite things
@@ -231,7 +231,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
     PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
-    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qf_ctx));
+    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qfctx));
   }
   PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, op_rhs));
   {  // Add the volume integral CeedOperator
@@ -260,7 +260,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
         break;
     }
 
-    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_volume, newtonian_qf_ctx));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_volume, newtonian_qfctx));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_volume, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_volume, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_volume, "qdata", q_data_size, CEED_EVAL_NONE));
@@ -305,7 +305,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
     }
 
     PetscCall(QDataBoundaryGradientGetNumComponents(user->dm, &q_data_size));
-    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_boundary, newtonian_qf_ctx));
+    PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_boundary, newtonian_qfctx));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "qdata", q_data_size, CEED_EVAL_NONE));
@@ -364,7 +364,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_boundary));
   }
 
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&newtonian_qf_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&newtonian_qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -388,7 +388,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
   PetscInt             label_value = 0, height = 0, dm_field = 0;
   DMLabel              domain_label = NULL;
   CeedQFunction        qf_rhs;
-  CeedQFunctionContext newtonian_qf_ctx = NULL;
+  CeedQFunctionContext newtonian_qfctx = NULL;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(projection->dm, &dim));
@@ -399,7 +399,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
     PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
-    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qf_ctx));
+    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qfctx));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
   PetscCall(CreateBasisFromPlex(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
@@ -418,7 +418,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
       break;
   }
 
-  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs, newtonian_qf_ctx));
+  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs, newtonian_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "q", num_comp_q, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "qdata", q_data_size, CEED_EVAL_NONE));
@@ -431,7 +431,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
   PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "F_diff RHS", elem_restr_diff_flux, basis_diff_flux, CEED_VECTOR_ACTIVE));
 
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs));
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&newtonian_qf_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&newtonian_qfctx));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_diff_flux));
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
