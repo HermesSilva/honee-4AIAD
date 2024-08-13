@@ -284,8 +284,8 @@ For Advection-Diffusion, we use a modified version of the formulation for Navier
 
 $$
 \tau = \left [ \left(\frac{2 C_t}{\Delta t}\right)^2
-+ \frac{\bm u \cdot (\bm u \cdot  \bm g)}{C_a}
-+ \frac{\kappa^2 \Vert \bm g \Vert_F ^2}{C_d} \right]^{-1/2}
++ C_a \bm u \cdot (\bm u \cdot  \bm g)
++ C_d \kappa^2 \Vert \bm g \Vert_F ^2 \right]^{-1/2}
 $$
 for $C_t$, $C_a$, $C_d$ being some scaling coefficients.
 Otherwise, $C_a$ is set via `-Ctau_a` and $C_t$ via `-Ctau_t`.
