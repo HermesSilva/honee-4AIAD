@@ -134,6 +134,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscBool      strong_form     = PETSC_FALSE;
   CeedScalar     E_wind          = 1.e6;  // J
   CeedScalar     Ctau_a          = PetscPowScalarInt(user->app_ctx->degree, 2);
+  CeedScalar     Ctau_d          = PetscPowScalarInt(user->app_ctx->degree, 4);
   CeedScalar     Ctau_t          = 0.;
   PetscReal      wind[3]         = {1., 0, 0};  // m/s
   CeedScalar     diffusion_coeff = 0.;
@@ -175,7 +176,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscCall(PetscOptionsEnum("-stab_tau", "Stabilization constant, tau", NULL, StabilizationTauTypes, (PetscEnum)(stab_tau = STAB_TAU_CTAU),
                              (PetscEnum *)&stab_tau, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, Ctau_t, &Ctau_t, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_a", "Coefficient for the stabilization ", NULL, Ctau_a, &Ctau_a, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_a", "Coefficient for the stabilization, advection component", NULL, Ctau_a, &Ctau_a, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_d", "Coefficient for the stabilization, diffusion component", NULL, Ctau_d, &Ctau_d, NULL));
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
 
   if (advectionic_type == ADVDIF_IC_WAVE) {
@@ -262,6 +264,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   advection_ctx->stabilization     = stab;
   advection_ctx->stabilization_tau = stab_tau;
   advection_ctx->Ctau_a            = Ctau_a;
+  advection_ctx->Ctau_d            = Ctau_d;
   advection_ctx->Ctau_t            = Ctau_t;
   advection_ctx->diffusion_coeff   = diffusion_coeff;
 

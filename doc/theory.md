@@ -284,11 +284,11 @@ For Advection-Diffusion, we use a modified version of the formulation for Navier
 
 $$
 \tau = \left [ \left(\frac{2 C_t}{\Delta t}\right)^2
-+ \frac{\bm u \cdot (\bm u \cdot  \bm g)}{C_a}
-+ \frac{\kappa^2 \Vert \bm g \Vert_F ^2}{C_d} \right]^{-1/2}
++ C_a \bm u \cdot (\bm u \cdot  \bm g)
++ C_d \kappa^2 \Vert \bm g \Vert_F ^2 \right]^{-1/2}
 $$
 for $C_t$, $C_a$, $C_d$ being some scaling coefficients.
-Otherwise, $C_a$ is set via `-Ctau_a` and $C_t$ via `-Ctau_t`.
+They are set via `-Ctau_t`, `-Ctau_a`, and `-Ctau_d`, respectively.
 
 In the Euler code, we follow {cite}`hughesetal2010` in defining a $3\times 3$ diagonal stabilization according to spatial criterion 2 (equation 27) as follows.
 
