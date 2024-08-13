@@ -234,7 +234,8 @@ CEED_QFUNCTION_HELPER CeedScalar Tau(AdvectionContext context, const State s, co
 
       MatMatN(dXdx, dXdx, dim, CEED_TRANSPOSE, CEED_NOTRANSPOSE, gijd_mat);
       MatVecNM(gijd_mat, s.Y.velocity, dim, dim, CEED_NOTRANSPOSE, gij_uj);
-      return 1 / sqrt(Square(2 * context->Ctau_t / context->dt) + DotN(s.Y.velocity, gij_uj, dim) * context->Ctau_a);
+      return 1 / sqrt(Square(2 * context->Ctau_t / context->dt) + DotN(s.Y.velocity, gij_uj, dim) * context->Ctau_a +
+                      Square(context->diffusion_coeff) * DotN(gijd_mat, gijd_mat, dim * dim) * context->Ctau_d);
     } break;
     default:
       return 0.;

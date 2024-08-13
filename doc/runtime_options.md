@@ -333,6 +333,11 @@ The following additional command-line options are available:
   - $P^2$
   -
 
+* - `-Ctau_d`
+  - Scaling factor on the diffusion portion of the $\tau$ formulation
+  - $P^4$
+  -
+
 * - `-CtauS`
   - Scale coefficient for stabilization tau (nondimensional)
   - `0`
