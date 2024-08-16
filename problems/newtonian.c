@@ -394,7 +394,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
   PetscCall(DMGetDimension(projection->dm, &dim));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
 
-  {  // Get elem_restr_div_diff_flux
+  {  // Get newtonian QF context
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 

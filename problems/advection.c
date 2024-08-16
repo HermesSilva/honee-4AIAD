@@ -97,7 +97,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, Ce
   PetscCall(DMGetDimension(projection->dm, &dim));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
 
-  {  // Get newtonian QF context
+  {  // Get advection-diffusion QF context
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
@@ -229,6 +229,74 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, Ce
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+  @brief Create RHS CeedOperator for indirect projection of divergence of diffusive flux
+
+  @param[in]  user           `User` object
+  @param[in]  ceed_data      `CeedData` object
+  @param[in]  diff_flux_proj `DivDiffFluxProjectionData` object
+  @param[out] op_rhs         Operator to calculate the RHS of the L^2 projection
+**/
+static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
+                                                                     CeedOperator *op_rhs) {
+  Ceed                 ceed       = user->ceed;
+  NodalProjectionData  projection = diff_flux_proj->projection;
+  CeedBasis            basis_diff_flux;
+  CeedElemRestriction  elem_restr_diff_flux, elem_restr_qd;
+  CeedVector           q_data;
+  CeedInt              num_comp_q, q_data_size;
+  PetscInt             dim;
+  PetscInt             label_value = 0, height = 0, dm_field = 0;
+  DMLabel              domain_label    = NULL;
+  CeedQFunction        qf_rhs          = NULL;
+  CeedQFunctionContext advection_qfctx = NULL;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetDimension(projection->dm, &dim));
+  PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
+
+  {  // Get advection-diffusion QF context
+    CeedOperator *sub_ops;
+    PetscInt      sub_op_index = 0;  // will be 0 for the volume op
+
+    if (user->op_ifunction) PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
+    else PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_rhs_ctx->op, &sub_ops));
+    PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &advection_qfctx));
+  }
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
+  PetscCall(CreateBasisFromPlex(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
+  PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
+
+  switch (dim) {
+    case 2:
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DiffusiveFluxRHS_AdvDif_2D, DiffusiveFluxRHS_AdvDif_2D_loc, &qf_rhs));
+      break;
+    case 3:
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DiffusiveFluxRHS_AdvDif_3D, DiffusiveFluxRHS_AdvDif_3D_loc, &qf_rhs));
+      break;
+  }
+  PetscCheck(qf_rhs, user->comm, PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
+
+  PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs, advection_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "qdata", q_data_size, CEED_EVAL_NONE));
+  PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs, "F_diff RHS", projection->num_comp, CEED_EVAL_INTERP));
+
+  PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs, NULL, NULL, op_rhs));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "Grad_q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "F_diff RHS", elem_restr_diff_flux, basis_diff_flux, CEED_VECTOR_ACTIVE));
+
+  PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs));
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&advection_qfctx));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_diff_flux));
+  PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_diff_flux));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   AdvDifWindType             wind_type;
   AdvDifICType               advectionic_type;
@@ -286,7 +354,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
     NodalProjectionData       projection     = diff_flux_proj->projection;
 
     diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_AdvDif;
-    diff_flux_proj->CreateRHSOperator_Indirect = NULL;
+    diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_AdvDif;
 
     switch (user->diff_flux_proj->method) {
       case DIV_DIFF_FLUX_PROJ_DIRECT: {
@@ -303,7 +371,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
         PetscCall(PetscSectionSetFieldName(section, 0, ""));
         PetscCall(PetscSectionSetComponentName(section, 0, 0, "DiffusiveFlux_ScalarX"));
         PetscCall(PetscSectionSetComponentName(section, 0, 1, "DiffusiveFlux_ScalarY"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 2, "DiffusiveFlux_ScalarZ"));
+        if (dim >= 3) PetscCall(PetscSectionSetComponentName(section, 0, 2, "DiffusiveFlux_ScalarZ"));
       } break;
       case DIV_DIFF_FLUX_PROJ_NONE:
         SETERRQ(PetscObjectComm((PetscObject)user->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",

@@ -596,3 +596,37 @@ CEED_QFUNCTION(DivDiffusiveFluxBoundaryRHS_AdvDif_2D)(void *ctx, CeedInt Q, cons
 CEED_QFUNCTION(DivDiffusiveFluxBoundaryRHS_AdvDif_3D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
   return DivDiffusiveFluxBoundaryRHS_AdvDif_Generic(ctx, Q, in, out, 3);
 }
+
+// @brief Volume integral for RHS of diffusive flux indirect projection
+CEED_QFUNCTION_HELPER int DiffusiveFluxRHS_AdvDif_Generic(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
+                                                          const CeedInt dim) {
+  const CeedScalar(*Grad_q)  = in[0];
+  const CeedScalar(*q_data)  = in[1];
+  CeedScalar(*v)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
+
+  AdvectionContext context = (AdvectionContext)ctx;
+
+  CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
+    CeedScalar wdetJ, dXdx[9], F_diff[3] = {0.};
+
+    QdataUnpack_ND(dim, Q, i, q_data, &wdetJ, dXdx);
+    {  // Get physical diffusive flux
+      CeedScalar Grad_qn[15], grad_E_ref[3];
+
+      GradUnpackN(Q, i, 5, dim, Grad_q, Grad_qn);
+      CopyN(&Grad_qn[4 * dim], grad_E_ref, dim);
+      MatVecNM(dXdx, grad_E_ref, dim, dim, CEED_NOTRANSPOSE, F_diff);
+      ScaleN(F_diff, -context->diffusion_coeff, dim);
+    }
+    for (CeedInt k = 0; k < dim; k++) v[k][i] = wdetJ * F_diff[k];
+  }
+  return 0;
+}
+
+CEED_QFUNCTION(DiffusiveFluxRHS_AdvDif_2D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DiffusiveFluxRHS_AdvDif_Generic(ctx, Q, in, out, 2);
+}
+
+CEED_QFUNCTION(DiffusiveFluxRHS_AdvDif_3D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DiffusiveFluxRHS_AdvDif_Generic(ctx, Q, in, out, 3);
+}
