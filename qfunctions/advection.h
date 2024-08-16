@@ -288,7 +288,7 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
     CeedScalar strong_conv = s.U.E_total * div_u + DotN(s.Y.velocity, Grad_E, dim);
 
     v[4][i] = wdetJ * q_dot[4][i];  // transient part (ALWAYS)
-    if (context->strong_form) {  // Strong Galerkin convection term: v div(E u)
+    if (context->strong_form) {     // Strong Galerkin convection term: v div(E u)
       v[4][i] += wdetJ * strong_conv;
     } else {  // Weak Galerkin convection term: -dv \cdot (E u)
       for (CeedInt j = 0; j < dim; j++) grad_v[j][4][i] = -wdetJ * s.U.E_total * uX[j];
@@ -385,14 +385,16 @@ CEED_QFUNCTION(MassFunction_Advection2D)(void *ctx, CeedInt Q, const CeedScalar 
 // This QFunction implements Advection for explicit time stepping method
 // *****************************************************************************
 CEED_QFUNCTION_HELPER void RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+  AdvectionContext context = (AdvectionContext)ctx;
+
   const CeedScalar(*q)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*grad_q)        = in[1];
   const CeedScalar(*q_data)        = in[2];
+  const CeedScalar(*divFdiff)      = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? in[4] : NULL;
 
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
-  AdvectionContext                 context    = (AdvectionContext)ctx;
   struct NewtonianIdealGasContext_ gas_struct = {0};
   NewtonianIdealGasContext         gas        = &gas_struct;
 
@@ -440,14 +442,17 @@ CEED_QFUNCTION_HELPER void RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, co
     }
 
     const CeedScalar TauS = Tau(context, s, dXdx, dim);
-    for (CeedInt j = 0; j < dim; j++) switch (context->stabilization) {
+    for (CeedInt j = 0; j < dim; j++) {
+      switch (context->stabilization) {
         case STAB_NONE:
           break;
         case STAB_SU:
-        case STAB_SUPG:
-          grad_v[j][4][i] -= wdetJ * TauS * strong_conv * uX[j];
-          break;
+        case STAB_SUPG: {
+          CeedScalar divFdiff_i = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? divFdiff[i] : 0.;
+          grad_v[j][4][i] -= wdetJ * TauS * (strong_conv + divFdiff_i) * uX[j];
+        } break;
       }
+    }
   }
 }
 

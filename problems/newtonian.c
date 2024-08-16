@@ -632,7 +632,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
              "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
   PetscCheck(!(user->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE && !implicit), comm, PETSC_ERR_SUP,
-             "Projection of divergence of diffusive flux is not implemented for explicit timestepping");
+             "Projection of divergence of diffusive flux is not implemented for Navier-Stokes with explicit timestepping");
 
   PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
                                NULL, idl_decay_time, &idl_decay_time, &idl_enable));

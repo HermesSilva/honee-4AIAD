@@ -367,6 +367,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "x", num_comp_x, CEED_EVAL_INTERP));
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+      PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "div F_diff", user->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
@@ -375,6 +377,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, User user, App
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+      PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "div F_diff", elem_restr_diff_flux, basis_diff_flux, div_diff_flux_ceed));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
 
