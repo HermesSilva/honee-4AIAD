@@ -1,4 +1,3 @@
-ceed: /cpu/self
 problem: advection
 stab: supg
 stab_tau: advdiff_shakib
