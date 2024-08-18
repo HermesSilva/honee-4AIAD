@@ -7,7 +7,7 @@
 #include <math.h>
 
 // *****************************************************************************
-// This QFunction applies the mass matrix to five interlaced fields.
+// This QFunction applies the mass matrix to N components
 //
 // Inputs:
 //   u      - Input vector at quadrature points
