@@ -37,3 +37,11 @@ CEED_QFUNCTION_HELPER int ComputeDivDiffusiveFluxGeneric(void *ctx, CeedInt Q, c
 CEED_QFUNCTION(ComputeDivDiffusiveFlux3D_4)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
   return ComputeDivDiffusiveFluxGeneric(ctx, Q, in, out, 3, 4);
 }
+
+CEED_QFUNCTION(ComputeDivDiffusiveFlux3D_1)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return ComputeDivDiffusiveFluxGeneric(ctx, Q, in, out, 3, 1);
+}
+
+CEED_QFUNCTION(ComputeDivDiffusiveFlux2D_1)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return ComputeDivDiffusiveFluxGeneric(ctx, Q, in, out, 2, 1);
+}

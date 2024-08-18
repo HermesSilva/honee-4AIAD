@@ -149,3 +149,40 @@ CEED_QFUNCTION(Setup2D_3Dcoords)(void *ctx, CeedInt Q, const CeedScalar *const *
   }
   return 0;
 }
+
+/**
+  @brief Compute geometric factors for integration, gradient transformations, and coordinate transformations on element faces.
+
+  Reference (parent) 1D coordinates are given by `X` and physical (current) 2D coordinates are given by `x`.
+  The change of coordinate matrix is given by`dxdX_{i,j} = dx_i/dX_j (indicial notation) [2 * 1]`.
+
+  @param[in]   ctx  QFunction context, unused
+  @param[in]   Q    Number of quadrature points
+  @param[in]   in   Input arrays
+                      - 0 - Jacobian of cell coordinates
+                      - 1 - Jacobian of face coordinates
+                      - 2 - quadrature weights
+  @param[out]  out  Output array
+                      - 0 - qdata, `w detNb`, `dXdx`, and `N`
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+CEED_QFUNCTION(Setup2DBoundaryGradient)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  const CeedScalar(*J_cell)[2][CEED_Q_VLA] = (const CeedScalar(*)[2][CEED_Q_VLA])in[0];
+  const CeedScalar(*J_face)[CEED_Q_VLA]    = (const CeedScalar(*)[CEED_Q_VLA])in[1];
+  const CeedScalar(*w)                     = in[2];
+  CeedScalar(*q_data_sur)                  = out[0];
+
+  CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
+    CeedScalar detJ_face, normal[2], dXdx[2][2];
+
+    NormalVectorFromdxdX_2D(Q, i, J_face, normal, &detJ_face);
+    const CeedScalar wdetJ = w[i] * detJ_face;
+    InvertMappingJacobian_2D(Q, i, J_cell, dXdx, NULL);
+
+    StoredValuesPack(Q, i, 0, 1, &wdetJ, q_data_sur);
+    StoredValuesPack(Q, i, 1, 4, (CeedScalar *)dXdx, q_data_sur);
+    StoredValuesPack(Q, i, 5, 2, normal, q_data_sur);
+  }
+  return CEED_ERROR_SUCCESS;
+}

@@ -250,7 +250,7 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(User user, CeedData ce
   }
 
   {  // Create OperatorApplyContext to calculate divergence at quadrature points
-    CeedQFunction       qf_calc_divergence;
+    CeedQFunction       qf_calc_divergence = NULL;
     CeedOperator        op_calc_divergence;
     CeedElemRestriction elem_restr_div_diff_flux = NULL;
     PetscInt            dim;
@@ -258,11 +258,37 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(User user, CeedData ce
     PetscCall(DMGetDimension(projection->dm, &dim));
     PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_div_diff_flux, NULL, NULL, NULL));
 
-    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ComputeDivDiffusiveFlux3D_4, ComputeDivDiffusiveFlux3D_4_loc, &qf_calc_divergence));
+    switch (dim) {
+      case 2:
+        switch (diff_flux_proj->num_diff_flux_comps) {
+          case 1:
+            PetscCallCeed(ceed,
+                          CeedQFunctionCreateInterior(ceed, 1, ComputeDivDiffusiveFlux2D_1, ComputeDivDiffusiveFlux2D_1_loc, &qf_calc_divergence));
+            break;
+        }
+        break;
+      case 3:
+        switch (diff_flux_proj->num_diff_flux_comps) {
+          case 1:
+            PetscCallCeed(ceed,
+                          CeedQFunctionCreateInterior(ceed, 1, ComputeDivDiffusiveFlux3D_1, ComputeDivDiffusiveFlux3D_1_loc, &qf_calc_divergence));
+            break;
+          case 4:
+            PetscCallCeed(ceed,
+                          CeedQFunctionCreateInterior(ceed, 1, ComputeDivDiffusiveFlux3D_4, ComputeDivDiffusiveFlux3D_4_loc, &qf_calc_divergence));
+            break;
+        }
+        break;
+    }
+    PetscCheck(qf_calc_divergence, comm, PETSC_ERR_SUP,
+               "QFunction for calculating divergence of diffusive flux does not exist for"
+               " %" PetscInt_FMT " dimensional grid and %" PetscInt_FMT
+               " number of components.\nA new qfunction can be easily added; see source code for pattern.",
+               dim, diff_flux_proj->num_diff_flux_comps);
 
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_calc_divergence, "Grad F_diff", projection->num_comp * dim, CEED_EVAL_GRAD));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_calc_divergence, "qdata", q_data_size, CEED_EVAL_NONE));
-    PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_calc_divergence, "Div F_diff", 4, CEED_EVAL_NONE));
+    PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_calc_divergence, "Div F_diff", diff_flux_proj->num_diff_flux_comps, CEED_EVAL_NONE));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_calc_divergence, NULL, NULL, &op_calc_divergence));
     PetscCallCeed(ceed, CeedOperatorSetField(op_calc_divergence, "Grad F_diff", elem_restr_diff_flux, basis_diff_flux, CEED_VECTOR_ACTIVE));

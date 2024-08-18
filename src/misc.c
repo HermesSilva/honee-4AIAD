@@ -187,6 +187,12 @@ PetscErrorCode CreateMassQFunction(Ceed ceed, CeedInt N, CeedInt q_data_size, Ce
     case 1:
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_1, Mass_1_loc, qf));
       break;
+    case 2:
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 2, Mass_2, Mass_2_loc, qf));
+      break;
+    case 3:
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 3, Mass_3, Mass_3_loc, qf));
+      break;
     case 4:
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 4, Mass_4, Mass_4_loc, qf));
       break;
@@ -206,7 +212,8 @@ PetscErrorCode CreateMassQFunction(Ceed ceed, CeedInt N, CeedInt q_data_size, Ce
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_22, Mass_22_loc, qf));
       break;
     default:
-      SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "Could not find mass qfunction of size %d", N);
+      SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP,
+              "Mass qfunction of size %" CeedInt_FMT " does not exist.\nA new mass qfunction can be easily added; see source code for pattern.", N);
   }
 
   PetscCallCeed(ceed, CeedQFunctionAddInput(*qf, "u", N, CEED_EVAL_INTERP));

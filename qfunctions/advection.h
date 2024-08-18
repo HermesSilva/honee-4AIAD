@@ -246,15 +246,17 @@ CEED_QFUNCTION_HELPER CeedScalar Tau(AdvectionContext context, const State s, co
 // This QFunction implements Advection for implicit time stepping method
 // *****************************************************************************
 CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+  AdvectionContext context = (AdvectionContext)ctx;
+
   const CeedScalar(*q)[CEED_Q_VLA]     = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*grad_q)            = in[1];
   const CeedScalar(*q_dot)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[2];
   const CeedScalar(*q_data)            = in[3];
+  const CeedScalar(*divFdiff)          = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? in[5] : NULL;
 
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
-  AdvectionContext                 context = (AdvectionContext)ctx;
   NewtonianIdealGasContext         gas;
   struct NewtonianIdealGasContext_ gas_struct = {0};
   gas                                         = &gas_struct;
@@ -281,15 +283,12 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
         div_u += grad_s[k].Y.velocity[j];
       }
     }
-    CeedScalar strong_conv = s.U.E_total * div_u + DotN(s.Y.velocity, Grad_E, dim);
-    CeedScalar strong_res  = q_dot[4][i] + strong_conv;
-
-    v[4][i] = wdetJ * q_dot[4][i];  // transient part (ALWAYS)
-
     CeedScalar uX[3] = {0.};
     MatVecNM(dXdx, s.Y.velocity, dim, dim, CEED_NOTRANSPOSE, uX);
+    CeedScalar strong_conv = s.U.E_total * div_u + DotN(s.Y.velocity, Grad_E, dim);
 
-    if (context->strong_form) {  // Strong Galerkin convection term: v div(E u)
+    v[4][i] = wdetJ * q_dot[4][i];  // transient part (ALWAYS)
+    if (context->strong_form) {     // Strong Galerkin convection term: v div(E u)
       v[4][i] += wdetJ * strong_conv;
     } else {  // Weak Galerkin convection term: -dv \cdot (E u)
       for (CeedInt j = 0; j < dim; j++) grad_v[j][4][i] = -wdetJ * s.U.E_total * uX[j];
@@ -304,16 +303,19 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
     }
 
     const CeedScalar TauS = Tau(context, s, dXdx, dim);
-    for (CeedInt j = 0; j < dim; j++) switch (context->stabilization) {
+    for (CeedInt j = 0; j < dim; j++) {
+      switch (context->stabilization) {
         case STAB_NONE:
           break;
         case STAB_SU:
-          grad_v[j][4][i] += wdetJ * TauS * strong_conv * uX[j];
+          grad_v[j][4][i] += wdetJ * TauS * uX[j] * strong_conv;
           break;
-        case STAB_SUPG:
-          grad_v[j][4][i] += wdetJ * TauS * strong_res * uX[j];
-          break;
+        case STAB_SUPG: {
+          CeedScalar divFdiff_i = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? divFdiff[i] : 0.;
+          grad_v[j][4][i] += wdetJ * TauS * uX[j] * (q_dot[4][i] + strong_conv + divFdiff_i);
+        } break;
       }
+    }
   }
 }
 
@@ -383,14 +385,16 @@ CEED_QFUNCTION(MassFunction_Advection2D)(void *ctx, CeedInt Q, const CeedScalar 
 // This QFunction implements Advection for explicit time stepping method
 // *****************************************************************************
 CEED_QFUNCTION_HELPER void RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+  AdvectionContext context = (AdvectionContext)ctx;
+
   const CeedScalar(*q)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*grad_q)        = in[1];
   const CeedScalar(*q_data)        = in[2];
+  const CeedScalar(*divFdiff)      = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? in[4] : NULL;
 
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
-  AdvectionContext                 context    = (AdvectionContext)ctx;
   struct NewtonianIdealGasContext_ gas_struct = {0};
   NewtonianIdealGasContext         gas        = &gas_struct;
 
@@ -438,14 +442,17 @@ CEED_QFUNCTION_HELPER void RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, co
     }
 
     const CeedScalar TauS = Tau(context, s, dXdx, dim);
-    for (CeedInt j = 0; j < dim; j++) switch (context->stabilization) {
+    for (CeedInt j = 0; j < dim; j++) {
+      switch (context->stabilization) {
         case STAB_NONE:
           break;
         case STAB_SU:
-        case STAB_SUPG:
-          grad_v[j][4][i] -= wdetJ * TauS * strong_conv * uX[j];
-          break;
+        case STAB_SUPG: {
+          CeedScalar divFdiff_i = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? divFdiff[i] : 0.;
+          grad_v[j][4][i] -= wdetJ * TauS * (strong_conv + divFdiff_i) * uX[j];
+        } break;
       }
+    }
   }
 }
 
@@ -516,4 +523,110 @@ CEED_QFUNCTION(Advection_InOutFlow)(void *ctx, CeedInt Q, const CeedScalar *cons
 CEED_QFUNCTION(Advection2d_InOutFlow)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
   Advection_InOutFlowGeneric(ctx, Q, in, out, 2);
   return 0;
+}
+
+// @brief Volume integral for RHS of divergence of diffusive flux direct projection
+CEED_QFUNCTION_HELPER int DivDiffusiveFluxVolumeRHS_AdvDif_Generic(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
+                                                                   const CeedInt dim) {
+  const CeedScalar(*Grad_q)       = in[0];
+  const CeedScalar(*q_data)       = in[1];
+  CeedScalar(*Grad_v)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
+
+  AdvectionContext context = (AdvectionContext)ctx;
+
+  CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
+    CeedScalar wdetJ, dXdx[9], F_diff[3] = {0.};
+
+    QdataUnpack_ND(dim, Q, i, q_data, &wdetJ, dXdx);
+    {  // Get physical diffusive flux
+      CeedScalar Grad_qn[15], grad_E_ref[3];
+
+      GradUnpackN(Q, i, 5, dim, Grad_q, Grad_qn);
+      CopyN(&Grad_qn[4 * dim], grad_E_ref, dim);
+      MatVecNM(dXdx, grad_E_ref, dim, dim, CEED_NOTRANSPOSE, F_diff);
+      ScaleN(F_diff, -context->diffusion_coeff, dim);
+    }
+
+    CeedScalar F_diff_dXdx[3] = {0.};
+    MatVecNM(dXdx, F_diff, dim, dim, CEED_NOTRANSPOSE, F_diff_dXdx);
+    for (CeedInt k = 0; k < dim; k++) Grad_v[k][i] = -wdetJ * F_diff_dXdx[k];
+  }
+  return 0;
+}
+
+CEED_QFUNCTION(DivDiffusiveFluxVolumeRHS_AdvDif_2D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DivDiffusiveFluxVolumeRHS_AdvDif_Generic(ctx, Q, in, out, 2);
+}
+
+CEED_QFUNCTION(DivDiffusiveFluxVolumeRHS_AdvDif_3D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DivDiffusiveFluxVolumeRHS_AdvDif_Generic(ctx, Q, in, out, 3);
+}
+
+// @brief Boundary integral for RHS of divergence of diffusive flux direct projection
+CEED_QFUNCTION_HELPER int DivDiffusiveFluxBoundaryRHS_AdvDif_Generic(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
+                                                                     const CeedInt dim) {
+  const CeedScalar(*Grad_q) = in[0];
+  const CeedScalar(*q_data) = in[1];
+  CeedScalar(*v)            = out[0];
+
+  AdvectionContext context = (AdvectionContext)ctx;
+
+  CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
+    CeedScalar wdetJ, normal[3], dXdx[9], F_diff[3] = {0.};
+
+    QdataBoundaryGradientUnpack_ND(dim, Q, i, q_data, &wdetJ, dXdx, normal);
+    {  // Get physical diffusive flux
+      CeedScalar Grad_qn[15], grad_E_ref[3];
+
+      GradUnpackN(Q, i, 5, dim, Grad_q, Grad_qn);
+      CopyN(&Grad_qn[4 * dim], grad_E_ref, dim);
+      MatVecNM(dXdx, grad_E_ref, dim, dim, CEED_NOTRANSPOSE, F_diff);
+      ScaleN(F_diff, -context->diffusion_coeff, dim);
+    }
+
+    v[i] = wdetJ * DotN(F_diff, normal, dim);
+  }
+  return 0;
+}
+
+CEED_QFUNCTION(DivDiffusiveFluxBoundaryRHS_AdvDif_2D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DivDiffusiveFluxBoundaryRHS_AdvDif_Generic(ctx, Q, in, out, 2);
+}
+
+CEED_QFUNCTION(DivDiffusiveFluxBoundaryRHS_AdvDif_3D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DivDiffusiveFluxBoundaryRHS_AdvDif_Generic(ctx, Q, in, out, 3);
+}
+
+// @brief Volume integral for RHS of diffusive flux indirect projection
+CEED_QFUNCTION_HELPER int DiffusiveFluxRHS_AdvDif_Generic(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
+                                                          const CeedInt dim) {
+  const CeedScalar(*Grad_q)  = in[0];
+  const CeedScalar(*q_data)  = in[1];
+  CeedScalar(*v)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
+
+  AdvectionContext context = (AdvectionContext)ctx;
+
+  CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
+    CeedScalar wdetJ, dXdx[9], F_diff[3] = {0.};
+
+    QdataUnpack_ND(dim, Q, i, q_data, &wdetJ, dXdx);
+    {  // Get physical diffusive flux
+      CeedScalar Grad_qn[15], grad_E_ref[3];
+
+      GradUnpackN(Q, i, 5, dim, Grad_q, Grad_qn);
+      CopyN(&Grad_qn[4 * dim], grad_E_ref, dim);
+      MatVecNM(dXdx, grad_E_ref, dim, dim, CEED_NOTRANSPOSE, F_diff);
+      ScaleN(F_diff, -context->diffusion_coeff, dim);
+    }
+    for (CeedInt k = 0; k < dim; k++) v[k][i] = wdetJ * F_diff[k];
+  }
+  return 0;
+}
+
+CEED_QFUNCTION(DiffusiveFluxRHS_AdvDif_2D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DiffusiveFluxRHS_AdvDif_Generic(ctx, Q, in, out, 2);
+}
+
+CEED_QFUNCTION(DiffusiveFluxRHS_AdvDif_3D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  return DiffusiveFluxRHS_AdvDif_Generic(ctx, Q, in, out, 3);
 }

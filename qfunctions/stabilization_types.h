@@ -12,3 +12,9 @@ typedef enum {
   STAB_TAU_CTAU           = 0,
   STAB_TAU_ADVDIFF_SHAKIB = 1,  // Approximation from Shakib's Thesis
 } StabilizationTauType;
+
+typedef enum {
+  DIV_DIFF_FLUX_PROJ_NONE     = 0,
+  DIV_DIFF_FLUX_PROJ_DIRECT   = 1,
+  DIV_DIFF_FLUX_PROJ_INDIRECT = 2,
+} DivDiffFluxProjectionMethod;

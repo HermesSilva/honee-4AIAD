@@ -41,10 +41,11 @@ struct AdvectionContext_ {
   CeedScalar dt;
   CeedScalar diffusion_coeff;
 
-  StabilizationType    stabilization;
-  StabilizationTauType stabilization_tau;
-  CeedScalar           CtauS;
-  CeedScalar           Ctau_a, Ctau_d, Ctau_t;
+  StabilizationType           stabilization;
+  StabilizationTauType        stabilization_tau;
+  CeedScalar                  CtauS;
+  CeedScalar                  Ctau_a, Ctau_d, Ctau_t;
+  DivDiffFluxProjectionMethod divFdiff_method;
 };
 
 typedef struct SetupContextAdv_ *SetupContextAdv;

@@ -38,7 +38,9 @@ PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
   PetscCall(TSGetTimeStep(ts, &dt));
   if (user->phys->timestep_size_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(user->op_rhs_ctx->op, user->phys->timestep_size_label, &dt));
 
-  PetscCall(ApplyCeedOperatorGlobalToGlobal(Q, G, user->op_rhs_ctx));
+  PetscCall(DMGlobalToLocal(user->dm, Q, INSERT_VALUES, Q_loc));
+  if (user->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(user->diff_flux_proj, Q_loc));
+  PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, G, user->op_rhs_ctx));
 
   PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, user->q_ceed));
 
