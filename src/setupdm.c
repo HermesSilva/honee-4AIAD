@@ -27,9 +27,9 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
 
   // Set Tensor elements
   PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_plex_simplex", "0"));
-  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_sparse_localize", "0"));
-  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_localize", "0"));  // Localization done in DMSetupByOrderEnd_FEM
-  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_blocking_type", "field_node"));
+  PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_localize", "0"));  // Delay localization until DMSetupByOrderEnd_FEM
+  PetscCall(DMSetSparseLocalize(*dm, PETSC_FALSE));
+  PetscCall(DMSetBlockingType(*dm, DM_BLOCKING_FIELD_NODE));
 
   // Set CL options
   PetscCall(DMSetFromOptions(*dm));
