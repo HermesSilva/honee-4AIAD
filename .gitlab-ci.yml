@@ -177,7 +177,7 @@ noether-cpu:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
+        gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
       fi
   coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
@@ -239,7 +239,7 @@ noether-cpu-int64:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
+        gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
       fi
   coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
@@ -298,7 +298,7 @@ noether-hip:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
+        gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
       fi
   coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
@@ -355,7 +355,7 @@ noether-cuda:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --xml-pretty --exclude-unreachable-branches --print-summary -o coverage.xml;
+        gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
       fi
   coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
