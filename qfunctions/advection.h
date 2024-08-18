@@ -62,7 +62,7 @@
 // *****************************************************************************
 // This helper function provides the exact, time-dependent solution and IC formulation for 2D advection
 // *****************************************************************************
-CEED_QFUNCTION_HELPER CeedInt Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, const CeedScalar X[], CeedInt Nf, CeedScalar q[], void *ctx) {
+CEED_QFUNCTION_HELPER int Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, const CeedScalar X[], CeedInt Nf, CeedScalar q[], void *ctx) {
   const SetupContextAdv context = (SetupContextAdv)ctx;
   const CeedScalar      rc      = context->rc;
   const CeedScalar      lx      = context->lx;
@@ -245,7 +245,7 @@ CEED_QFUNCTION_HELPER CeedScalar Tau(AdvectionContext context, const State s, co
 // *****************************************************************************
 // This QFunction implements Advection for implicit time stepping method
 // *****************************************************************************
-CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+CEED_QFUNCTION_HELPER int IFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
   AdvectionContext context = (AdvectionContext)ctx;
 
   const CeedScalar(*q)[CEED_Q_VLA]     = (const CeedScalar(*)[CEED_Q_VLA])in[0];
@@ -317,19 +317,18 @@ CEED_QFUNCTION_HELPER void IFunction_AdvectionGeneric(void *ctx, CeedInt Q, cons
       }
     }
   }
+  return 0;
 }
 
 CEED_QFUNCTION(IFunction_Advection)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  IFunction_AdvectionGeneric(ctx, Q, in, out, 3);
-  return 0;
+  return IFunction_AdvectionGeneric(ctx, Q, in, out, 3);
 }
 
 CEED_QFUNCTION(IFunction_Advection2d)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  IFunction_AdvectionGeneric(ctx, Q, in, out, 2);
-  return 0;
+  return IFunction_AdvectionGeneric(ctx, Q, in, out, 2);
 }
 
-CEED_QFUNCTION_HELPER void MassFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+CEED_QFUNCTION_HELPER int MassFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
   const CeedScalar(*q_dot)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*q)[CEED_Q_VLA]     = (const CeedScalar(*)[CEED_Q_VLA])in[1];
   const CeedScalar(*q_data)            = in[2];
@@ -359,7 +358,8 @@ CEED_QFUNCTION_HELPER void MassFunction_AdvectionGeneric(void *ctx, CeedInt Q, c
     CeedScalar uX[3] = {0.};
     MatVecNM(dXdx, s.Y.velocity, dim, dim, CEED_NOTRANSPOSE, uX);
     const CeedScalar TauS = Tau(context, s, dXdx, dim);
-    for (CeedInt j = 0; j < dim; j++) switch (context->stabilization) {
+    for (CeedInt j = 0; j < dim; j++) {
+      switch (context->stabilization) {
         case STAB_NONE:
         case STAB_SU:
           grad_v[j][4][i] = 0;
@@ -368,23 +368,23 @@ CEED_QFUNCTION_HELPER void MassFunction_AdvectionGeneric(void *ctx, CeedInt Q, c
           grad_v[j][4][i] = wdetJ * TauS * q_dot[4][i] * uX[j];
           break;
       }
+    }
   }
+  return 0;
 }
 
 CEED_QFUNCTION(MassFunction_Advection)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  MassFunction_AdvectionGeneric(ctx, Q, in, out, 3);
-  return 0;
+  return MassFunction_AdvectionGeneric(ctx, Q, in, out, 3);
 }
 
 CEED_QFUNCTION(MassFunction_Advection2D)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  MassFunction_AdvectionGeneric(ctx, Q, in, out, 2);
-  return 0;
+  return MassFunction_AdvectionGeneric(ctx, Q, in, out, 2);
 }
 
 // *****************************************************************************
 // This QFunction implements Advection for explicit time stepping method
 // *****************************************************************************
-CEED_QFUNCTION_HELPER void RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+CEED_QFUNCTION_HELPER int RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
   AdvectionContext context = (AdvectionContext)ctx;
 
   const CeedScalar(*q)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
@@ -454,16 +454,15 @@ CEED_QFUNCTION_HELPER void RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, co
       }
     }
   }
+  return 0;
 }
 
 CEED_QFUNCTION(RHS_Advection)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  RHSFunction_AdvectionGeneric(ctx, Q, in, out, 3);
-  return 0;
+  return RHSFunction_AdvectionGeneric(ctx, Q, in, out, 3);
 }
 
 CEED_QFUNCTION(RHS_Advection2d)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  RHSFunction_AdvectionGeneric(ctx, Q, in, out, 2);
-  return 0;
+  return RHSFunction_AdvectionGeneric(ctx, Q, in, out, 2);
 }
 
 // *****************************************************************************
@@ -480,7 +479,7 @@ CEED_QFUNCTION(RHS_Advection2d)(void *ctx, CeedInt Q, const CeedScalar *const *i
 //  Inflow BCs:
 //    A prescribed Total Energy (E_wind) is applied weakly.
 // *****************************************************************************
-CEED_QFUNCTION(Advection_InOutFlowGeneric)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
+CEED_QFUNCTION_HELPER int Advection_InOutFlowGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, CeedInt dim) {
   const CeedScalar(*q)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*q_data_sur)    = in[2];
 
@@ -516,13 +515,11 @@ CEED_QFUNCTION(Advection_InOutFlowGeneric)(void *ctx, CeedInt Q, const CeedScala
 }
 
 CEED_QFUNCTION(Advection_InOutFlow)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  Advection_InOutFlowGeneric(ctx, Q, in, out, 3);
-  return 0;
+  return Advection_InOutFlowGeneric(ctx, Q, in, out, 3);
 }
 
 CEED_QFUNCTION(Advection2d_InOutFlow)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  Advection_InOutFlowGeneric(ctx, Q, in, out, 2);
-  return 0;
+  return Advection_InOutFlowGeneric(ctx, Q, in, out, 2);
 }
 
 // @brief Volume integral for RHS of divergence of diffusive flux direct projection

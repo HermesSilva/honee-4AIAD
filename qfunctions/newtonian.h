@@ -51,8 +51,7 @@ CEED_QFUNCTION(ICsNewtonianIG_Entropy)(void *ctx, CeedInt Q, const CeedScalar *c
   return ICsNewtonianIG(ctx, Q, in, out, STATEVAR_ENTROPY);
 }
 
-CEED_QFUNCTION_HELPER void MassFunction_Newtonian(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
-                                                  StateVariable state_var) {
+CEED_QFUNCTION_HELPER int MassFunction_Newtonian(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
   const CeedScalar(*q_dot)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*q)[CEED_Q_VLA]     = (const CeedScalar(*)[CEED_Q_VLA])in[1];
   const CeedScalar(*q_data)            = in[2];
@@ -88,11 +87,11 @@ CEED_QFUNCTION_HELPER void MassFunction_Newtonian(void *ctx, CeedInt Q, const Ce
       }
     }
   }
+  return 0;
 }
 
 CEED_QFUNCTION(MassFunction_Newtonian_Conserv)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  MassFunction_Newtonian(ctx, Q, in, out, STATEVAR_CONSERVATIVE);
-  return 0;
+  return MassFunction_Newtonian(ctx, Q, in, out, STATEVAR_CONSERVATIVE);
 }
 
 // *****************************************************************************
