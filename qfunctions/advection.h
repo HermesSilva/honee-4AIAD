@@ -89,8 +89,12 @@ CEED_QFUNCTION_HELPER int Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, c
       q[2] = wind[1];
       q[3] = dim == 2 ? 0. : wind[2];
       break;
-    default:
-      return 1;
+    case ADVDIF_WIND_BOUNDARY_LAYER:
+      q[0] = 1.;
+      q[1] = y / ly;
+      q[2] = 0.;
+      q[3] = 0.;
+      break;
   }
 
   switch (context->initial_condition_type) {
@@ -151,7 +155,18 @@ CEED_QFUNCTION_HELPER int Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, c
           q[4] = sin(theta) > 100 * CEED_EPSILON ? 1 : -1;
           break;
       }
-    }
+    } break;
+    case ADVDIF_IC_BOUNDARY_LAYER: {
+      const CeedScalar boundary_threshold = 20 * CEED_EPSILON;
+
+      if ((x < boundary_threshold) || (y > ly - boundary_threshold)) {
+        q[4] = 1;  // inflow and top boundary
+      } else if (y < boundary_threshold) {
+        q[4] = 0;  // lower wall
+      } else {
+        q[4] = y / ly;  // interior and outflow boundary
+      }
+    } break;
   }
   return 0;
 }

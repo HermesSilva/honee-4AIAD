@@ -344,7 +344,7 @@ The following additional command-line options are available:
   -
 
 * - `-wind_type`
-  - Wind type in Advection (`rotation` or `translation`)
+  - Wind type in Advection (`rotation`, `translation`, `boundary_layer`)
   - `rotation`
   -
 
@@ -364,7 +364,7 @@ The following additional command-line options are available:
   - `J`
 
 * - `-advection_ic_type`
-  - Initial condition type, (`sphere`, `cylinder`, `cosine_hill`, `skew`, `wave`)
+  - Initial condition type, (`sphere`, `cylinder`, `cosine_hill`, `skew`, `wave`, `boundary_layer`)
   - `sphere`
   -
 
