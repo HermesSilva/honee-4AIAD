@@ -34,10 +34,11 @@ typedef enum {
 static const char *const EulerTestTypes[] = {"ISENTROPIC_VORTEX", "1", "2", "3", "4", "5", "EulerTestType", "EULER_TEST_", NULL};
 
 // Advection - Wind types
-static const char *const AdvDifWindTypes[] = {"ROTATION", "TRANSLATION", "WindType", "ADVDIF_WIND_", NULL};
+static const char *const AdvDifWindTypes[] = {"ROTATION", "TRANSLATION", "BOUNDARY_LAYER", "WindType", "ADVDIF_WIND_", NULL};
 
 // Advection - Initial Condition Types
-static const char *const AdvDifICTypes[] = {"SPHERE", "CYLINDER", "COSINE_HILL", "SKEW", "WAVE", "AdvectionICType", "ADVDIF_IC_", NULL};
+static const char *const AdvDifICTypes[] = {"SPHERE",         "CYLINDER",        "COSINE_HILL", "SKEW", "WAVE",
+                                            "BOUNDARY_LAYER", "AdvectionICType", "ADVDIF_IC_",  NULL};
 
 // Advection - Wave Types
 static const char *const AdvDifWaveTypes[] = {"SINE", "SQUARE", "AdvDifWaveType", "ADVDIF_WAVE_", NULL};

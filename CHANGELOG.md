@@ -13,3 +13,4 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add sine and square wave initial conditions for advection-diffusion example, see !38
 - Add diffusion component of stabilization tau formulation for advection-diffusion, see !42
 - Add projection of the divergence of diffusive flux for advection-diffusion equations, see !43
+- Add boundary layer IC and wind type to advection-diffusion equations, see !46

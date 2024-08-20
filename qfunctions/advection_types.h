@@ -6,8 +6,9 @@
 #include "stabilization_types.h"
 
 typedef enum {
-  ADVDIF_WIND_ROTATION    = 0,
-  ADVDIF_WIND_TRANSLATION = 1,
+  ADVDIF_WIND_ROTATION       = 0,
+  ADVDIF_WIND_TRANSLATION    = 1,
+  ADVDIF_WIND_BOUNDARY_LAYER = 2,
 } AdvDifWindType;
 
 // Advection - Initial Condition Types
@@ -17,6 +18,7 @@ typedef enum {
   ADVDIF_IC_COSINE_HILL     = 2,  // dim=2
   ADVDIF_IC_SKEW            = 3,
   ADVDIF_IC_WAVE            = 4,
+  ADVDIF_IC_BOUNDARY_LAYER  = 5,
 } AdvDifICType;
 
 // Advection-Diffusion wave types

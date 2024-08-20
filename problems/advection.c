@@ -574,6 +574,7 @@ PetscErrorCode PRINT_ADVECTION(User user, ProblemData problem, AppCtx app_ctx) {
   switch (setup_ctx->initial_condition_type) {
     case ADVDIF_IC_SKEW:
     case ADVDIF_IC_COSINE_HILL:
+    case ADVDIF_IC_BOUNDARY_LAYER:
       break;
     case ADVDIF_IC_BUBBLE_SPHERE:
     case ADVDIF_IC_BUBBLE_CYLINDER:
