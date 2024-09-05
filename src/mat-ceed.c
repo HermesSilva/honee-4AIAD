@@ -288,6 +288,8 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "Default COO MatType: %s\n", ctx->coo_mat_type));
     PetscCall(PetscSNPrintf(rank_string, 16, "on Rank %d", rank));
     PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator Apply %s:\n", is_detailed ? rank_string : "Summary"));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "PB Diagonal Assembly Valid: %s\n", ctx->is_ceed_pbd_valid ? "True" : "False"));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "VPB Diagonal Assembly Valid: %s\n", ctx->is_ceed_vpbd_valid ? "True" : "False"));
     PetscCall(PetscViewerASCIIGetPointer(viewer, &file));
     PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
     if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult, file));
