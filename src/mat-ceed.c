@@ -279,16 +279,22 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
     FILE     *file;
 
     PetscCall(PetscViewerASCIIPrintf(viewer, "MatCEED:\n  Default COO MatType:%s\n", ctx->coo_mat_type));
-    PetscCall(PetscViewerASCIIGetPointer(viewer, &file));
+    PetscCall(PetscViewerASCIIPushTab(viewer));  // MatCEED
     PetscCall(PetscSNPrintf(rank_string, 16, "on Rank %d", rank));
-    PetscCall(PetscViewerASCIIPrintf(viewer, " CeedOperator Apply %s:\n", is_detailed ? rank_string : "Summary"));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator Apply %s:\n", is_detailed ? rank_string : "Summary"));
+    PetscCall(PetscViewerASCIIGetPointer(viewer, &file));
+    PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
     if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult, file));
     else PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult, file));
+    PetscCall(PetscViewerASCIIPopTab(viewer));  // CeedOperator
     if (ctx->op_mult_transpose) {
-      PetscCall(PetscViewerASCIIPrintf(viewer, "  CeedOperator ApplyTranspose %s:\n", is_detailed ? rank_string : "Summary"));
+      PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator ApplyTranspose %s:\n", is_detailed ? rank_string : "Summary"));
+      PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
       if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult_transpose, file));
       else PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult_transpose, file));
+      PetscCall(PetscViewerASCIIPopTab(viewer));  // CeedOperator
     }
+    PetscCall(PetscViewerASCIIPopTab(viewer));  // MatCEED
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1571,11 +1577,11 @@ PetscErrorCode MatMult_Ceed(Mat A, Vec X, Vec Y) {
     PetscCall(VecPetscToCeed(Y_loc, &y_mem_type, ctx->y_loc));
 
     // Apply libCEED operator
-    PetscCall(PetscLogGpuTimeBegin());
     PetscCall(PetscLogEventBegin(ctx->log_event_ceed_mult, A, X, Y, NULL));
+    PetscCall(PetscLogGpuTimeBegin());
     PetscCallCeed(ctx->ceed, CeedOperatorApplyAdd(ctx->op_mult, ctx->x_loc, ctx->y_loc, CEED_REQUEST_IMMEDIATE));
-    PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult, A, X, Y, NULL));
     PetscCall(PetscLogGpuTimeEnd());
+    PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult, A, X, Y, NULL));
 
     // Restore PETSc vectors
     PetscCall(VecReadCeedToPetsc(ctx->x_loc, x_mem_type, X_loc));
@@ -1632,11 +1638,11 @@ PetscErrorCode MatMultTranspose_Ceed(Mat A, Vec Y, Vec X) {
     PetscCall(VecPetscToCeed(X_loc, &x_mem_type, ctx->x_loc));
 
     // Apply libCEED operator
-    PetscCall(PetscLogGpuTimeBegin());
     PetscCall(PetscLogEventBegin(ctx->log_event_ceed_mult_transpose, A, Y, X, NULL));
+    PetscCall(PetscLogGpuTimeBegin());
     PetscCallCeed(ctx->ceed, CeedOperatorApplyAdd(ctx->op_mult_transpose, ctx->y_loc, ctx->x_loc, CEED_REQUEST_IMMEDIATE));
-    PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult_transpose, A, Y, X, NULL));
     PetscCall(PetscLogGpuTimeEnd());
+    PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult_transpose, A, Y, X, NULL));
 
     // Restore PETSc vectors
     PetscCall(VecReadCeedToPetsc(ctx->y_loc, y_mem_type, Y_loc));
