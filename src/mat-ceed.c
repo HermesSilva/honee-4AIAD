@@ -168,7 +168,10 @@ static PetscErrorCode MatCeedAssembleInnerBlockDiagonalMat(Mat mat_ceed, PetscBo
 }
 
 /**
-  @brief Get `MATCEED` diagonal block for Jacobi.
+  @brief Get on-process diagonal block of `MATCEED`
+
+  This is a block per-process of the diagonal of the global matrix.
+  This is NOT the diagonal blocks associated with the block size of the matrix (i.e. `MatSetBlockSize()` has no effect on this function).
 
   Collective across MPI processes.
 
@@ -178,17 +181,19 @@ static PetscErrorCode MatCeedAssembleInnerBlockDiagonalMat(Mat mat_ceed, PetscBo
   @return An error code: 0 - success, otherwise - failure
 **/
 static PetscErrorCode MatGetDiagonalBlock_Ceed(Mat mat_ceed, Mat *mat_block) {
-  Mat            mat_inner = NULL;
   MatCeedContext ctx;
 
   PetscFunctionBeginUser;
   PetscCall(MatShellGetContext(mat_ceed, &ctx));
 
-  // Assemble inner mat if needed
-  PetscCall(MatCeedAssembleInnerBlockDiagonalMat(mat_ceed, ctx->is_ceed_pbd_valid, &mat_inner));
+  // Check if COO pattern set
+  if (!ctx->mat_assembled_full_internal) PetscCall(MatCeedCreateMatCOO(mat_ceed, &ctx->mat_assembled_full_internal));
 
-  // Get block diagonal
-  PetscCall(MatGetDiagonalBlock(mat_inner, mat_block));
+  // Assemble mat_assembled_full_internal
+  PetscCall(MatCeedAssembleCOO(mat_ceed, ctx->mat_assembled_full_internal));
+
+  // Get diagonal block
+  PetscCall(MatGetDiagonalBlock(ctx->mat_assembled_full_internal, mat_block));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
