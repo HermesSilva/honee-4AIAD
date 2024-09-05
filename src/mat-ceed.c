@@ -168,6 +168,50 @@ static PetscErrorCode MatCeedAssembleInnerBlockDiagonalMat(Mat mat_ceed, PetscBo
 }
 
 /**
+  @brief Get `MATCEED` variable block diagonal for Jacobi.
+
+  Collective across MPI processes.
+
+  @param[in]   mat_ceed   `MATCEED` to invert
+  @param[out]  mat_vblock  The variable diagonal block matrix
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode MatGetVariableBlockDiagonal_Ceed(Mat mat_ceed, Mat *mat_vblock) {
+  MatCeedContext ctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(MatShellGetContext(mat_ceed, &ctx));
+
+  // Assemble inner mat if needed
+  PetscCall(MatCeedAssembleInnerBlockDiagonalMat(mat_ceed, ctx->is_ceed_vpbd_valid, mat_vblock));
+  PetscCall(PetscObjectReference((PetscObject)*mat_vblock));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get `MATCEED` block diagonal for Jacobi.
+
+  Collective across MPI processes.
+
+  @param[in]   mat_ceed   `MATCEED` to invert
+  @param[out]  mat_block  The variable diagonal block matrix
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode MatGetBlockDiagonal_Ceed(Mat mat_ceed, Mat *mat_block) {
+  MatCeedContext ctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(MatShellGetContext(mat_ceed, &ctx));
+
+  // Assemble inner mat if needed
+  PetscCall(MatCeedAssembleInnerBlockDiagonalMat(mat_ceed, ctx->is_ceed_pbd_valid, mat_block));
+  PetscCall(PetscObjectReference((PetscObject)*mat_block));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Get on-process diagonal block of `MATCEED`
 
   This is a block per-process of the diagonal of the global matrix.
@@ -194,58 +238,6 @@ static PetscErrorCode MatGetDiagonalBlock_Ceed(Mat mat_ceed, Mat *mat_block) {
 
   // Get diagonal block
   PetscCall(MatGetDiagonalBlock(ctx->mat_assembled_full_internal, mat_block));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/**
-  @brief Invert `MATCEED` diagonal block for Jacobi.
-
-  Collective across MPI processes.
-
-  @param[in]   mat_ceed  `MATCEED` to invert
-  @param[out]  values    The block inverses in column major order
-
-  @return An error code: 0 - success, otherwise - failure
-**/
-static PetscErrorCode MatInvertBlockDiagonal_Ceed(Mat mat_ceed, const PetscScalar **values) {
-  Mat            mat_inner = NULL;
-  MatCeedContext ctx;
-
-  PetscFunctionBeginUser;
-  PetscCall(MatShellGetContext(mat_ceed, &ctx));
-
-  // Assemble inner mat if needed
-  PetscCall(MatCeedAssembleInnerBlockDiagonalMat(mat_ceed, ctx->is_ceed_pbd_valid, &mat_inner));
-
-  // Invert PB diagonal
-  PetscCall(MatInvertBlockDiagonal(mat_inner, values));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/**
-  @brief Invert `MATCEED` variable diagonal block for Jacobi.
-
-  Collective across MPI processes.
-
-  @param[in]   mat_ceed     `MATCEED` to invert
-  @param[in]   num_blocks   The number of blocks on the process
-  @param[in]   block_sizes  The size of each block on the process
-  @param[out]  values       The block inverses in column major order
-
-  @return An error code: 0 - success, otherwise - failure
-**/
-static PetscErrorCode MatInvertVariableBlockDiagonal_Ceed(Mat mat_ceed, PetscInt num_blocks, const PetscInt *block_sizes, PetscScalar *values) {
-  Mat            mat_inner = NULL;
-  MatCeedContext ctx;
-
-  PetscFunctionBeginUser;
-  PetscCall(MatShellGetContext(mat_ceed, &ctx));
-
-  // Assemble inner mat if needed
-  PetscCall(MatCeedAssembleInnerBlockDiagonalMat(mat_ceed, ctx->is_ceed_vpbd_valid, &mat_inner));
-
-  // Invert PB diagonal
-  PetscCall(MatInvertVariableBlockDiagonal(mat_inner, num_blocks, block_sizes, values));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -288,8 +280,8 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "Default COO MatType: %s\n", ctx->coo_mat_type));
     PetscCall(PetscSNPrintf(rank_string, 16, "on Rank %d", rank));
     PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator Apply %s:\n", is_detailed ? rank_string : "Summary"));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "PB Diagonal Assembly Valid: %s\n", ctx->is_ceed_pbd_valid ? "True" : "False"));
-    PetscCall(PetscViewerASCIIPrintf(viewer, "VPB Diagonal Assembly Valid: %s\n", ctx->is_ceed_vpbd_valid ? "True" : "False"));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "libCEED PB Diagonal Assembly: %s\n", ctx->is_ceed_pbd_valid ? "True" : "False"));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "libCEED VPB Diagonal Assembly: %s\n", ctx->is_ceed_vpbd_valid ? "True" : "False"));
     PetscCall(PetscViewerASCIIGetPointer(viewer, &file));
     PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
     if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult, file));
@@ -482,8 +474,8 @@ PetscErrorCode MatCreateCeed(DM dm_x, DM dm_y, CeedOperator op_mult, CeedOperato
   if (op_mult_transpose) PetscCall(MatShellSetOperation(*mat, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_Ceed));
   PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL, (void (*)(void))MatGetDiagonal_Ceed));
   PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL_BLOCK, (void (*)(void))MatGetDiagonalBlock_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_INVERT_BLOCK_DIAGONAL, (void (*)(void))MatInvertBlockDiagonal_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_INVERT_VBLOCK_DIAGONAL, (void (*)(void))MatInvertVariableBlockDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_BLOCK_DIAGONAL, (void (*)(void))MatGetBlockDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_VBLOCK_DIAGONAL, (void (*)(void))MatGetVariableBlockDiagonal_Ceed));
   PetscCall(MatShellSetVecType(*mat, vec_type));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -548,8 +540,8 @@ PetscErrorCode MatCeedCopy(Mat mat_ceed, Mat mat_other) {
     if (ctx->op_mult_transpose) PetscCall(MatShellSetOperation(mat_other, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_Ceed));
     PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL, (void (*)(void))MatGetDiagonal_Ceed));
     PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL_BLOCK, (void (*)(void))MatGetDiagonalBlock_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_INVERT_BLOCK_DIAGONAL, (void (*)(void))MatInvertBlockDiagonal_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_INVERT_VBLOCK_DIAGONAL, (void (*)(void))MatInvertVariableBlockDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_BLOCK_DIAGONAL, (void (*)(void))MatGetBlockDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_VBLOCK_DIAGONAL, (void (*)(void))MatGetVariableBlockDiagonal_Ceed));
     {
       PetscInt block_size;
 
