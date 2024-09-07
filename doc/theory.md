@@ -255,6 +255,8 @@ $$ (eq-su-stabilize-advdiff)
 where the term in parentheses is a rank-1 diffusivity tensor that has been pulled back to the reference element.
 See {cite}`hughesetal2010` equations 15-17 and 34-36 for further discussion of this formulation.
 
+#### Navier-Stokes $\tau$ definition
+
 For the Navier-Stokes and Euler equations, {cite}`whiting2003hierarchical` defines a $5\times 5$ diagonal stabilization $\mathrm{diag}(\tau_c, \tau_m, \tau_m, \tau_m, \tau_E)$ consisting of
 1. continuity stabilization $\tau_c$
 2. momentum stabilization $\tau_m$
@@ -280,16 +282,29 @@ $$
 where $\bm g = \nabla_{\bm x} \bm{X}^T \cdot \nabla_{\bm x} \bm{X}$ is the metric tensor and $\Vert \cdot \Vert_F$ is the Frobenius norm.
 This formulation is currently not available in the Euler code.
 
-For Advection-Diffusion, we use a modified version of the formulation for Navier-Stokes:
+#### Advection-Diffusion $\tau$ definition
+
+For Advection-Diffusion, we first examine a 1D definition given by:
 
 $$
-\tau = \left [ \left(\frac{2 C_t}{\Delta t}\right)^2
-+ C_a \bm u \cdot (\bm u \cdot  \bm g)
-+ C_d \kappa^2 \Vert \bm g \Vert_F ^2 \right]^{-1/2}
+    \tau = \textrm{minreg}_2 \left\{\frac{\Delta t}{2 C_t},\ \frac{h}{aC_a}, \ \frac{h^2}{\kappa C_d} \right\}
 $$
-for $C_t$, $C_a$, $C_d$ being some scaling coefficients.
-They are set via `-Ctau_t`, `-Ctau_a`, and `-Ctau_d`, respectively.
 
+for $C_t$, $C_a$, $C_d$ being some scaling coefficients, $h$ is the element length, and $\textrm{minreg}_n \{x_j\} = (\sum_j x_j^{-n})^{-1/n}$.
+To make this definition compatible with higher dimensional domains, we use a similar system from the Navier-Stokes equations.
+This results in the following definition:
+
+$$
+\begin{aligned}
+    \tau &= \textrm{minreg}_2 \left \{ \frac{\Delta t}{2 C_t}, \frac{1}{C_a \sqrt{\bm u \cdot (\bm u \cdot  \bm g)}}, \frac{1}{C_d \kappa \Vert \bm g \Vert_F} \right\} \\
+         &= \left [ \left(\frac{2 C_t}{\Delta t}\right)^2 + C_a^2 \bm u \cdot (\bm u \cdot  \bm g) + \left(C_d \kappa\right)^2 \Vert \bm g \Vert_F^2\right]^{-1/2}
+\end{aligned}
+$$
+
+Note that $\bm g$ is scaled so that it is identity for a unit square, keeping this definition aligned with the traditional 1D definition, which uses the element length directly.
+The scaling coefficients are set via `-Ctau_t`, `-Ctau_a`, and `-Ctau_d`, respectively.
+
+#### Euler $\tau$ definition
 In the Euler code, we follow {cite}`hughesetal2010` in defining a $3\times 3$ diagonal stabilization according to spatial criterion 2 (equation 27) as follows.
 
 $$
