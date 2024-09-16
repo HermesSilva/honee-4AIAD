@@ -283,8 +283,9 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
     char      rank_string[16] = {'\0'};
     FILE     *file;
 
-    PetscCall(PetscViewerASCIIPrintf(viewer, "MatCEED:\n  Default COO MatType:%s\n", ctx->coo_mat_type));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "MatCEED:\n"));
     PetscCall(PetscViewerASCIIPushTab(viewer));  // MatCEED
+    PetscCall(PetscViewerASCIIPrintf(viewer, "Default COO MatType: %s\n", ctx->coo_mat_type));
     PetscCall(PetscSNPrintf(rank_string, 16, "on Rank %d", rank));
     PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator Apply %s:\n", is_detailed ? rank_string : "Summary"));
     PetscCall(PetscViewerASCIIGetPointer(viewer, &file));
