@@ -1,0 +1,37 @@
+problem: advection
+stab: supg
+stab_tau: advdiff_shakib
+degree: 1
+
+units_kilogram: 1
+units_meter: 1
+units_second: 1
+
+wind_type: boundary_layer
+advection_ic_type: boundary_layer
+diffusion_coeff: 5e-4
+
+implicit:
+ts:
+  dt: 1e-2
+  type: alpha
+  alpha_radius: 1
+  adapt_type: none
+  max_steps: 200
+  # monitor_solution: cgns:advection_wave.cgns
+  # monitor_solution_interval: 1
+snes:
+  mf_operator:
+  lag_jacobian: 100
+  lag_jacobian_persists: true
+dm_mat_preallocate_skip: false
+
+dm_plex:
+  dim: 2
+  box_lower: 0,0
+  box_upper: 1,0.5
+  box_faces: 20,20
+  shape: box
+  box_bd: none,none
+bc_wall: 1,2,3,4
+wall_comps: 0,1,2,3,4
