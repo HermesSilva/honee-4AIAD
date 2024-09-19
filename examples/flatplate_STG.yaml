@@ -1,0 +1,70 @@
+problem: 'blasius'
+implicit: true
+ts:
+  adapt_type: 'none'
+  type: 'alpha'
+  alpha_radius: 0.5
+  dt: 1.8e-4
+  max_steps: 500
+
+ts_error_if_step_fails: false
+snes:
+  lag_jacobian: 21
+  lag_jacobian_persists: true
+  max_it: 3
+  convergence_test: skip
+ksp:
+  rtol: 5e-2
+  type: lgmres
+pc_type: vpbjacobi
+amat_type: shell
+
+stab: 'supg'
+Ctau_t: 1
+idl:
+  decay_time: 3.6e-4
+  start: -3.1
+  length: 0.2
+
+degree: 1
+
+mesh_transform: platemesh
+dm_plex:
+   dim: 3
+   box:
+     faces: 22,63,14
+     lower: -3.1,0,0
+     upper: -2.97, 2.4, 0.03390625
+     bd: none,none,periodic
+dm_plex_shape: zbox
+
+bc_wall: 3
+wall_comps: 1,2,3
+bc_inflow: 6
+bc_outflow: 5,4
+
+state_var: primitive
+
+gravity: 0,0,0
+mu: 1.2502e-5
+pressure_infinity: 71.75
+temperature_infinity: .25
+reference:
+  temperature: 0.25
+  pressure: 71.75
+
+stg:
+  use: true
+  strong: true
+  inflow_path: examples/STGInflow_flatplate_STG.dat
+  rand_path: examples/STGRand_flatplate_STG.dat
+  u0: 1
+  mean_only: false
+  fluctuating_IC: false
+platemesh_y_node_locs_path: examples/flatplate_STG_spacing.dat
+
+# # Logging settings
+# ts_monitor:
+# snes_monitor:
+# snes_converged_reason:
+# ksp_converged_reason:
