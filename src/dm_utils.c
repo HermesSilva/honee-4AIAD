@@ -918,7 +918,7 @@ PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num
   PetscInt      *values_local = NULL;
   MPI_Comm       comm         = PetscObjectComm((PetscObject)dm);
   PetscSegBuffer seg;
-  size_t         seg_size;
+  PetscCount     seg_size;
 
   PetscFunctionBeginUser;
   {  // Extract array of local DMLabel values so it can be sorted
