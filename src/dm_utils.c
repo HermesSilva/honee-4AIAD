@@ -113,7 +113,7 @@ PetscErrorCode DMPlexCeedElemRestrictionCoordinateCreate(Ceed ceed, DM dm, DMLab
   @param[in]  name   Name fo the label
   @param[in]  value  Label value of points to return
   @param[in]  height Height of points to return
-  @param[out] points `IS` of points
+  @param[out] points `IS` of points, or `NULL` is there are no points in that stratum at height
 **/
 static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt value, PetscInt height, IS *points) {
   PetscInt depth;
@@ -125,7 +125,8 @@ static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt 
   PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
   PetscCall(DMLabelGetStratumIS(depth_label, depth - height, &depth_is));
   PetscCall(DMGetStratumIS(dm, name, value, &label_is));
-  PetscCall(ISIntersect(depth_is, label_is, points));
+  if (label_is == NULL || depth_is == NULL) *points = NULL;
+  else PetscCall(ISIntersect(depth_is, label_is, points));
   PetscCall(ISDestroy(&depth_is));
   PetscCall(ISDestroy(&label_is));
   PetscFunctionReturn(PETSC_SUCCESS);
