@@ -248,9 +248,11 @@ CEED_QFUNCTION_HELPER CeedScalar Tau(AdvectionContext context, const State s, co
       CeedScalar gijd_mat[9] = {0.}, gij_uj[3] = {0.};
 
       MatMatN(dXdx, dXdx, dim, CEED_TRANSPOSE, CEED_NOTRANSPOSE, gijd_mat);
+      // (1/2)^2 to account for reference element size; for length 1 square/cube element, gij should be identity matrix
+      ScaleN(gijd_mat, 0.25, Square(dim));
       MatVecNM(gijd_mat, s.Y.velocity, dim, dim, CEED_NOTRANSPOSE, gij_uj);
-      return 1 / sqrt(Square(2 * context->Ctau_t / context->dt) + DotN(s.Y.velocity, gij_uj, dim) * context->Ctau_a +
-                      Square(context->diffusion_coeff) * DotN(gijd_mat, gijd_mat, dim * dim) * context->Ctau_d);
+      return 1 / sqrt(Square(2 * context->Ctau_t / context->dt) + DotN(s.Y.velocity, gij_uj, dim) * Square(context->Ctau_a) +
+                      Square(context->diffusion_coeff) * DotN(gijd_mat, gijd_mat, dim * dim) * Square(context->Ctau_d));
     } break;
     default:
       return 0.;
