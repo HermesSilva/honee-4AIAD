@@ -14,8 +14,8 @@
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping
 //
 // Only used for SUPG stabilization
-PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator *op_mass) {
-  Ceed                 ceed = user->ceed;
+PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(Honee honee, CeedOperator *op_mass) {
+  Ceed                 ceed = honee->ceed;
   CeedInt              num_comp_q, q_data_size;
   CeedQFunction        qf_mass = NULL;
   CeedElemRestriction  elem_restr_q, elem_restr_qd_i;
@@ -25,13 +25,13 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
   PetscInt             dim;
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetDimension(user->dm, &dim));
+  PetscCall(DMGetDimension(honee->dm, &dim));
   {  // Get restriction and basis from the RHS function
     CeedOperator     *sub_ops;
     CeedOperatorField field;
     PetscInt          sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_rhs_ctx->op, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(field, &elem_restr_q));
     PetscCallCeed(ceed, CeedOperatorFieldGetBasis(field, &basis_q));
@@ -65,7 +65,7 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, op_mass));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q_dot", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q", elem_restr_q, basis_q, user->q_ceed));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q", elem_restr_q, basis_q, honee->q_ceed));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "qdata", elem_restr_qd_i, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -78,14 +78,14 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(User user, CeedOperator
 /**
   @brief Create RHS CeedOperator for direct projection of divergence of diffusive flux
 
-  @param[in]  user           `User` object
+  @param[in]  honee          `Honee` context
   @param[in]  ceed_data      `CeedData` object
   @param[in]  diff_flux_proj `DivDiffFluxProjectionData` object
   @param[out] op_rhs         Operator to calculate the RHS of the L^2 projection
 **/
-static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
+static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
                                                                    CeedOperator *op_rhs) {
-  Ceed                 ceed       = user->ceed;
+  Ceed                 ceed       = honee->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedInt              num_comp_q;
   PetscInt             dim, label_value = 0;
@@ -101,8 +101,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, Ce
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    if (user->op_ifunction) PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
-    else PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_rhs_ctx->op, &sub_ops));
+    if (honee->op_ifunction) PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
+    else PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &advection_qfctx));
   }
   PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, op_rhs));
@@ -127,7 +127,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, Ce
             ceed, CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxVolumeRHS_AdvDif_3D, DivDiffusiveFluxVolumeRHS_AdvDif_3D_loc, &qf_rhs_volume));
         break;
     }
-    PetscCheck(qf_rhs_volume, user->comm, PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
+    PetscCheck(qf_rhs_volume, honee->comm, PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
 
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_volume, advection_qfctx));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_volume, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
@@ -167,7 +167,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, Ce
         break;
     }
 
-    PetscCall(QDataBoundaryGradientGetNumComponents(user->dm, &q_data_size));
+    PetscCall(QDataBoundaryGradientGetNumComponents(honee->dm, &q_data_size));
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_boundary, advection_qfctx));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "qdata", q_data_size, CEED_EVAL_NONE));
@@ -195,12 +195,12 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, Ce
         CeedInt             q_data_size;
         PetscInt            orientation = orientation_values[o], dm_field_q = 0, height_cell = 0, height_face = 1;
 
-        PetscCall(DMPlexCeedElemRestrictionCreate(ceed, user->dm, face_orientation_label, orientation, height_cell, dm_field_q, &elem_restr_q));
-        PetscCall(DMPlexCeedBasisCellToFaceCreate(ceed, user->dm, face_orientation_label, orientation, orientation, dm_field_q, &basis_q));
+        PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, face_orientation_label, orientation, height_cell, dm_field_q, &elem_restr_q));
+        PetscCall(DMPlexCeedBasisCellToFaceCreate(ceed, honee->dm, face_orientation_label, orientation, orientation, dm_field_q, &basis_q));
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
         PetscCall(CreateBasisFromPlex(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
-        PetscCall(QDataBoundaryGradientGet(ceed, user->dm, face_orientation_label, orientation, ceed_data->x_coord, &elem_restr_qdata, &q_data,
+        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, ceed_data->x_coord, &elem_restr_qdata, &q_data,
                                            &q_data_size));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
@@ -232,14 +232,14 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(User user, Ce
 /**
   @brief Create RHS CeedOperator for indirect projection of divergence of diffusive flux
 
-  @param[in]  user           `User` object
+  @param[in]  honee          `Honee` context
   @param[in]  ceed_data      `CeedData` object
   @param[in]  diff_flux_proj `DivDiffFluxProjectionData` object
   @param[out] op_rhs         Operator to calculate the RHS of the L^2 projection
 **/
-static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
+static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
                                                                      CeedOperator *op_rhs) {
-  Ceed                 ceed       = user->ceed;
+  Ceed                 ceed       = honee->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedBasis            basis_diff_flux;
   CeedElemRestriction  elem_restr_diff_flux, elem_restr_qd;
@@ -259,8 +259,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(User user, 
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    if (user->op_ifunction) PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
-    else PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_rhs_ctx->op, &sub_ops));
+    if (honee->op_ifunction) PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
+    else PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &advection_qfctx));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
@@ -276,7 +276,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(User user, 
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DiffusiveFluxRHS_AdvDif_3D, DiffusiveFluxRHS_AdvDif_3D_loc, &qf_rhs));
       break;
   }
-  PetscCheck(qf_rhs, user->comm, PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
+  PetscCheck(qf_rhs, honee->comm, PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
 
   PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs, advection_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
@@ -304,9 +304,9 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   StabilizationType          stab;
   StabilizationTauType       stab_tau;
   SetupContextAdv            setup_context;
-  User                       user = *(User *)ctx;
-  MPI_Comm                   comm = user->comm;
-  Ceed                       ceed = user->ceed;
+  Honee                      honee = *(Honee *)ctx;
+  MPI_Comm                   comm  = honee->comm;
+  Ceed                       ceed  = honee->ceed;
   PetscBool                  implicit;
   AdvectionContext           advection_ctx;
   CeedQFunctionContext       advection_qfctx;
@@ -348,15 +348,15 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
       break;
   }
 
-  PetscCall(DivDiffFluxProjectionCreate(user, 1, &user->diff_flux_proj));
-  if (user->diff_flux_proj) {
-    DivDiffFluxProjectionData diff_flux_proj = user->diff_flux_proj;
+  PetscCall(DivDiffFluxProjectionCreate(honee, 1, &honee->diff_flux_proj));
+  if (honee->diff_flux_proj) {
+    DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
     NodalProjectionData       projection     = diff_flux_proj->projection;
 
     diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_AdvDif;
     diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_AdvDif;
 
-    switch (user->diff_flux_proj->method) {
+    switch (honee->diff_flux_proj->method) {
       case DIV_DIFF_FLUX_PROJ_DIRECT: {
         PetscSection section;
 
@@ -374,8 +374,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
         if (dim >= 3) PetscCall(PetscSectionSetComponentName(section, 0, 2, "DiffusiveFlux_ScalarZ"));
       } break;
       case DIV_DIFF_FLUX_PROJ_NONE:
-        SETERRQ(PetscObjectComm((PetscObject)user->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
-                DivDiffFluxProjectionMethods[user->app_ctx->divFdiffproj_method]);
+        SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
+                DivDiffFluxProjectionMethods[honee->app_ctx->divFdiffproj_method]);
         break;
     }
   }
@@ -387,8 +387,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   CeedScalar     CtauS           = 0.;     // dimensionless
   PetscBool      strong_form     = PETSC_FALSE;
   CeedScalar     E_wind          = 1.e6;  // J
-  CeedScalar     Ctau_a          = PetscPowScalarInt(user->app_ctx->degree, 2);
-  CeedScalar     Ctau_d          = PetscPowScalarInt(user->app_ctx->degree, 4);
+  CeedScalar     Ctau_a          = PetscPowScalarInt(honee->app_ctx->degree, 2);
+  CeedScalar     Ctau_d          = PetscPowScalarInt(honee->app_ctx->degree, 4);
   CeedScalar     Ctau_t          = 0.;
   PetscReal      wind[3]         = {1., 0, 0};  // m/s
   CeedScalar     diffusion_coeff = 0.;
@@ -477,10 +477,10 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // -- Define derived units
   Joule = kilogram * PetscSqr(meter) / PetscSqr(second);
 
-  user->units->meter    = meter;
-  user->units->kilogram = kilogram;
-  user->units->second   = second;
-  user->units->Joule    = Joule;
+  honee->units->meter    = meter;
+  honee->units->kilogram = kilogram;
+  honee->units->second   = second;
+  honee->units->Joule    = Joule;
 
   // ------------------------------------------------------
   //           Set up the libCEED context
@@ -510,7 +510,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   setup_context->wave_type              = wave_type;
 
   // -- QFunction Context
-  user->phys->implicit             = implicit;
+  honee->phys->implicit            = implicit;
   advection_ctx->CtauS             = CtauS;
   advection_ctx->E_wind            = E_wind;
   advection_ctx->implicit          = implicit;
@@ -521,13 +521,13 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   advection_ctx->Ctau_d            = Ctau_d;
   advection_ctx->Ctau_t            = Ctau_t;
   advection_ctx->diffusion_coeff   = diffusion_coeff;
-  advection_ctx->divFdiff_method   = user->app_ctx->divFdiffproj_method;
+  advection_ctx->divFdiff_method   = honee->app_ctx->divFdiffproj_method;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &problem->ics.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &problem->ics.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &advection_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &advection_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(advection_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*advection_ctx), advection_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(advection_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(advection_qfctx, "timestep size", offsetof(struct AdvectionContext_, dt), 1,
@@ -538,15 +538,15 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PRINT_ADVECTION(User user, ProblemData problem, AppCtx app_ctx) {
-  MPI_Comm         comm = user->comm;
-  Ceed             ceed = user->ceed;
+PetscErrorCode PRINT_ADVECTION(Honee honee, ProblemData problem, AppCtx app_ctx) {
+  MPI_Comm         comm = honee->comm;
+  Ceed             ceed = honee->ceed;
   SetupContextAdv  setup_ctx;
   AdvectionContext advection_ctx;
   PetscInt         dim;
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetDimension(user->dm, &dim));
+  PetscCall(DMGetDimension(honee->dm, &dim));
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &setup_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &advection_ctx));
   PetscCall(PetscPrintf(comm,

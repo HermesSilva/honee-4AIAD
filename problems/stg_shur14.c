@@ -213,13 +213,13 @@ PetscErrorCode GetStgContextData(const MPI_Comm comm, const DM dm, char stg_infl
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, User user, const bool prescribe_T, const CeedScalar theta0,
+PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, Honee honee, const bool prescribe_T, const CeedScalar theta0,
                         const CeedScalar P0) {
-  Ceed                     ceed                                = user->ceed;
+  Ceed                     ceed                                = honee->ceed;
   char                     stg_inflow_path[PETSC_MAX_PATH_LEN] = "./STGInflow.dat";
   char                     stg_rand_path[PETSC_MAX_PATH_LEN]   = "./STGRand.dat";
   PetscBool                mean_only = PETSC_FALSE, use_stgstrong = PETSC_FALSE, use_fluctuating_IC = PETSC_FALSE, given_stg_dx = PETSC_FALSE;
-  CeedScalar               u0 = 0.0, alpha = 1.01, stg_dx = -1, stg_h_scale_factor = 1 / user->app_ctx->degree;
+  CeedScalar               u0 = 0.0, alpha = 1.01, stg_dx = -1, stg_h_scale_factor = 1 / honee->app_ctx->degree;
   CeedQFunctionContext     stg_qfctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
 
@@ -244,7 +244,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, U
   PetscCall(PetscCalloc1(1, &global_stg_ctx));
   global_stg_ctx->alpha              = alpha;
   global_stg_ctx->u0                 = u0;
-  global_stg_ctx->is_implicit        = user->phys->implicit;
+  global_stg_ctx->is_implicit        = honee->phys->implicit;
   global_stg_ctx->prescribe_T        = prescribe_T;
   global_stg_ctx->mean_only          = mean_only;
   global_stg_ctx->use_fluctuating_IC = use_fluctuating_IC;
@@ -270,7 +270,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, U
 
   PetscCall(GetStgContextData(comm, dm, stg_inflow_path, stg_rand_path, &global_stg_ctx));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &stg_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &stg_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(stg_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, global_stg_ctx->total_bytes, global_stg_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(stg_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(stg_qfctx, "solution time", offsetof(struct STGShur14Context_, time), 1,

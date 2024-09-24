@@ -105,39 +105,39 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
 }
 
 // Refine DM for high-order viz
-PetscErrorCode VizRefineDM(DM dm, User user, ProblemData problem, SimpleBC bc, Physics phys) {
-  DM      dm_hierarchy[user->app_ctx->viz_refine + 1];
+PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, SimpleBC bc, Physics phys) {
+  DM      dm_hierarchy[honee->app_ctx->viz_refine + 1];
   VecType vec_type;
 
   PetscFunctionBeginUser;
   PetscCall(DMPlexSetRefinementUniform(dm, PETSC_TRUE));
 
   dm_hierarchy[0] = dm;
-  for (PetscInt i = 0, d = user->app_ctx->degree; i < user->app_ctx->viz_refine; i++) {
+  for (PetscInt i = 0, d = honee->app_ctx->degree; i < honee->app_ctx->viz_refine; i++) {
     Mat interp_next;
     PetscCall(DMRefine(dm_hierarchy[i], MPI_COMM_NULL, &dm_hierarchy[i + 1]));
     PetscCall(DMClearDS(dm_hierarchy[i + 1]));
     PetscCall(DMClearFields(dm_hierarchy[i + 1]));
     PetscCall(DMSetCoarseDM(dm_hierarchy[i + 1], dm_hierarchy[i]));
     d                = (d + 1) / 2;
-    PetscInt q_order = d + user->app_ctx->q_extra;
-    if (i + 1 == user->app_ctx->viz_refine) d = 1;
+    PetscInt q_order = d + honee->app_ctx->q_extra;
+    if (i + 1 == honee->app_ctx->viz_refine) d = 1;
     PetscCall(DMGetVecType(dm, &vec_type));
     PetscCall(DMSetVecType(dm_hierarchy[i + 1], vec_type));
     PetscCall(SetUpDM(dm_hierarchy[i + 1], problem, d, q_order, bc, phys));
     PetscCall(DMCreateInterpolation(dm_hierarchy[i], dm_hierarchy[i + 1], &interp_next, NULL));
-    if (!i) user->interp_viz = interp_next;
+    if (!i) honee->interp_viz = interp_next;
     else {
       Mat C;
-      PetscCall(MatMatMult(interp_next, user->interp_viz, MAT_INITIAL_MATRIX, PETSC_DECIDE, &C));
+      PetscCall(MatMatMult(interp_next, honee->interp_viz, MAT_INITIAL_MATRIX, PETSC_DECIDE, &C));
       PetscCall(MatDestroy(&interp_next));
-      PetscCall(MatDestroy(&user->interp_viz));
-      user->interp_viz = C;
+      PetscCall(MatDestroy(&honee->interp_viz));
+      honee->interp_viz = C;
     }
   }
-  for (PetscInt i = 1; i < user->app_ctx->viz_refine; i++) {
+  for (PetscInt i = 1; i < honee->app_ctx->viz_refine; i++) {
     PetscCall(DMDestroy(&dm_hierarchy[i]));
   }
-  user->dm_viz = dm_hierarchy[user->app_ctx->viz_refine];
+  honee->dm_viz = dm_hierarchy[honee->app_ctx->viz_refine];
   PetscFunctionReturn(PETSC_SUCCESS);
 }

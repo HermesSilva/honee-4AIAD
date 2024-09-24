@@ -17,14 +17,14 @@ PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SmartSimTrainingSetup(User user) {
-  SmartSimData smartsim = user->smartsim;
+PetscErrorCode SmartSimTrainingSetup(Honee honee) {
+  SmartSimData smartsim = honee->smartsim;
   PetscMPIInt  rank;
   PetscReal    checkrun[2] = {1};
   size_t       dim_2[1]    = {2};
 
   PetscFunctionBeginUser;
-  PetscCallMPI(MPI_Comm_rank(user->comm, &rank));
+  PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
 
   if (rank % smartsim->collocated_database_num_ranks == 0) {
     // -- Send array that communicates when ML is done training
@@ -36,29 +36,29 @@ PetscErrorCode SmartSimTrainingSetup(User user) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SmartSimSetup(User user) {
+PetscErrorCode SmartSimSetup(Honee honee) {
   PetscMPIInt rank;
   PetscInt    num_orchestrator_nodes = 1;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscNew(&user->smartsim));
-  SmartSimData smartsim = user->smartsim;
+  PetscCall(PetscNew(&honee->smartsim));
+  SmartSimData smartsim = honee->smartsim;
 
   smartsim->collocated_database_num_ranks = 1;
-  PetscOptionsBegin(user->comm, NULL, "Options for SmartSim integration", NULL);
+  PetscOptionsBegin(honee->comm, NULL, "Options for SmartSim integration", NULL);
   PetscCall(PetscOptionsInt("-smartsim_collocated_database_num_ranks", "Number of ranks per collocated database instance", NULL,
                             smartsim->collocated_database_num_ranks, &smartsim->collocated_database_num_ranks, NULL));
   PetscOptionsEnd();
 
   // Create prefix to be put on tensor names
-  PetscCallMPI(MPI_Comm_rank(user->comm, &rank));
+  PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
   PetscCall(PetscSNPrintf(smartsim->rank_id_name, sizeof(smartsim->rank_id_name), "y.%d", rank));
 
   PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Init, 0, 0, 0, 0));
   PetscCallSmartRedis(SmartRedisCClient(num_orchestrator_nodes != 1, smartsim->rank_id_name, strlen(smartsim->rank_id_name), &smartsim->client));
   PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Init, 0, 0, 0, 0));
 
-  PetscCall(SmartSimTrainingSetup(user));
+  PetscCall(SmartSimTrainingSetup(honee));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

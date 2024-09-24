@@ -12,9 +12,9 @@
 #include <navierstokes.h>
 
 PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
-  User                     user = *(User *)ctx;
-  MPI_Comm                 comm = user->comm;
-  Ceed                     ceed = user->ceed;
+  Honee                    honee = *(Honee *)ctx;
+  MPI_Comm                 comm  = honee->comm;
+  Ceed                     ceed  = honee->ceed;
   DensityCurrentContext    density_current_ctx;
   CeedQFunctionContext     density_current_qfctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
@@ -70,10 +70,10 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
 
   PetscOptionsEnd();
 
-  PetscScalar meter  = user->units->meter;
-  PetscScalar second = user->units->second;
-  PetscScalar Kelvin = user->units->Kelvin;
-  PetscScalar Pascal = user->units->Pascal;
+  PetscScalar meter  = honee->units->meter;
+  PetscScalar second = honee->units->second;
+  PetscScalar Kelvin = honee->units->Kelvin;
+  PetscScalar Pascal = honee->units->Pascal;
   rc                 = fabs(rc) * meter;
   theta0 *= Kelvin;
   thetaC *= Kelvin;
@@ -92,7 +92,7 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
   density_current_ctx->newtonian_ctx = *newtonian_ig_ctx;
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &density_current_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &density_current_qfctx));
   PetscCallCeed(
       ceed, CeedQFunctionContextSetData(density_current_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*density_current_ctx), density_current_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(density_current_qfctx, CEED_MEM_HOST, FreeContextPetsc));

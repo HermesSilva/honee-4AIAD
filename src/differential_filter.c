@@ -11,8 +11,8 @@
 #include <navierstokes.h>
 
 // @brief Create RHS and LHS operators for differential filtering
-PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData ceed_data, CeedQFunctionContext diff_filter_qfctx) {
-  DiffFilterData      diff_filter = user->diff_filter;
+PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, Honee honee, CeedData ceed_data, CeedQFunctionContext diff_filter_qfctx) {
+  DiffFilterData      diff_filter = honee->diff_filter;
   DM                  dm_filter   = diff_filter->dm_filter;
   CeedInt             num_comp_q, q_data_size, num_comp_x;
   PetscInt            dim;
@@ -22,7 +22,7 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData 
   PetscInt            label_value = 0, height = 0;
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetDimension(user->dm, &dim));
+  PetscCall(DMGetDimension(honee->dm, &dim));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(ceed_data->elem_restr_x, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(ceed_data->elem_restr_q, &num_comp_q));
 
@@ -32,7 +32,7 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData 
   {  // -- Create RHS MatopApplyContext
     CeedQFunction qf_rhs;
     CeedOperator  op_rhs;
-    switch (user->phys->state_var) {
+    switch (honee->phys->state_var) {
       case STATEVAR_PRIMITIVE:
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DifferentialFilter_RHS_Prim, DifferentialFilter_RHS_Prim_loc, &qf_rhs));
         break;
@@ -78,7 +78,7 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData 
       PetscCallCeed(ceed, CeedBasisDestroy(&basis_filter));
     }
 
-    PetscCall(OperatorApplyContextCreate(user->dm, dm_filter, ceed, op_rhs, NULL, NULL, user->Q_loc, NULL, &diff_filter->op_rhs_ctx));
+    PetscCall(OperatorApplyContextCreate(honee->dm, dm_filter, ceed, op_rhs, NULL, NULL, honee->Q_loc, NULL, &diff_filter->op_rhs_ctx));
 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs));
@@ -91,8 +91,8 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData 
     CeedElemRestriction elem_restr_grid_aniso;
     CeedVector          grid_aniso_ceed;
 
-    PetscCall(DMGetDimension(user->dm, &dim));
-    PetscCall(GridAnisotropyTensorCalculateCollocatedVector(ceed, user, ceed_data, &elem_restr_grid_aniso, &grid_aniso_ceed, &num_comp_grid_aniso));
+    PetscCall(DMGetDimension(honee->dm, &dim));
+    PetscCall(GridAnisotropyTensorCalculateCollocatedVector(ceed, honee, ceed_data, &elem_restr_grid_aniso, &grid_aniso_ceed, &num_comp_grid_aniso));
 
     PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_lhs));
     for (PetscInt i = 0; i < diff_filter->num_filtered_fields; i++) {
@@ -116,7 +116,7 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData 
           PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DifferentialFilter_LHS_11, DifferentialFilter_LHS_11_loc, &qf_lhs));
           break;
         default:
-          SETERRQ(PetscObjectComm((PetscObject)user->dm), PETSC_ERR_SUP, "Differential filtering not available for (%" PetscInt_FMT ") components",
+          SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_SUP, "Differential filtering not available for (%" PetscInt_FMT ") components",
                   num_comp_filter);
       }
 
@@ -182,21 +182,21 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, User user, CeedData 
 }
 
 // @brief Setup DM, operators, contexts, etc. for performing differential filtering
-PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data, ProblemData problem) {
-  MPI_Comm                  comm = user->comm;
+PetscErrorCode DifferentialFilterSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem) {
+  MPI_Comm                  comm = honee->comm;
   NewtonianIdealGasContext  gas;
   DifferentialFilterContext diff_filter_ctx;
   CeedQFunctionContext      diff_filter_qfctx;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscNew(&user->diff_filter));
-  DiffFilterData diff_filter = user->diff_filter;
+  PetscCall(PetscNew(&honee->diff_filter));
+  DiffFilterData diff_filter = honee->diff_filter;
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-diff_filter_mms", &diff_filter->do_mms_test, NULL));
 
   {  // Create DM for filtered quantities
     PetscSection section;
 
-    PetscCall(DMClone(user->dm, &diff_filter->dm_filter));
+    PetscCall(DMClone(honee->dm, &diff_filter->dm_filter));
     PetscCall(DMSetMatrixPreallocateSkip(diff_filter->dm_filter, PETSC_TRUE));
     PetscCall(PetscObjectSetName((PetscObject)diff_filter->dm_filter, "Differential Filtering"));
 
@@ -206,7 +206,7 @@ PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data,
     if (diff_filter->do_mms_test) {
       PetscInt field_components;
       diff_filter->num_field_components[0] = field_components = 1;
-      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, user->app_ctx->degree, 1, user->app_ctx->q_extra, diff_filter->num_filtered_fields,
+      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, diff_filter->num_filtered_fields,
                                    &field_components, diff_filter->dm_filter));
 
       PetscCall(DMGetLocalSection(diff_filter->dm_filter, &section));
@@ -216,7 +216,7 @@ PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data,
       PetscInt field_components[2];
       diff_filter->num_field_components[0] = field_components[0] = DIFF_FILTER_STATE_NUM;
       diff_filter->num_field_components[1] = field_components[1] = DIFF_FILTER_VELOCITY_SQUARED_NUM;
-      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, user->app_ctx->degree, 1, user->app_ctx->q_extra, diff_filter->num_filtered_fields,
+      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, diff_filter->num_filtered_fields,
                                    field_components, diff_filter->dm_filter));
 
       diff_filter->field_prim_state = 0;
@@ -262,7 +262,7 @@ PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data,
                              NULL, diff_filter_ctx->friction_length, &diff_filter_ctx->friction_length, NULL));
   PetscOptionsEnd();
 
-  Units units = user->units;
+  Units units = honee->units;
   for (int i = 0; i < 3; i++) diff_filter_ctx->width_scaling[i] *= units->meter;
   diff_filter_ctx->kernel_scaling *= units->meter;
   diff_filter_ctx->friction_length *= units->meter;
@@ -280,22 +280,22 @@ PetscErrorCode DifferentialFilterSetup(Ceed ceed, User user, CeedData ceed_data,
                           sizeof(diff_filter_ctx->width_scaling) / sizeof(diff_filter_ctx->width_scaling[0]), "Filter width scaling"));
 
   // -- Setup Operators
-  PetscCall(DifferentialFilterCreateOperators(ceed, user, ceed_data, diff_filter_qfctx));
+  PetscCall(DifferentialFilterCreateOperators(ceed, honee, ceed_data, diff_filter_qfctx));
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&diff_filter_qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Apply differential filter to the solution given by Q
-PetscErrorCode DifferentialFilterApply(User user, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution) {
-  DiffFilterData   diff_filter = user->diff_filter;
+PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution) {
+  DiffFilterData   diff_filter = honee->diff_filter;
   PetscObjectState X_loc_state;
   Vec              RHS;
 
   PetscFunctionBeginUser;
   PetscCall(PetscLogEventBegin(FLUIDS_DifferentialFilter, Q, Filtered_Solution, 0, 0));
   PetscCall(DMGetNamedGlobalVector(diff_filter->dm_filter, "RHS", &RHS));
-  PetscCall(UpdateBoundaryValues(user, diff_filter->op_rhs_ctx->X_loc, solution_time));
+  PetscCall(UpdateBoundaryValues(honee, diff_filter->op_rhs_ctx->X_loc, solution_time));
   PetscCall(VecGetState(diff_filter->op_rhs_ctx->X_loc, &X_loc_state));
   if (X_loc_state != diff_filter->X_loc_state) {
     PetscCall(ApplyCeedOperatorGlobalToGlobal(Q, RHS, diff_filter->op_rhs_ctx));
@@ -313,16 +313,16 @@ PetscErrorCode DifferentialFilterApply(User user, const PetscReal solution_time,
 // @brief TSMonitor for just applying differential filtering to the simulation
 // This runs every time step and is primarily for testing purposes
 PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx) {
-  User           user        = (User)ctx;
-  DiffFilterData diff_filter = user->diff_filter;
+  Honee          honee       = (Honee)ctx;
+  DiffFilterData diff_filter = honee->diff_filter;
   Vec            Filtered_Field;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetGlobalVector(diff_filter->dm_filter, &Filtered_Field));
 
-  PetscCall(DifferentialFilterApply(user, solution_time, Q, Filtered_Field));
+  PetscCall(DifferentialFilterApply(honee, solution_time, Q, Filtered_Field));
   PetscCall(VecViewFromOptions(Filtered_Field, NULL, "-diff_filter_view"));
-  if (user->app_ctx->test_type == TESTTYPE_DIFF_FILTER) PetscCall(RegressionTest(user->app_ctx, Filtered_Field));
+  if (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER) PetscCall(RegressionTest(honee->app_ctx, Filtered_Field));
 
   PetscCall(DMRestoreGlobalVector(diff_filter->dm_filter, &Filtered_Field));
   PetscFunctionReturn(PETSC_SUCCESS);

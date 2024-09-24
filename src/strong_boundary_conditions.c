@@ -163,14 +163,14 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Problem
 
 PetscErrorCode DMPlexInsertBoundaryValues_StrongBCCeed(DM dm, PetscBool insert_essential, Vec Q_loc, PetscReal time, Vec face_geom_FVM,
                                                        Vec cell_geom_FVM, Vec grad_FVM) {
-  Vec  boundary_mask;
-  User user;
+  Vec   boundary_mask;
+  Honee honee;
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetApplicationContext(dm, &user));
+  PetscCall(DMGetApplicationContext(dm, &honee));
 
-  if (user->phys->stg_solution_time_label) {
-    PetscCallCeed(user->ceed, CeedOperatorSetContextDouble(user->op_strong_bc_ctx->op, user->phys->stg_solution_time_label, &time));
+  if (honee->phys->stg_solution_time_label) {
+    PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(honee->op_strong_bc_ctx->op, honee->phys->stg_solution_time_label, &time));
   }
 
   // Mask Strong BC entries
@@ -178,11 +178,11 @@ PetscErrorCode DMPlexInsertBoundaryValues_StrongBCCeed(DM dm, PetscBool insert_e
   PetscCall(VecPointwiseMult(Q_loc, Q_loc, boundary_mask));
   PetscCall(DMRestoreNamedLocalVector(dm, "boundary mask", &boundary_mask));
 
-  PetscCall(ApplyAddCeedOperatorLocalToLocal(NULL, Q_loc, user->op_strong_bc_ctx));
+  PetscCall(ApplyAddCeedOperatorLocalToLocal(NULL, Q_loc, honee->op_strong_bc_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, User user, ProblemData problem, SimpleBC bc) {
+PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, ProblemData problem, SimpleBC bc) {
   CeedOperator op_strong_bc;
 
   PetscFunctionBeginUser;
@@ -204,11 +204,11 @@ PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, User use
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));
 
     if (use_strongstg) {
-      PetscCall(SetupStrongSTG_Ceed(ceed, ceed_data, dm, problem, bc, user->phys, op_strong_bc));
+      PetscCall(SetupStrongSTG_Ceed(ceed, ceed_data, dm, problem, bc, honee->phys, op_strong_bc));
     }
   }
 
-  PetscCall(OperatorApplyContextCreate(NULL, NULL, ceed, op_strong_bc, CEED_VECTOR_NONE, NULL, NULL, NULL, &user->op_strong_bc_ctx));
+  PetscCall(OperatorApplyContextCreate(NULL, NULL, ceed, op_strong_bc, CEED_VECTOR_NONE, NULL, NULL, NULL, &honee->op_strong_bc_ctx));
 
   PetscCall(PetscObjectComposeFunction((PetscObject)dm, "DMPlexInsertBoundaryValues_C", DMPlexInsertBoundaryValues_StrongBCCeed));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_strong_bc));

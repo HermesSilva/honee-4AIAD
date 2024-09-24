@@ -103,8 +103,8 @@ static PetscErrorCode TestState_fwd(StateVariable state_var_A, StateVariable sta
 }
 
 // @brief Test the Newtonian State transformation functions, `StateFrom*`
-static PetscErrorCode UnitTests_Newtonian(User user, NewtonianIdealGasContext gas) {
-  Units            units = user->units;
+static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIdealGasContext gas) {
+  Units            units = honee->units;
   const CeedScalar kg = units->kilogram, m = units->meter, sec = units->second, K = units->Kelvin;
 
   PetscFunctionBeginUser;
@@ -151,8 +151,8 @@ static PetscErrorCode UnitTests_Newtonian(User user, NewtonianIdealGasContext ga
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping
 //
 // Only used for SUPG stabilization
-PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator *op_mass) {
-  Ceed                 ceed = user->ceed;
+PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(Honee honee, CeedOperator *op_mass) {
+  Ceed                 ceed = honee->ceed;
   CeedInt              num_comp_q, q_data_size;
   CeedQFunction        qf_mass;
   CeedElemRestriction  elem_restr_q, elem_restr_qd_i;
@@ -167,7 +167,7 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator
     CeedOperatorField field;
     PetscInt          sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_rhs_ctx->op, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(field, &elem_restr_q));
     PetscCallCeed(ceed, CeedOperatorFieldGetBasis(field, &basis_q));
@@ -194,7 +194,7 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, op_mass));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q_dot", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q", elem_restr_q, basis_q, user->q_ceed));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q", elem_restr_q, basis_q, honee->q_ceed));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "qdata", elem_restr_qd_i, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -207,14 +207,14 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(User user, CeedOperator
 /**
   @brief Create RHS CeedOperator for direct projection of divergence of diffusive flux
 
-  @param[in]  user           `User` object
+  @param[in]  honee          `Honee` context
   @param[in]  ceed_data      `CeedData` object
   @param[in]  diff_flux_proj `DivDiffFluxProjectionData` object
   @param[out] op_rhs         Operator to calculate the RHS of the L^2 projection
 **/
-static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
+static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
                                                                CeedOperator *op_rhs) {
-  Ceed                 ceed       = user->ceed;
+  Ceed                 ceed       = honee->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedInt              num_comp_q;
   PetscInt             dim, label_value = 0;
@@ -230,7 +230,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qfctx));
   }
   PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, op_rhs));
@@ -245,7 +245,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
     PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_diff_flux_volume, &basis_diff_flux, NULL, NULL));
     PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
                        &elem_restr_qd, &q_data, &q_data_size));
-    switch (user->phys->state_var) {
+    switch (honee->phys->state_var) {
       case STATEVAR_PRIMITIVE:
         PetscCallCeed(ceed,
                       CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxVolumeRHS_NS_Prim, DivDiffusiveFluxVolumeRHS_NS_Prim_loc, &qf_rhs_volume));
@@ -289,7 +289,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
     CeedInt       q_data_size;
 
     // -- Build RHS operator
-    switch (user->phys->state_var) {
+    switch (honee->phys->state_var) {
       case STATEVAR_PRIMITIVE:
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxBoundaryRHS_NS_Prim, DivDiffusiveFluxBoundaryRHS_NS_Prim_loc,
                                                         &qf_rhs_boundary));
@@ -304,7 +304,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
         break;
     }
 
-    PetscCall(QDataBoundaryGradientGetNumComponents(user->dm, &q_data_size));
+    PetscCall(QDataBoundaryGradientGetNumComponents(honee->dm, &q_data_size));
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs_boundary, newtonian_qfctx));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "q", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_boundary, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
@@ -333,12 +333,12 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
         CeedInt             q_data_size;
         PetscInt            orientation = orientation_values[o], dm_field_q = 0, height_cell = 0, height_face = 1;
 
-        PetscCall(DMPlexCeedElemRestrictionCreate(ceed, user->dm, face_orientation_label, orientation, height_cell, dm_field_q, &elem_restr_q));
-        PetscCall(DMPlexCeedBasisCellToFaceCreate(ceed, user->dm, face_orientation_label, orientation, orientation, dm_field_q, &basis_q));
+        PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, face_orientation_label, orientation, height_cell, dm_field_q, &elem_restr_q));
+        PetscCall(DMPlexCeedBasisCellToFaceCreate(ceed, honee->dm, face_orientation_label, orientation, orientation, dm_field_q, &basis_q));
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
         PetscCall(CreateBasisFromPlex(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
-        PetscCall(QDataBoundaryGradientGet(ceed, user->dm, face_orientation_label, orientation, ceed_data->x_coord, &elem_restr_qdata, &q_data,
+        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, ceed_data->x_coord, &elem_restr_qdata, &q_data,
                                            &q_data_size));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
@@ -371,14 +371,14 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(User user, CeedDa
 /**
   @brief Create RHS CeedOperator for indirect projection of divergence of diffusive flux
 
-  @param[in]  user           `User` object
+  @param[in]  honee          `Honee` context
   @param[in]  ceed_data      `CeedData` object
   @param[in]  diff_flux_proj `DivDiffFluxProjectionData` object
   @param[out] op_rhs         Operator to calculate the RHS of the L^2 projection
 **/
-static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
+static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
                                                                  CeedOperator *op_rhs) {
-  Ceed                 ceed       = user->ceed;
+  Ceed                 ceed       = honee->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedBasis            basis_diff_flux;
   CeedElemRestriction  elem_restr_diff_flux, elem_restr_qd;
@@ -398,7 +398,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(user->op_ifunction, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qfctx));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
@@ -406,7 +406,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
   PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
                      &q_data, &q_data_size));
 
-  switch (user->phys->state_var) {
+  switch (honee->phys->state_var) {
     case STATEVAR_PRIMITIVE:
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DiffusiveFluxRHS_NS_Prim, DiffusiveFluxRHS_NS_Prim_loc, &qf_rhs));
       break;
@@ -441,12 +441,12 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(User user, Ceed
 
 PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   SetupContext             setup_context;
-  User                     user   = *(User *)ctx;
-  CeedInt                  degree = user->app_ctx->degree;
+  Honee                    honee  = *(Honee *)ctx;
+  CeedInt                  degree = honee->app_ctx->degree;
   StabilizationType        stab;
   StateVariable            state_var;
-  MPI_Comm                 comm = user->comm;
-  Ceed                     ceed = user->ceed;
+  MPI_Comm                 comm = honee->comm;
+  Ceed                     ceed = honee->ceed;
   PetscBool                implicit;
   PetscBool                unit_tests;
   NewtonianIdealGasContext newtonian_ig_ctx;
@@ -464,15 +464,15 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
 
-  PetscCall(DivDiffFluxProjectionCreate(user, 4, &user->diff_flux_proj));
-  if (user->diff_flux_proj) {
-    DivDiffFluxProjectionData diff_flux_proj = user->diff_flux_proj;
+  PetscCall(DivDiffFluxProjectionCreate(honee, 4, &honee->diff_flux_proj));
+  if (honee->diff_flux_proj) {
+    DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
     NodalProjectionData       projection     = diff_flux_proj->projection;
 
     diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_NS;
     diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_NS;
 
-    switch (user->diff_flux_proj->method) {
+    switch (honee->diff_flux_proj->method) {
       case DIV_DIFF_FLUX_PROJ_DIRECT: {
         PetscSection section;
 
@@ -502,8 +502,8 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
         PetscCall(PetscSectionSetComponentName(section, 0, 11, "DiffusiveFlux_EnergyZ"));
       } break;
       case DIV_DIFF_FLUX_PROJ_NONE:
-        SETERRQ(PetscObjectComm((PetscObject)user->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
-                DivDiffFluxProjectionMethods[user->app_ctx->divFdiffproj_method]);
+        SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
+                DivDiffFluxProjectionMethods[honee->app_ctx->divFdiffproj_method]);
         break;
     }
   }
@@ -631,7 +631,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   // -- Warnings
   PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
              "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
-  PetscCheck(!(user->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE && !implicit), comm, PETSC_ERR_SUP,
+  PetscCheck(!(honee->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE && !implicit), comm, PETSC_ERR_SUP,
              "Projection of divergence of diffusive flux is not implemented for Navier-Stokes with explicit timestepping");
 
   PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
@@ -657,14 +657,14 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   m_per_squared_s = meter / PetscSqr(second);
   W_per_m_K       = kilogram * meter / (pow(second, 3) * Kelvin);
 
-  user->units->meter           = meter;
-  user->units->kilogram        = kilogram;
-  user->units->second          = second;
-  user->units->Kelvin          = Kelvin;
-  user->units->Pascal          = Pascal;
-  user->units->J_per_kg_K      = J_per_kg_K;
-  user->units->m_per_squared_s = m_per_squared_s;
-  user->units->W_per_m_K       = W_per_m_K;
+  honee->units->meter           = meter;
+  honee->units->kilogram        = kilogram;
+  honee->units->second          = second;
+  honee->units->Kelvin          = Kelvin;
+  honee->units->Pascal          = Pascal;
+  honee->units->J_per_kg_K      = J_per_kg_K;
+  honee->units->m_per_squared_s = m_per_squared_s;
+  honee->units->W_per_m_K       = W_per_m_K;
 
   // ------------------------------------------------------
   //           Set up the libCEED context
@@ -681,8 +681,8 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   reference.temperature *= Kelvin;
 
   // -- Solver Settings
-  user->phys->implicit  = implicit;
-  user->phys->state_var = state_var;
+  honee->phys->implicit  = implicit;
+  honee->phys->state_var = state_var;
 
   // -- QFunction Context
   newtonian_ig_ctx->lambda          = lambda;
@@ -704,7 +704,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   newtonian_ig_ctx->idl_start       = idl_start * meter;
   newtonian_ig_ctx->idl_length      = idl_length * meter;
   newtonian_ig_ctx->idl_pressure    = idl_pressure;
-  newtonian_ig_ctx->divFdiff_method = user->app_ctx->divFdiffproj_method;
+  newtonian_ig_ctx->divFdiff_method = honee->app_ctx->divFdiffproj_method;
   PetscCall(PetscArraycpy(newtonian_ig_ctx->g, g, 3));
 
   // -- Setup Context
@@ -715,13 +715,13 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   setup_context->lz        = domain_size[2];
   setup_context->time      = 0;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &problem->ics.qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &problem->ics.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfctx, CEED_MEM_HOST, FreeContextPetsc));
   PetscCallCeed(
       ceed, CeedQFunctionContextRegisterDouble(problem->ics.qfctx, "evaluation time", offsetof(struct SetupContext_, time), 1, "Time of evaluation"));
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(user->ceed, &newtonian_ig_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &newtonian_ig_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(newtonian_ig_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*newtonian_ig_ctx), newtonian_ig_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(newtonian_ig_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_qfctx, "timestep size", offsetof(struct NewtonianIdealGasContext_, dt), 1,
@@ -743,14 +743,14 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   if (bc->num_slip > 0) PetscCall(SlipBCSetup(problem, dm, ctx, newtonian_ig_qfctx));
 
   if (unit_tests) {
-    PetscCall(UnitTests_Newtonian(user, newtonian_ig_ctx));
+    PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PRINT_NEWTONIAN(User user, ProblemData problem, AppCtx app_ctx) {
-  MPI_Comm                 comm = user->comm;
-  Ceed                     ceed = user->ceed;
+PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx) {
+  MPI_Comm                 comm = honee->comm;
+  Ceed                     ceed = honee->ceed;
   NewtonianIdealGasContext newtonian_ctx;
 
   PetscFunctionBeginUser;

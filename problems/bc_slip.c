@@ -13,11 +13,11 @@
 #include "../qfunctions/newtonian_types.h"
 
 PetscErrorCode SlipBCSetup(ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx) {
-  User user = *(User *)ctx;
-  Ceed ceed = user->ceed;
+  Honee honee = *(Honee *)ctx;
+  Ceed  ceed  = honee->ceed;
 
   PetscFunctionBeginUser;
-  switch (user->phys->state_var) {
+  switch (honee->phys->state_var) {
     case STATEVAR_CONSERVATIVE:
       problem->apply_slip.qf_func_ptr          = Slip_Conserv;
       problem->apply_slip.qf_loc               = Slip_Conserv_loc;
