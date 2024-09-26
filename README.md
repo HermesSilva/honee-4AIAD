@@ -65,7 +65,7 @@ $ make -j8
 To run a sample problem, run:
 
 ```console
-$ bin/navierstokes -options_file ./gaussianwave.yaml
+$ ./build/navierstokes -options_file ./examples/gaussianwave.yaml
 ```
 
 To test the installation, use
