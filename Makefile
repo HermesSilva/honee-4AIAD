@@ -363,7 +363,7 @@ junit   : $(matched:$(OBJDIR)/%=junit-%)
 #   make configure CC=/path/to/other/clang
 
 # All variables to consider for caching
-CONFIG_VARS = CEED_DIR PETSC_DIR PETSC_ARCH CCOPT CFLAGS CPPFLAGS AR ARFLAGS LDFLAGS LDLIBS SED USE_TORCH SMARTREDIS_DIR
+CONFIG_VARS = CEED_DIR PETSC_DIR PETSC_ARCH OPT CFLAGS CPPFLAGS AR ARFLAGS LDFLAGS LDLIBS SED USE_TORCH SMARTREDIS_DIR
 
 # $(call needs_save,CFLAGS) returns true (a nonempty string) if CFLAGS
 # was set on the command line or in config.mk (where it will appear as
