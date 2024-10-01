@@ -385,7 +385,7 @@ docs-review:
   interruptible: true
   script:
     - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-hip CEED_DIR=/projects/honee/libCEED
-    - git submodule update --init
+    - git -c safe.directory=/builds/phypid/honee submodule update --init
     - make doc-html pkgconf=true DOXYGENOPTS= SPHINXOPTS=-W
     - mv doc/build/html public
   artifacts:
@@ -408,7 +408,7 @@ pages:  # this job name has special meaning to GitLab
   extends: .docs
   interruptible: false
   script:
-    - git submodule update --init
+    - git -c safe.directory=/builds/phypid/honee submodule update --init
     - make doc-dirhtml pkgconf=true DOXYGENOPTS=
     - mv doc/build/dirhtml public
   only:
