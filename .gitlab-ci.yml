@@ -7,6 +7,10 @@ stages:
   - test:docs
   - deploy
 
+workflow:
+  auto_cancel:
+    on_job_failure: all
+
 .test-basic:
   interruptible: true
   only:
@@ -26,9 +30,6 @@ stages:
     variables:
       # Skip if the No-Code label is attached to a merge request (i.e., documentation only)
       - $CI_MERGE_REQUEST_LABELS =~ /(^|,)No-Code($|,)/
-  needs:
-    - job: docker-build
-      optional: true
 
 .docs:
   image: python:3.10
@@ -47,7 +48,6 @@ noether-lint:
   tags:
     - noether
     - shell
-  needs: []
   script:
     - rm -f .SUCCESS
     # Environment
@@ -87,7 +87,6 @@ noether-memcheck:
   tags:
     - noether
     - shell
-  needs: []
   script:
     - rm -f .SUCCESS
     # Environment
