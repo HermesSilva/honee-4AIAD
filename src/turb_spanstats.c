@@ -178,7 +178,7 @@ PetscErrorCode GetQuadratureCoords(Ceed ceed, DM dm, CeedElemRestriction elem_re
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SpanStatsSetupDataCreate(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem, SpanStatsSetupData *stats_data) {
+PetscErrorCode SpanStatsSetupDataCreate(Ceed ceed, Honee honee, ProblemData problem, SpanStatsSetupData *stats_data) {
   DM       dm = honee->spanstats.dm;
   CeedInt  num_comp_x, num_comp_stats = honee->spanstats.num_comp_stats;
   Vec      X_loc;
@@ -202,8 +202,7 @@ PetscErrorCode SpanStatsSetupDataCreate(Ceed ceed, Honee honee, CeedData ceed_da
 
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, (*stats_data)->basis_stats, (*stats_data)->elem_restr_parent_stats,
                                             &(*stats_data)->elem_restr_parent_colloc));
-  PetscCall(
-      CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, ceed_data->basis_q, ceed_data->elem_restr_q, &(*stats_data)->elem_restr_child_colloc));
+  PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, honee->basis_q, honee->elem_restr_q, &(*stats_data)->elem_restr_child_colloc));
 
   {  // -- Copy DM coordinates into CeedVector
     DM cdm;
@@ -239,7 +238,7 @@ PetscErrorCode SpanStatsSetupDataDestroy(SpanStatsSetupData data) {
 }
 
 // Create PetscSF for child-to-parent communication
-PetscErrorCode CreateStatsSF(Ceed ceed, CeedData ceed_data, SpanStatsSetupData stats_data, DM parentdm, DM childdm, PetscSF *statssf) {
+PetscErrorCode CreateStatsSF(Ceed ceed, Honee honee, SpanStatsSetupData stats_data, DM parentdm, DM childdm, PetscSF *statssf) {
   PetscInt child_num_qpnts, parent_num_qpnts;
   CeedInt  num_comp_x;
   Vec      Child_qx_coords, Parent_qx_coords;
@@ -248,11 +247,11 @@ PetscErrorCode CreateStatsSF(Ceed ceed, CeedData ceed_data, SpanStatsSetupData s
   PetscCall(PetscSFCreate(PetscObjectComm((PetscObject)childdm), statssf));
 
   // Assume that child and parent have the same number of components
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_x, &num_comp_x));
+  PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_x, &num_comp_x));
   const PetscInt num_comp_sf = num_comp_x - 1;  // Number of coord components used in the creation of the SF
 
   // Get quad_coords for child and parent DM
-  PetscCall(GetQuadratureCoords(ceed, childdm, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &Child_qx_coords, &child_num_qpnts));
+  PetscCall(GetQuadratureCoords(ceed, childdm, honee->elem_restr_x, honee->basis_x, honee->x_coord, &Child_qx_coords, &child_num_qpnts));
   PetscCall(GetQuadratureCoords(ceed, parentdm, stats_data->elem_restr_parent_x, stats_data->basis_x, stats_data->x_coord, &Parent_qx_coords,
                                 &parent_num_qpnts));
 
@@ -287,7 +286,7 @@ PetscErrorCode CreateStatsSF(Ceed ceed, CeedData ceed_data, SpanStatsSetupData s
 }
 
 // @brief Setup RHS and LHS for L^2 projection of statistics
-PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, CeedData ceed_data, SpanStatsSetupData stats_data) {
+PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, SpanStatsSetupData stats_data) {
   CeedOperator        op_mass, op_proj_rhs;
   CeedQFunction       qf_mass, qf_stats_proj;
   CeedInt             q_data_size, num_comp_stats = honee->spanstats.num_comp_stats;
@@ -352,7 +351,7 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, CeedData ceed_data
 }
 
 // Create CeedOperator for statistics collection
-PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, CeedData ceed_data, SpanStatsSetupData stats_data, ProblemData problem) {
+PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, SpanStatsSetupData stats_data, ProblemData problem) {
   CeedInt                     num_comp_stats = honee->spanstats.num_comp_stats, num_comp_x, num_comp_q, q_data_size;
   PetscInt                    dim, label_value = 0;
   Turbulence_SpanStatsContext collect_ctx;
@@ -367,7 +366,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, CeedDat
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(honee->dm, &dim));
   num_comp_x = dim;
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
+  PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_q, &num_comp_q));
 
   // Create Operator for statistics collection
   switch (honee->phys->state_var) {
@@ -387,8 +386,8 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, CeedDat
     PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollectionMMSTest, ChildStatsCollectionMMSTest_loc, &qf_stats_collect));
   }
 
-  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
+                     &q_data_size));
 
   {  // Setup Collection Context
     PetscCall(PetscNew(&collect_ctx));
@@ -416,9 +415,9 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, CeedDat
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_stats_collect, "v", num_comp_stats, CEED_EVAL_NONE));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_stats_collect, NULL, NULL, &op_stats_collect));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q_data", elem_restr_qd, CEED_BASIS_NONE, q_data));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "x", honee->elem_restr_x, honee->basis_x, honee->x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "v", stats_data->elem_restr_child_colloc, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
   PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_stats_collect, "solution time", &honee->spanstats.solution_time_label));
@@ -439,7 +438,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, CeedDat
 }
 
 // Creates operator for calculating error of method of manufactured solution (MMS) test
-PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, CeedData ceed_data, SpanStatsSetupData stats_data) {
+PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, SpanStatsSetupData stats_data) {
   CeedInt             num_comp_stats = honee->spanstats.num_comp_stats, num_comp_x, q_data_size;
   CeedQFunction       qf_error;
   CeedOperator        op_error;
@@ -481,7 +480,7 @@ PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, CeedData ceed_data,
 }
 
 // Setup for statistics collection
-PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem) {
+PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData problem) {
   SpanStatsSetupData stats_data;
   PetscLogStage      stage_stats_setup;
 
@@ -494,20 +493,20 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, CeedData ceed_d
   PetscCall(CreateStatsDM(honee, problem, honee->app_ctx->degree));
 
   // Create necessary CeedObjects for setting up statistics
-  PetscCall(SpanStatsSetupDataCreate(ceed, honee, ceed_data, problem, &stats_data));
+  PetscCall(SpanStatsSetupDataCreate(ceed, honee, problem, &stats_data));
 
   // Create SF for communicating child data back their respective parents
-  PetscCall(CreateStatsSF(ceed, ceed_data, stats_data, honee->dm, honee->spanstats.dm, &honee->spanstats.sf));
+  PetscCall(CreateStatsSF(ceed, honee, stats_data, honee->dm, honee->spanstats.dm, &honee->spanstats.sf));
 
   // Create CeedOperators for statistics collection
-  PetscCall(CreateStatisticCollectionOperator(ceed, honee, ceed_data, stats_data, problem));
+  PetscCall(CreateStatisticCollectionOperator(ceed, honee, stats_data, problem));
 
   // Setup KSP and Mat for L^2 projection of statistics
-  PetscCall(SetupL2ProjectionStats(ceed, honee, ceed_data, stats_data));
+  PetscCall(SetupL2ProjectionStats(ceed, honee, stats_data));
 
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-ts_monitor_turbulence_spanstats_mms", &honee->spanstats.do_mms_test, NULL));
   if (honee->spanstats.do_mms_test) {
-    PetscCall(SetupMMSErrorChecking(ceed, honee, ceed_data, stats_data));
+    PetscCall(SetupMMSErrorChecking(ceed, honee, stats_data));
   }
 
   PetscCall(PetscViewerSetOptionsPrefix(honee->app_ctx->turb_spanstats_viewer, "ts_monitor_turbulence_spanstats_"));
@@ -631,7 +630,7 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode TurbulenceStatisticsDestroy(Honee honee, CeedData ceed_data) {
+PetscErrorCode TurbulenceStatisticsDestroy(Honee honee) {
   PetscFunctionBeginUser;
   PetscCall(VecDestroy(&honee->spanstats.Child_Stats_loc));
   PetscCall(VecDestroy(&honee->spanstats.Parent_Stats_loc));

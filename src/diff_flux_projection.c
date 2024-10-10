@@ -113,10 +113,9 @@ PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionDa
   @brief Setup direct projection of divergence of diffusive flux
 
   @param[in]     honee          `Honee` context
-  @param[in]     ceed_data      `CeedData` context
   @param[in,out] diff_flux_proj Flux projection object to setup
 **/
-static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj) {
+static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Honee honee, DivDiffFluxProjectionData diff_flux_proj) {
   Ceed                ceed       = honee->ceed;
   NodalProjectionData projection = diff_flux_proj->projection;
   MPI_Comm            comm       = PetscObjectComm((PetscObject)projection->dm);
@@ -127,7 +126,7 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Honee honee, CeedData ce
 
     PetscCheck(diff_flux_proj->CreateRHSOperator_Direct, comm, PETSC_ERR_ARG_WRONGSTATE,
                "Must define CreateRHSOperator_Direct to use indirect div_diff_flux projection");
-    PetscCall(diff_flux_proj->CreateRHSOperator_Direct(honee, ceed_data, diff_flux_proj, &op_rhs));
+    PetscCall(diff_flux_proj->CreateRHSOperator_Direct(honee, diff_flux_proj, &op_rhs));
     PetscCall(DMCreateLocalVector(projection->dm, &diff_flux_proj->DivDiffFlux_loc));
     diff_flux_proj->ceed_vec_has_array = PETSC_FALSE;
     PetscCall(OperatorApplyContextCreate(honee->dm, projection->dm, ceed, op_rhs, NULL, NULL, NULL, diff_flux_proj->DivDiffFlux_loc,
@@ -146,8 +145,8 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Honee honee, CeedData ce
     DMLabel             domain_label = NULL;
 
     PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_div_diff_flux_volume, &basis_div_diff_flux, NULL, NULL));
-    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
-                       &elem_restr_qd, &q_data, &q_data_size));
+    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
+                       &q_data_size));
 
     PetscCall(CreateMassQFunction(ceed, projection->num_comp, q_data_size, &qf_mass));
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
@@ -187,10 +186,9 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Honee honee, CeedData ce
   @brief Setup indirect projection of divergence of diffusive flux
 
   @param[in]     honee          `Honee` context
-  @param[in]     ceed_data      `CeedData` context
   @param[in,out] diff_flux_proj Flux projection object to setup
 **/
-static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj) {
+static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, DivDiffFluxProjectionData diff_flux_proj) {
   Ceed                ceed       = honee->ceed;
   NodalProjectionData projection = diff_flux_proj->projection;
   CeedBasis           basis_diff_flux;
@@ -206,8 +204,8 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, CeedData 
 
     PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
     PetscCall(CreateBasisFromPlex(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
-    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
-                       &elem_restr_qd, &q_data, &q_data_size));
+    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
+                       &q_data_size));
   }
 
   {
@@ -215,7 +213,7 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, CeedData 
 
     PetscCheck(diff_flux_proj->CreateRHSOperator_Indirect, comm, PETSC_ERR_ARG_WRONGSTATE,
                "Must define CreateRHSOperator_Indirect to use indirect div_diff_flux projection");
-    PetscCall(diff_flux_proj->CreateRHSOperator_Indirect(honee, ceed_data, diff_flux_proj, &op_rhs));
+    PetscCall(diff_flux_proj->CreateRHSOperator_Indirect(honee, diff_flux_proj, &op_rhs));
     PetscCall(OperatorApplyContextCreate(honee->dm, projection->dm, ceed, op_rhs, NULL, NULL, NULL, NULL, &projection->l2_rhs_ctx));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs));
   }
@@ -316,17 +314,16 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, CeedData 
   @brief Setup projection of divergence of diffusive flux
 
   @param[in]     honee          `Honee` context
-  @param[in]     ceed_data      `CeedData` context
   @param[in,out] diff_flux_proj Flux projection object to setup
 **/
-PetscErrorCode DivDiffFluxProjectionSetup(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj) {
+PetscErrorCode DivDiffFluxProjectionSetup(Honee honee, DivDiffFluxProjectionData diff_flux_proj) {
   PetscFunctionBeginUser;
   switch (honee->app_ctx->divFdiffproj_method) {
     case DIV_DIFF_FLUX_PROJ_DIRECT:
-      PetscCall(DivDiffFluxProjectionSetup_Direct(honee, ceed_data, diff_flux_proj));
+      PetscCall(DivDiffFluxProjectionSetup_Direct(honee, diff_flux_proj));
       break;
     case DIV_DIFF_FLUX_PROJ_INDIRECT:
-      PetscCall(DivDiffFluxProjectionSetup_Indirect(honee, ceed_data, diff_flux_proj));
+      PetscCall(DivDiffFluxProjectionSetup_Indirect(honee, diff_flux_proj));
       break;
     case DIV_DIFF_FLUX_PROJ_NONE:
       SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",

@@ -82,9 +82,6 @@ int main(int argc, char **argv) {
   Honee honee;
   PetscCall(PetscCalloc1(1, &honee));
 
-  CeedData ceed_data;
-  PetscCall(PetscCalloc1(1, &ceed_data));
-
   SimpleBC bc;
   PetscCall(PetscCalloc1(1, &bc));
 
@@ -199,13 +196,13 @@ int main(int argc, char **argv) {
   // Set up libCEED
   // ---------------------------------------------------------------------------
   // -- Set up libCEED objects
-  PetscCall(SetupLibceed(ceed, ceed_data, dm, honee, app_ctx, problem, bc));
+  PetscCall(SetupLibceed(ceed, dm, honee, app_ctx, problem, bc));
 
   // ---------------------------------------------------------------------------
   // Set up ICs
   // ---------------------------------------------------------------------------
   // -- Fix multiplicity for ICs
-  PetscCall(ICs_FixMultiplicity(dm, ceed_data, honee, honee->Q_loc, Q, 0.0));
+  PetscCall(ICs_FixMultiplicity(dm, honee, honee->Q_loc, Q, 0.0));
 
   // ---------------------------------------------------------------------------
   // Record boundary values from initial condition
@@ -252,13 +249,13 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   // Post-processing
   // ---------------------------------------------------------------------------
-  PetscCall(PostProcess(ts, ceed_data, dm, problem, honee, Q, final_time));
+  PetscCall(PostProcess(ts, dm, problem, honee, Q, final_time));
 
   // ---------------------------------------------------------------------------
   // Destroy libCEED objects
   // ---------------------------------------------------------------------------
 
-  PetscCall(TurbulenceStatisticsDestroy(honee, ceed_data));
+  PetscCall(TurbulenceStatisticsDestroy(honee));
   PetscCall(NodalProjectionDataDestroy(honee->grad_velo_proj));
   PetscCall(SgsDDDataDestroy(honee->sgs_dd_data));
   PetscCall(DifferentialFilterDataDestroy(honee->diff_filter));
@@ -268,18 +265,18 @@ int main(int argc, char **argv) {
   PetscCall(DivDiffFluxProjectionDataDestroy(honee->diff_flux_proj));
 
   // -- Vectors
-  PetscCallCeed(ceed, CeedVectorDestroy(&ceed_data->x_coord));
+  PetscCallCeed(ceed, CeedVectorDestroy(&honee->x_coord));
   PetscCallCeed(ceed, CeedVectorDestroy(&honee->q_ceed));
   PetscCallCeed(ceed, CeedVectorDestroy(&honee->q_dot_ceed));
   PetscCallCeed(ceed, CeedVectorDestroy(&honee->g_ceed));
 
   // -- Bases
-  PetscCallCeed(ceed, CeedBasisDestroy(&ceed_data->basis_q));
-  PetscCallCeed(ceed, CeedBasisDestroy(&ceed_data->basis_x));
+  PetscCallCeed(ceed, CeedBasisDestroy(&honee->basis_q));
+  PetscCallCeed(ceed, CeedBasisDestroy(&honee->basis_x));
 
   // -- Restrictions
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&ceed_data->elem_restr_q));
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&ceed_data->elem_restr_x));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&honee->elem_restr_q));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&honee->elem_restr_x));
 
   // Destroy QFunction contexts after using
   // ToDo: Simplify tracked libCEED objects, smaller struct
@@ -299,7 +296,7 @@ int main(int argc, char **argv) {
   }
 
   // -- Operators
-  PetscCall(OperatorApplyContextDestroy(ceed_data->op_ics_ctx));
+  PetscCall(OperatorApplyContextDestroy(honee->op_ics_ctx));
   PetscCall(OperatorApplyContextDestroy(honee->op_rhs_ctx));
   PetscCall(OperatorApplyContextDestroy(honee->op_strong_bc_ctx));
   PetscCallCeed(ceed, CeedOperatorDestroy(&honee->op_ifunction));
@@ -354,7 +351,7 @@ int main(int argc, char **argv) {
   PetscCall(PetscFree(bc));
   PetscCall(PetscFree(phys_ctx));
   PetscCall(PetscFree(app_ctx));
-  PetscCall(PetscFree(ceed_data));
+  PetscCall(PetscFree(honee));
   PetscCall(PetscFree(problem));
 
   return PetscFinalize();

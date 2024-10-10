@@ -12,22 +12,22 @@
 #include <navierstokes.h>
 #include "../qfunctions/mass.h"
 
-PetscErrorCode ICs_FixMultiplicity(DM dm, CeedData ceed_data, Honee honee, Vec Q_loc, Vec Q, CeedScalar time) {
+PetscErrorCode ICs_FixMultiplicity(DM dm, Honee honee, Vec Q_loc, Vec Q, CeedScalar time) {
   Ceed         ceed = honee->ceed;
   CeedVector   mult_vec;
   PetscMemType m_mem_type;
   Vec          Multiplicity, Multiplicity_loc;
 
   PetscFunctionBeginUser;
-  if (honee->phys->ics_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(ceed_data->op_ics_ctx->op, honee->phys->ics_time_label, &time));
-  PetscCall(ApplyCeedOperatorLocalToGlobal(NULL, Q, ceed_data->op_ics_ctx));
+  if (honee->phys->ics_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_ics_ctx->op, honee->phys->ics_time_label, &time));
+  PetscCall(ApplyCeedOperatorLocalToGlobal(NULL, Q, honee->op_ics_ctx));
 
-  PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &mult_vec, NULL));
+  PetscCallCeed(ceed, CeedElemRestrictionCreateVector(honee->elem_restr_q, &mult_vec, NULL));
 
   // -- Get multiplicity
   PetscCall(DMGetLocalVector(dm, &Multiplicity_loc));
   PetscCall(VecPetscToCeed(Multiplicity_loc, &m_mem_type, mult_vec));
-  PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(ceed_data->elem_restr_q, mult_vec));
+  PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(honee->elem_restr_q, mult_vec));
   PetscCall(VecCeedToPetsc(mult_vec, m_mem_type, Multiplicity_loc));
 
   PetscCall(DMGetGlobalVector(dm, &Multiplicity));
@@ -121,7 +121,7 @@ PetscErrorCode RegressionTest(AppCtx app_ctx, Vec Q) {
 }
 
 // Get error for problems with exact solutions
-PetscErrorCode PrintError(CeedData ceed_data, DM dm, Honee honee, Vec Q, PetscScalar final_time) {
+PetscErrorCode PrintError(DM dm, Honee honee, Vec Q, PetscScalar final_time) {
   PetscInt  loc_nodes;
   Vec       Q_exact, Q_exact_loc;
   PetscReal rel_error, norm_error, norm_exact;
@@ -131,7 +131,7 @@ PetscErrorCode PrintError(CeedData ceed_data, DM dm, Honee honee, Vec Q, PetscSc
   PetscCall(DMGetGlobalVector(dm, &Q_exact));
   PetscCall(DMGetLocalVector(dm, &Q_exact_loc));
   PetscCall(VecGetSize(Q_exact_loc, &loc_nodes));
-  PetscCall(ICs_FixMultiplicity(dm, ceed_data, honee, Q_exact_loc, Q_exact, final_time));
+  PetscCall(ICs_FixMultiplicity(dm, honee, Q_exact_loc, Q_exact, final_time));
 
   // Get |exact solution - obtained solution|
   PetscCall(VecNorm(Q_exact, NORM_1, &norm_exact));
@@ -146,14 +146,14 @@ PetscErrorCode PrintError(CeedData ceed_data, DM dm, Honee honee, Vec Q, PetscSc
 }
 
 // Post-processing
-PetscErrorCode PostProcess(TS ts, CeedData ceed_data, DM dm, ProblemData problem, Honee honee, Vec Q, PetscScalar final_time) {
+PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q, PetscScalar final_time) {
   PetscInt          steps;
   TSConvergedReason reason;
 
   PetscFunctionBeginUser;
   // Print relative error
   if (problem->compute_exact_solution_error && honee->app_ctx->test_type == TESTTYPE_NONE) {
-    PetscCall(PrintError(ceed_data, dm, honee, Q, final_time));
+    PetscCall(PrintError(dm, honee, Q, final_time));
   }
 
   // Print final time and number of steps
