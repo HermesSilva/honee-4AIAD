@@ -78,6 +78,7 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
       const PetscInt *essential_comps, *label_values;
       const char     *name;
 
+      PetscCall(BCDefinitionSetDM(problem->bc_defs[i], dm));
       PetscCall(BCDefinitionGetEssential(bc_def, &num_essential_comps, &essential_comps));
       if (essential_comps > 0) {
         PetscCall(BCDefinitionGetInfo(bc_def, &name, &num_label_values, &label_values));

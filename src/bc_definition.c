@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 #include <bc_definition.h>
+#include <petsc/private/petscimpl.h>
 
 /**
    @brief Create `BCDefinition`
@@ -50,6 +51,7 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
   if ((*bc_def)->name) PetscCall(PetscFree((*bc_def)->name));
   if ((*bc_def)->label_values) PetscCall(PetscFree((*bc_def)->label_values));
   if ((*bc_def)->essential_comps) PetscCall(PetscFree((*bc_def)->essential_comps));
+  if ((*bc_def)->dm) PetscCall(DMDestroy(&(*bc_def)->dm));
   PetscCall(PetscFree(*bc_def));
   *bc_def = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -98,5 +100,35 @@ PetscErrorCode PetscOptionsBCDefinition_Private(PetscOptionItems PetscOptionsObj
   } else {
     *bc_def = NULL;
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Set `DM` for BCDefinition
+
+  @param[in,out] bc_def `BCDefinition` to add `dm` to
+  @param[in]     dm     `DM` to assign to BCDefinition, or `NULL` to remove `DM`
+**/
+PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm) {
+  PetscFunctionBeginUser;
+  if (bc_def->dm) PetscCall(DMDestroy(&bc_def->dm));
+  if (dm) {
+    PetscValidHeaderSpecific(dm, DM_CLASSID, 2);
+    PetscCall(PetscObjectReference((PetscObject)dm));
+    bc_def->dm = dm;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get `DM` assigned to BCDefinition
+
+  @param[in]  bc_def `BCDefinition` to get `dm` from
+  @param[out] dm     `DM` assigned to BCDefinition
+**/
+PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
+  PetscFunctionBeginUser;
+  PetscAssertPointer(dm, 2);
+  *dm = bc_def->dm;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

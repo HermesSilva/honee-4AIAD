@@ -8,6 +8,7 @@
 typedef struct _p_BCDefinition *BCDefinition;
 struct _p_BCDefinition {
   char *name;
+  DM    dm;
 
   // Boundary ID information
   PetscInt num_label_values, *label_values, dm_field;
@@ -39,3 +40,6 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def);
 
 PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, PetscInt essential_comps[]);
 PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[]);
+
+PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm);
+PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm);
