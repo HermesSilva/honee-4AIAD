@@ -5,10 +5,10 @@
 /// Utilities for setting up DM and PetscFE
 
 #include <ceed.h>
+#include <dm-utils.h>
+#include <petsc-ceed-utils.h>
 #include <petscdmplex.h>
 #include <petscds.h>
-
-#include <navierstokes.h>
 
 /**
   @brief Convert `DM` field to `DS` field.

@@ -4,6 +4,7 @@
 
 #include <ceed.h>
 #include <bc_definition.h>
+#include <dm-utils.h>
 #include <honee-file.h>
 #include <honee.h>
 #include <log_events.h>
@@ -342,24 +343,6 @@ PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, 
 // -----------------------------------------------------------------------------
 // libCEED functions
 // -----------------------------------------------------------------------------
-PetscErrorCode DMPlexCeedElemRestrictionCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
-                                               CeedElemRestriction *restriction);
-PetscErrorCode DMPlexCeedElemRestrictionCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
-                                                         CeedElemRestriction *restriction);
-PetscErrorCode DMPlexCeedElemRestrictionQDataCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
-                                                    PetscInt q_data_size, CeedElemRestriction *restriction);
-PetscErrorCode DMPlexCeedElemRestrictionCollocatedCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
-                                                         PetscInt q_data_size, CeedElemRestriction *restriction);
-
-PetscErrorCode CreateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, CeedInt label_value, CeedInt height, CeedInt dm_field, CeedBasis *basis);
-PetscErrorCode CreateCoordinateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis);
-PetscErrorCode DMPlexCeedBasisCellToFaceCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face,
-                                                         CeedBasis *basis);
-PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face, PetscInt dm_field,
-                                               CeedBasis *basis);
-PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_name);
-PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num_values, PetscInt **value_array);
-
 PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem, SimpleBC bc);
 
 PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
