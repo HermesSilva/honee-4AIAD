@@ -968,3 +968,21 @@ PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num
   if (values_local) PetscCall(PetscFree(values_local));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+/**
+  @brief Get the number of components for `dm`'s coordinate field
+
+  @param[in]  dm       DM
+  @param[out] num_comp Number of components for the coordinate field
+**/
+PetscErrorCode DMGetCoordinateNumComps(DM dm, PetscInt *num_comp) {
+  DM           dm_coord;
+  PetscSection section_coord;
+  PetscInt     field = 0;  // Default field has the coordinates
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetCoordinateDM(dm, &dm_coord));
+  PetscCall(DMGetLocalSection(dm_coord, &section_coord));
+  PetscCall(PetscSectionGetFieldComponents(section_coord, field, num_comp));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
