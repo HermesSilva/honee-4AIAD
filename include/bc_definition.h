@@ -15,6 +15,9 @@ struct _p_BCDefinition {
 
   // Essential Boundary information
   PetscInt num_essential_comps, *essential_comps;
+
+  void              *ctx;
+  PetscCtxDestroyFn *DestroyCtx;
 };
 
 /**
@@ -43,3 +46,6 @@ PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essen
 
 PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm);
 PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm);
+
+PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx);
+PetscErrorCode BCDefinitionGetContext(BCDefinition bc_def, void *ctx);

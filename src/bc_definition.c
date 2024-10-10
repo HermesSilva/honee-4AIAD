@@ -47,12 +47,14 @@ PetscErrorCode BCDefinitionGetInfo(BCDefinition bc_def, const char *name[], Pets
    @param[in,out] bc_def `BCDefinition` to be destroyed
 **/
 PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
+  BCDefinition bc_def_ = *bc_def;
   PetscFunctionBeginUser;
-  if ((*bc_def)->name) PetscCall(PetscFree((*bc_def)->name));
-  if ((*bc_def)->label_values) PetscCall(PetscFree((*bc_def)->label_values));
-  if ((*bc_def)->essential_comps) PetscCall(PetscFree((*bc_def)->essential_comps));
-  if ((*bc_def)->dm) PetscCall(DMDestroy(&(*bc_def)->dm));
-  PetscCall(PetscFree(*bc_def));
+  if (bc_def_->name) PetscCall(PetscFree(bc_def_->name));
+  if (bc_def_->label_values) PetscCall(PetscFree(bc_def_->label_values));
+  if (bc_def_->essential_comps) PetscCall(PetscFree(bc_def_->essential_comps));
+  if (bc_def_->dm) PetscCall(DMDestroy(&bc_def_->dm));
+  if (bc_def_->DestroyCtx) PetscCall((*(bc_def_->DestroyCtx))(&bc_def_->ctx));
+  PetscCall(PetscFree(bc_def_));
   *bc_def = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -130,5 +132,33 @@ PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
   PetscFunctionBeginUser;
   PetscAssertPointer(dm, 2);
   *dm = bc_def->dm;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Set custom context struct for use in BCDefinition
+
+  @param[in,out] bc_def      `BCDefinition` to add `ctx` to
+  @param[in]     destroy_ctx Optional function pointer that destroys the user context on `BCDefinitionDestroy()`
+  @param[in]     ctx         Pointer to context struct
+**/
+PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx) {
+  PetscFunctionBeginUser;
+  if (bc_def->DestroyCtx) PetscCall((*(bc_def->DestroyCtx))(&bc_def->ctx));
+  bc_def->ctx        = ctx;
+  bc_def->DestroyCtx = destroy_ctx;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Set custom context struct for use in BCDefinition
+
+  @param[in]  bc_def `BCDefinition` to get `ctx` from
+  @param[out] ctx    Pointer to context struct
+**/
+PetscErrorCode BCDefinitionGetContext(BCDefinition bc_def, void *ctx) {
+  PetscFunctionBeginUser;
+  PetscAssertPointer(ctx, 2);
+  *(void **)ctx = bc_def->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
