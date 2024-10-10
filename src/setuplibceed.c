@@ -85,9 +85,9 @@ static PetscErrorCode CreateKSPMass(Honee honee, ProblemData problem) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode AddBCSubOperator(Ceed ceed, DM dm, CeedData ceed_data, DMLabel domain_label, PetscInt label_value, CeedInt height,
-                                       CeedInt Q_sur, CeedInt q_data_size_sur, CeedInt jac_data_size_sur, CeedBasis basis_q_sur,
-                                       CeedBasis basis_x_sur, CeedQFunction qf_apply_bc, CeedQFunction qf_apply_bc_jacobian, CeedOperator op_apply,
+static PetscErrorCode AddBCSubOperator(Ceed ceed, DM dm, Honee honee, DMLabel domain_label, PetscInt label_value, CeedInt height, CeedInt Q_sur,
+                                       CeedInt q_data_size_sur, CeedInt jac_data_size_sur, CeedBasis basis_q_sur, CeedBasis basis_x_sur,
+                                       CeedQFunction qf_apply_bc, CeedQFunction qf_apply_bc_jacobian, CeedOperator op_apply,
                                        CeedOperator op_apply_ijacobian) {
   CeedVector          q_data_sur, jac_data_sur          = NULL;
   CeedOperator        op_apply_bc, op_apply_bc_jacobian = NULL;
@@ -103,15 +103,15 @@ static PetscErrorCode AddBCSubOperator(Ceed ceed, DM dm, CeedData ceed_data, DML
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jd_i_sur, &jac_data_sur, NULL));
   }
 
-  PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, elem_restr_x_sur, basis_x_sur, ceed_data->x_coord, &elem_restr_qd_i_sur,
-                             &q_data_sur, &q_data_size_sur));
+  PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, elem_restr_x_sur, basis_x_sur, honee->x_coord, &elem_restr_qd_i_sur, &q_data_sur,
+                             &q_data_size_sur));
 
   // CEED Operator for Physics
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_apply_bc, NULL, NULL, &op_apply_bc));
   PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc, "q", elem_restr_q_sur, basis_q_sur, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc, "Grad_q", elem_restr_q_sur, basis_q_sur, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc, "surface qdata", elem_restr_qd_i_sur, CEED_BASIS_NONE, q_data_sur));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc, "x", elem_restr_x_sur, basis_x_sur, ceed_data->x_coord));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc, "x", elem_restr_x_sur, basis_x_sur, honee->x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc, "v", elem_restr_q_sur, basis_q_sur, CEED_VECTOR_ACTIVE));
   if (elem_restr_jd_i_sur)
     PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc, "surface jacobian data", elem_restr_jd_i_sur, CEED_BASIS_NONE, jac_data_sur));
@@ -121,7 +121,7 @@ static PetscErrorCode AddBCSubOperator(Ceed ceed, DM dm, CeedData ceed_data, DML
     PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc_jacobian, "dq", elem_restr_q_sur, basis_q_sur, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc_jacobian, "Grad_dq", elem_restr_q_sur, basis_q_sur, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc_jacobian, "surface qdata", elem_restr_qd_i_sur, CEED_BASIS_NONE, q_data_sur));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc_jacobian, "x", elem_restr_x_sur, basis_x_sur, ceed_data->x_coord));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc_jacobian, "x", elem_restr_x_sur, basis_x_sur, honee->x_coord));
     PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc_jacobian, "surface jacobian data", elem_restr_jd_i_sur, CEED_BASIS_NONE, jac_data_sur));
     PetscCallCeed(ceed, CeedOperatorSetField(op_apply_bc_jacobian, "v", elem_restr_q_sur, basis_q_sur, CEED_VECTOR_ACTIVE));
   }
@@ -171,7 +171,7 @@ static PetscErrorCode SetupBCQFunctions(Ceed ceed, PetscInt dim_sur, PetscInt nu
 }
 
 // Utility function to add boundary operators to the composite operator
-static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC bc, ProblemData problem, CeedData ceed_data, CeedOperator op_apply,
+static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC bc, ProblemData problem, CeedOperator op_apply,
                                         CeedOperator op_apply_ijacobian) {
   CeedInt       height = 1, num_comp_q, num_comp_x;
   CeedInt       P_sur = honee->app_ctx->degree + 1, Q_sur = P_sur + honee->app_ctx->q_extra, dim_sur, q_data_size_sur;
@@ -219,7 +219,7 @@ static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC 
     PetscCall(SetupBCQFunctions(ceed, dim_sur, num_comp_x, num_comp_q, q_data_size_sur, jac_data_size_sur, problem->apply_inflow,
                                 problem->apply_inflow_jacobian, &qf_apply_inflow, &qf_apply_inflow_jacobian));
     for (CeedInt i = 0; i < bc->num_inflow; i++) {
-      PetscCall(AddBCSubOperator(ceed, dm, ceed_data, face_sets_label, bc->inflows[i], height, Q_sur, q_data_size_sur, jac_data_size_sur, basis_q_sur,
+      PetscCall(AddBCSubOperator(ceed, dm, honee, face_sets_label, bc->inflows[i], height, Q_sur, q_data_size_sur, jac_data_size_sur, basis_q_sur,
                                  basis_x_sur, qf_apply_inflow, qf_apply_inflow_jacobian, op_apply, op_apply_ijacobian));
     }
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_inflow));
@@ -232,8 +232,8 @@ static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC 
     PetscCall(SetupBCQFunctions(ceed, dim_sur, num_comp_x, num_comp_q, q_data_size_sur, jac_data_size_sur, problem->apply_outflow,
                                 problem->apply_outflow_jacobian, &qf_apply_outflow, &qf_apply_outflow_jacobian));
     for (CeedInt i = 0; i < bc->num_outflow; i++) {
-      PetscCall(AddBCSubOperator(ceed, dm, ceed_data, face_sets_label, bc->outflows[i], height, Q_sur, q_data_size_sur, jac_data_size_sur,
-                                 basis_q_sur, basis_x_sur, qf_apply_outflow, qf_apply_outflow_jacobian, op_apply, op_apply_ijacobian));
+      PetscCall(AddBCSubOperator(ceed, dm, honee, face_sets_label, bc->outflows[i], height, Q_sur, q_data_size_sur, jac_data_size_sur, basis_q_sur,
+                                 basis_x_sur, qf_apply_outflow, qf_apply_outflow_jacobian, op_apply, op_apply_ijacobian));
     }
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_outflow));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_outflow_jacobian));
@@ -245,8 +245,8 @@ static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC 
     PetscCall(SetupBCQFunctions(ceed, dim_sur, num_comp_x, num_comp_q, q_data_size_sur, jac_data_size_sur, problem->apply_freestream,
                                 problem->apply_freestream_jacobian, &qf_apply_freestream, &qf_apply_freestream_jacobian));
     for (CeedInt i = 0; i < bc->num_freestream; i++) {
-      PetscCall(AddBCSubOperator(ceed, dm, ceed_data, face_sets_label, bc->freestreams[i], height, Q_sur, q_data_size_sur, jac_data_size_sur,
-                                 basis_q_sur, basis_x_sur, qf_apply_freestream, qf_apply_freestream_jacobian, op_apply, op_apply_ijacobian));
+      PetscCall(AddBCSubOperator(ceed, dm, honee, face_sets_label, bc->freestreams[i], height, Q_sur, q_data_size_sur, jac_data_size_sur, basis_q_sur,
+                                 basis_x_sur, qf_apply_freestream, qf_apply_freestream_jacobian, op_apply, op_apply_ijacobian));
     }
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_freestream));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_freestream_jacobian));
@@ -258,7 +258,7 @@ static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC 
     PetscCall(SetupBCQFunctions(ceed, dim_sur, num_comp_x, num_comp_q, q_data_size_sur, jac_data_size_sur, problem->apply_slip,
                                 problem->apply_slip_jacobian, &qf_apply_slip, &qf_apply_slip_jacobian));
     for (CeedInt i = 0; i < bc->num_slip; i++) {
-      PetscCall(AddBCSubOperator(ceed, dm, ceed_data, face_sets_label, bc->slips[i], height, Q_sur, q_data_size_sur, jac_data_size_sur, basis_q_sur,
+      PetscCall(AddBCSubOperator(ceed, dm, honee, face_sets_label, bc->slips[i], height, Q_sur, q_data_size_sur, jac_data_size_sur, basis_q_sur,
                                  basis_x_sur, qf_apply_slip, qf_apply_slip_jacobian, op_apply, op_apply_ijacobian));
     }
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_slip));
@@ -270,7 +270,7 @@ static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem, SimpleBC bc) {
+PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem, SimpleBC bc) {
   const PetscInt      num_comp_q = 5;
   PetscInt            dim;
   CeedInt             jac_data_size_vol = problem->jac_data_size_vol, num_comp_x, q_data_size_vol;
@@ -292,20 +292,20 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
     DM       dm_coord;
 
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(CreateBasisFromPlex(ceed, dm, domain_label, label_value, height, dm_field, &ceed_data->basis_q));
-    PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, dm_field, &ceed_data->basis_x));
+    PetscCall(CreateBasisFromPlex(ceed, dm, domain_label, label_value, height, dm_field, &honee->basis_q));
+    PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, dm_field, &honee->basis_x));
 
-    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, 0, &ceed_data->elem_restr_q));
-    PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &ceed_data->elem_restr_x));
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, 0, &honee->elem_restr_q));
+    PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &honee->elem_restr_x));
     if (jac_data_size_vol) {
       PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height, jac_data_size_vol, &elem_restr_jd_i));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jd_i, &jac_data, NULL));
     }
 
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &honee->q_ceed, NULL));
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &honee->q_dot_ceed, NULL));
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_q, &honee->g_ceed, NULL));
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(ceed_data->elem_restr_x, &ceed_data->x_coord, NULL));
+    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(honee->elem_restr_q, &honee->q_ceed, NULL));
+    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(honee->elem_restr_q, &honee->q_dot_ceed, NULL));
+    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(honee->elem_restr_q, &honee->g_ceed, NULL));
+    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(honee->elem_restr_x, &honee->x_coord, NULL));
 
     {  // -- Copy PETSc coordinate vector into CEED vector
       Vec X_loc;
@@ -318,10 +318,10 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
         PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
       }
       PetscCall(VecScale(X_loc, honee->units->meter));
-      PetscCall(VecCopyPetscToCeed(X_loc, ceed_data->x_coord));
+      PetscCall(VecCopyPetscToCeed(X_loc, honee->x_coord));
     }
 
-    PetscCall(QDataGet(ceed, dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd, &q_data,
+    PetscCall(QDataGet(ceed, dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
                        &q_data_size_vol));
   }
 
@@ -337,7 +337,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
     CeedQFunction qf_ics;
     CeedOperator  op_ics;
 
-    PetscCallCeed(ceed, CeedBasisCreateProjection(ceed_data->basis_x, ceed_data->basis_q, &basis_xc));
+    PetscCallCeed(ceed, CeedBasisCreateProjection(honee->basis_x, honee->basis_q, &basis_xc));
     PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->ics.qf_func_ptr, problem->ics.qf_loc, &qf_ics));
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ics, problem->ics.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ics, 0));
@@ -346,11 +346,11 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ics, "q0", num_comp_q, CEED_EVAL_NONE));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ics, NULL, NULL, &op_ics));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "x", ceed_data->elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "dx", ceed_data->elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "q0", ceed_data->elem_restr_q, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "x", honee->elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "dx", honee->elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "q0", honee->elem_restr_q, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_ics, "evaluation time", &honee->phys->ics_time_label));
-    PetscCall(OperatorApplyContextCreate(NULL, dm, honee->ceed, op_ics, ceed_data->x_coord, NULL, NULL, honee->Q_loc, &ceed_data->op_ics_ctx));
+    PetscCall(OperatorApplyContextCreate(NULL, dm, honee->ceed, op_ics, honee->x_coord, NULL, NULL, honee->Q_loc, &honee->op_ics_ctx));
 
     PetscCallCeed(ceed, CeedBasisDestroy(&basis_xc));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ics));
@@ -373,14 +373,14 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_vol, NULL, NULL, &op_rhs_vol));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "x", honee->elem_restr_x, honee->basis_x, honee->x_coord));
     if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
       PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "div F_diff", elem_restr_diff_flux, basis_diff_flux, div_diff_flux_ceed));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_vol));
   }
@@ -404,15 +404,15 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
     if (jac_data_size_vol) PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "jac_data", jac_data_size_vol, CEED_EVAL_NONE));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ifunction_vol, NULL, NULL, &op_ifunction_vol));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q dot", ceed_data->elem_restr_q, ceed_data->basis_q, honee->q_dot_ceed));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q dot", honee->elem_restr_q, honee->basis_q, honee->q_dot_ceed));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "x", ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "x", honee->elem_restr_x, honee->basis_x, honee->x_coord));
     if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
       PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "div F_diff", elem_restr_diff_flux, basis_diff_flux, div_diff_flux_ceed));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
     if (jac_data_size_vol) PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));
 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ifunction_vol));
@@ -433,12 +433,12 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ijacobian_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ijacobian_vol, NULL, NULL, &op_ijacobian_vol));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "dq", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "Grad_dq", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "dq", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "Grad_dq", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     if (jac_data_size_vol) PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "Grad_v", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "Grad_v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ijacobian_vol));
   }
@@ -449,7 +449,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
 
     PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_rhs));
     PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_rhs, op_rhs_vol));
-    PetscCall(AddBCSubOperators(honee, ceed, dm, bc, problem, ceed_data, op_rhs, NULL));
+    PetscCall(AddBCSubOperators(honee, ceed, dm, bc, problem, op_rhs, NULL));
 
     PetscCall(OperatorApplyContextCreate(dm, dm, ceed, op_rhs, honee->q_ceed, honee->g_ceed, honee->Q_loc, NULL, &honee->op_rhs_ctx));
 
@@ -470,7 +470,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
       PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_ijacobian));
       PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_ijacobian, op_ijacobian_vol));
     }
-    PetscCall(AddBCSubOperators(honee, ceed, dm, bc, problem, ceed_data, honee->op_ifunction, op_ijacobian));
+    PetscCall(AddBCSubOperators(honee, ceed, dm, bc, problem, honee->op_ifunction, op_ijacobian));
 
     // ----- Get Context Labels for Operator
     PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(honee->op_ifunction, "solution time", &honee->phys->solution_time_label));
@@ -481,14 +481,14 @@ PetscErrorCode SetupLibceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, A
       PetscCall(MatCeedSetLocalVectors(honee->mat_ijacobian, honee->Q_dot_loc, NULL));
       PetscCallCeed(ceed, CeedOperatorDestroy(&op_ijacobian));
     }
-    if (app_ctx->sgs_model_type == SGS_MODEL_DATA_DRIVEN) PetscCall(SgsDDSetup(ceed, honee, ceed_data, problem));
+    if (app_ctx->sgs_model_type == SGS_MODEL_DATA_DRIVEN) PetscCall(SgsDDSetup(ceed, honee, problem));
   }
 
-  if (problem->use_strong_bc_ceed) PetscCall(SetupStrongBC_Ceed(ceed, ceed_data, dm, honee, problem, bc));
-  if (app_ctx->turb_spanstats_enable) PetscCall(TurbulenceStatisticsSetup(ceed, honee, ceed_data, problem));
-  if (app_ctx->diff_filter_monitor && !honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, ceed_data, problem));
-  if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, honee, ceed_data, problem));
-  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(honee, ceed_data, honee->diff_flux_proj));
+  if (problem->use_strong_bc_ceed) PetscCall(SetupStrongBC_Ceed(ceed, dm, honee, problem, bc));
+  if (app_ctx->turb_spanstats_enable) PetscCall(TurbulenceStatisticsSetup(ceed, honee, problem));
+  if (app_ctx->diff_filter_monitor && !honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, problem));
+  if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, honee, problem));
+  if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(honee, honee->diff_flux_proj));
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));

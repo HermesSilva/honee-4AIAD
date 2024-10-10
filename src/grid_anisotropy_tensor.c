@@ -7,7 +7,7 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
+PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, CeedElemRestriction *elem_restr_grid_aniso,
                                                         CeedVector *grid_aniso_vector) {
   NodalProjectionData grid_aniso_proj;
   CeedBasis           basis_grid_aniso;
@@ -47,8 +47,8 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
   // -- Get Pre-requisite things
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grid_aniso_proj->dm, domain_label, label_value, height, dm_field, elem_restr_grid_aniso));
   PetscCall(CreateBasisFromPlex(ceed, grid_aniso_proj->dm, domain_label, label_value, height, dm_field, &basis_grid_aniso));
-  PetscCall(QDataGet(ceed, grid_aniso_proj->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
-                     &elem_restr_qd, &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, grid_aniso_proj->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
 
   {  // -- Build RHS operator
     CeedOperator  op_rhs_assemble;
@@ -123,7 +123,7 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee honee, CeedData ceed_data, CeedElemRestriction *elem_restr_grid_aniso,
+PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee honee, CeedElemRestriction *elem_restr_grid_aniso,
                                                              CeedVector *aniso_colloc_ceed, PetscInt *num_comp_aniso) {
   CeedInt             q_data_size, num_nodes;
   CeedQFunction       qf_colloc;
@@ -135,10 +135,10 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
 
   PetscFunctionBeginUser;
   *num_comp_aniso = 7;
-  PetscCallCeed(ceed, CeedBasisGetNumNodes(ceed_data->basis_q, &num_nodes));
+  PetscCallCeed(ceed, CeedBasisGetNumNodes(honee->basis_q, &num_nodes));
   PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, domain_label, label_value, height, *num_comp_aniso, elem_restr_grid_aniso));
-  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
+                     &q_data_size));
 
   // -- Build collocation operator
   PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, AnisotropyTensorCollocate, AnisotropyTensorCollocate_loc, &qf_colloc));

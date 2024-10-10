@@ -208,12 +208,10 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(Honee honee, CeedOperat
   @brief Create RHS CeedOperator for direct projection of divergence of diffusive flux
 
   @param[in]  honee          `Honee` context
-  @param[in]  ceed_data      `CeedData` object
   @param[in]  diff_flux_proj `DivDiffFluxProjectionData` object
   @param[out] op_rhs         Operator to calculate the RHS of the L^2 projection
 **/
-static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
-                                                               CeedOperator *op_rhs) {
+static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivDiffFluxProjectionData diff_flux_proj, CeedOperator *op_rhs) {
   Ceed                 ceed       = honee->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedInt              num_comp_q;
@@ -224,7 +222,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, Ceed
   PetscFunctionBeginUser;
   // -- Get Pre-requisite things
   PetscCall(DMGetDimension(projection->dm, &dim));
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
+  PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_q, &num_comp_q));
 
   {  // Get newtonian QF context
     CeedOperator *sub_ops;
@@ -243,8 +241,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, Ceed
     CeedInt             q_data_size;
 
     PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_diff_flux_volume, &basis_diff_flux, NULL, NULL));
-    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord,
-                       &elem_restr_qd, &q_data, &q_data_size));
+    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
+                       &q_data_size));
     switch (honee->phys->state_var) {
       case STATEVAR_PRIMITIVE:
         PetscCallCeed(ceed,
@@ -267,8 +265,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, Ceed
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_volume, "diffusive flux RHS", projection->num_comp * dim, CEED_EVAL_GRAD));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_volume, NULL, NULL, &op_rhs_volume));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "Grad_q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "Grad_q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "diffusive flux RHS", elem_restr_diff_flux_volume, basis_diff_flux, CEED_VECTOR_ACTIVE));
 
@@ -338,8 +336,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, Ceed
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
         PetscCall(CreateBasisFromPlex(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
-        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, ceed_data->x_coord, &elem_restr_qdata, &q_data,
-                                           &q_data_size));
+        PetscCall(
+            QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, honee->x_coord, &elem_restr_qdata, &q_data, &q_data_size));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
         PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_boundary, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -372,12 +370,10 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, Ceed
   @brief Create RHS CeedOperator for indirect projection of divergence of diffusive flux
 
   @param[in]  honee          `Honee` context
-  @param[in]  ceed_data      `CeedData` object
   @param[in]  diff_flux_proj `DivDiffFluxProjectionData` object
   @param[out] op_rhs         Operator to calculate the RHS of the L^2 projection
 **/
-static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, CeedData ceed_data, DivDiffFluxProjectionData diff_flux_proj,
-                                                                 CeedOperator *op_rhs) {
+static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, DivDiffFluxProjectionData diff_flux_proj, CeedOperator *op_rhs) {
   Ceed                 ceed       = honee->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedBasis            basis_diff_flux;
@@ -392,7 +388,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, Ce
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(projection->dm, &dim));
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(ceed_data->basis_q, &num_comp_q));
+  PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_q, &num_comp_q));
 
   {  // Get newtonian QF context
     CeedOperator *sub_ops;
@@ -403,8 +399,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, Ce
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
   PetscCall(CreateBasisFromPlex(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
-  PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, ceed_data->elem_restr_x, ceed_data->basis_x, ceed_data->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
+                     &q_data_size));
 
   switch (honee->phys->state_var) {
     case STATEVAR_PRIMITIVE:
@@ -425,8 +421,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, Ce
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs, "F_diff RHS", projection->num_comp, CEED_EVAL_INTERP));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs, NULL, NULL, op_rhs));
-  PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
-  PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "Grad_q", ceed_data->elem_restr_q, ceed_data->basis_q, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "Grad_q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_rhs, "F_diff RHS", elem_restr_diff_flux, basis_diff_flux, CEED_VECTOR_ACTIVE));
 

@@ -9,7 +9,7 @@
 #include <navierstokes.h>
 #include "../problems/stg_shur14.h"
 
-PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, ProblemData problem, SimpleBC bc, Physics phys, CeedOperator op_strong_bc) {
+PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData problem, SimpleBC bc, Physics phys, CeedOperator op_strong_bc) {
   CeedInt             num_comp_x, num_comp_q = 5, stg_data_size = 1, dXdx_size;
   CeedVector          multiplicity, x_stored, scale_stored, stg_data, dXdx;
   CeedBasis           basis_x_to_q_face;
@@ -109,7 +109,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Problem
       PetscCallCeed(ceed, CeedOperatorSetField(op_setup, "dXdx", elem_restr_dXdx, CEED_BASIS_NONE, dXdx));
 
       // -- Compute geometric factors
-      PetscCallCeed(ceed, CeedOperatorApply(op_setup, ceed_data->x_coord, CEED_VECTOR_NONE, CEED_REQUEST_IMMEDIATE));
+      PetscCallCeed(ceed, CeedOperatorApply(op_setup, honee->x_coord, CEED_VECTOR_NONE, CEED_REQUEST_IMMEDIATE));
 
       // -- Compute STGData
       PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_stgdata, NULL, NULL, &op_stgdata));
@@ -182,7 +182,7 @@ PetscErrorCode DMPlexInsertBoundaryValues_StrongBCCeed(DM dm, PetscBool insert_e
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Honee honee, ProblemData problem, SimpleBC bc) {
+PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem, SimpleBC bc) {
   CeedOperator op_strong_bc;
 
   PetscFunctionBeginUser;
@@ -204,7 +204,7 @@ PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, CeedData ceed_data, DM dm, Honee ho
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));
 
     if (use_strongstg) {
-      PetscCall(SetupStrongSTG_Ceed(ceed, ceed_data, dm, problem, bc, honee->phys, op_strong_bc));
+      PetscCall(SetupStrongSTG_Ceed(ceed, honee, dm, problem, bc, honee->phys, op_strong_bc));
     }
   }
 

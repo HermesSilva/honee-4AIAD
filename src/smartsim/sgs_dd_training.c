@@ -58,8 +58,7 @@ static PetscErrorCode SGS_DD_TrainingCreateDM(DM dm_source, DM *dm_dd_training, 
 };
 
 // @brief Create CeedOperator to calculate training data for data-drive SGS model at nodes
-static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem,
-                                                   SGS_DD_TrainingSetupData sgs_dd_train_setup_data) {
+static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, ProblemData problem, SGS_DD_TrainingSetupData sgs_dd_train_setup_data) {
   SGS_DD_TrainingData sgs_dd_train = honee->sgs_dd_train;
   CeedQFunction       qf_sgs_dd_train;
   CeedOperator        op_sgs_dd_train;
@@ -85,7 +84,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, CeedD
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_filtered_state));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_filtered_state, &num_comp_filtered_state));
     PetscCallCeed(ceed, CeedOperatorFieldGetBasis(op_field, &basis_filtered_state));
-    PetscCall(VelocityGradientProjectionSetup(ceed, honee, ceed_data, problem, STATEVAR_PRIMITIVE, elem_restr_filtered_state, basis_filtered_state,
+    PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, STATEVAR_PRIMITIVE, elem_restr_filtered_state, basis_filtered_state,
                                               &sgs_dd_train->filtered_grad_velo_proj));
     // Get velocity gradient information
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sgs_dd_train->filtered_grad_velo_proj->l2_rhs_ctx->op, "velocity gradient", &op_field));
@@ -136,12 +135,12 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, CeedD
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, CeedData ceed_data, ProblemData problem) {
+PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem) {
   SGS_DDTrainingContext    sgsdd_train_qfctx;
   SGS_DD_TrainingSetupData sgs_dd_train_setup_data;
 
   PetscFunctionBeginUser;
-  if (!honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, ceed_data, problem));
+  if (!honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, problem));
   if (!honee->smartsim) PetscCall(SmartSimSetup(honee));
 
   PetscCall(PetscNew(&sgsdd_train_qfctx));
@@ -243,11 +242,11 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, CeedData ceed_data, 
   }
 
   // -- Compute and store anisotropy tensor
-  PetscCall(GridAnisotropyTensorProjectionSetupApply(ceed, honee, ceed_data, &sgs_dd_train_setup_data->elem_restr_grid_aniso,
+  PetscCall(GridAnisotropyTensorProjectionSetupApply(ceed, honee, &sgs_dd_train_setup_data->elem_restr_grid_aniso,
                                                      &sgs_dd_train_setup_data->grid_aniso_ceed));
 
   // -- Create Nodal Evaluation Operator
-  PetscCall(SetupTrainingDataCalculation(ceed, honee, ceed_data, problem, sgs_dd_train_setup_data));
+  PetscCall(SetupTrainingDataCalculation(ceed, honee, problem, sgs_dd_train_setup_data));
 
   PetscCall(SGS_DD_TrainingSetupDataDestroy(sgs_dd_train_setup_data));
   PetscFunctionReturn(PETSC_SUCCESS);
