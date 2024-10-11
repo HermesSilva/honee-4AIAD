@@ -601,7 +601,15 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
 
   if (bc->num_freestream > 0) PetscCall(FreestreamBCSetup(problem, dm, ctx, newtonian_ig_ctx, &reference));
   if (bc->num_outflow > 0) PetscCall(OutflowBCSetup(problem, dm, ctx, newtonian_ig_ctx, &reference));
-  if (bc->num_slip > 0) PetscCall(SlipBCSetup(problem, dm, ctx, newtonian_ig_qfctx));
+  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+    BCDefinition bc_def = problem->bc_defs[b];
+    const char  *name;
+
+    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+    if (!strcmp(name, "slip")) {
+      PetscCall(SlipBCSetup(bc_def, problem, dm, ctx, newtonian_ig_qfctx));
+    }
+  }
 
   if (unit_tests) {
     PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx));

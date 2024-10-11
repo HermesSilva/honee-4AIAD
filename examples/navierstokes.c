@@ -208,8 +208,6 @@ int main(int argc, char **argv) {
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_outflow_jacobian.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_freestream.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_freestream_jacobian.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_slip.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_slip_jacobian.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_vol_rhs.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_vol_ifunction.qfctx));

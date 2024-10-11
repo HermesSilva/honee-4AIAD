@@ -279,8 +279,8 @@ struct Units_private {
 
 // Boundary conditions
 struct SimpleBC_private {
-  PetscInt num_inflow, num_outflow, num_freestream, num_slip;
-  PetscInt inflows[16], outflows[16], freestreams[16], slips[16];
+  PetscInt num_inflow, num_outflow, num_freestream;
+  PetscInt inflows[16], outflows[16], freestreams[16];
 };
 
 // Struct that contains all enums and structs used for the physics of all problems
@@ -293,7 +293,24 @@ struct Physics_private {
   CeedContextFieldLabel ics_time_label;
 };
 
+typedef struct {
+  Honee                honee;
+  CeedInt              jac_data_size_sur;
+  CeedQFunctionContext qfctx;
+  void                *ctx;
+  PetscCtxDestroyFn   *DestroyCtx;
+} *HoneeBCStruct;
+
 PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx, SimpleBC bc);
+PetscErrorCode HoneeBCDestroy(void **ctx);
+PetscErrorCode HoneeBCCreateIFunctionQF(BCDefinition bc_def, CeedQFunctionUser qf_func_ptr, const char *qf_loc, CeedQFunctionContext qfctx,
+                                        CeedQFunction *qf_ifunc);
+PetscErrorCode HoneeBCCreateIJacobianQF(BCDefinition bc_def, CeedQFunctionUser qf_func_ptr, const char *qf_loc, CeedQFunctionContext qfctx,
+                                        CeedQFunction *qf_ijac);
+PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, PetscInt label_value, CeedQFunction qf_ifunc, CeedOperator op_ifunc,
+                                     CeedOperator *sub_op_ifunc);
+PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_ifunc, DMLabel domain_label, PetscInt label_value,
+                                     CeedQFunction qf_ijac, CeedOperator op_ijac);
 
 typedef struct {
   CeedQFunctionUser    qf_func_ptr;  // !< QFunction function pointer
@@ -304,8 +321,8 @@ typedef struct {
 // Problem specific data
 struct ProblemData_private {
   CeedInt              jac_data_size_vol, jac_data_size_sur;
-  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_outflow, apply_freestream, apply_slip,
-      apply_inflow_jacobian, apply_outflow_jacobian, apply_freestream_jacobian, apply_slip_jacobian;
+  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_outflow, apply_freestream,
+      apply_inflow_jacobian, apply_outflow_jacobian, apply_freestream_jacobian;
   bool          compute_exact_solution_error;
   PetscBool     set_bc_from_ics, use_strong_bc_ceed;
   PetscCount    num_bc_defs;
@@ -428,7 +445,7 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
 PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem, SimpleBC bc);
 PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
 PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
-PetscErrorCode SlipBCSetup(ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
+PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
 
 // -----------------------------------------------------------------------------
 // Differential Filtering Functions
