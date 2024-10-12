@@ -199,6 +199,10 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(Honee honee, CeedOperat
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
 
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd_i));
+  PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&qfctx));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
   PetscFunctionReturn(PETSC_SUCCESS);

@@ -150,6 +150,8 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, Honee honee, CeedQFu
       PetscCallCeed(ceed, CeedOperatorSetField(op_lhs_sub, "Grad_v", elem_restr_filter, basis_filter, CEED_VECTOR_ACTIVE));
 
       PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_lhs, op_lhs_sub));
+      PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_filter));
+      PetscCallCeed(ceed, CeedBasisDestroy(&basis_filter));
       PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_lhs));
       PetscCallCeed(ceed, CeedOperatorDestroy(&op_lhs_sub));
     }
