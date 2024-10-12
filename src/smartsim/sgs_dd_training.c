@@ -81,9 +81,8 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
     CeedBasis         basis_filtered_state;
     CeedOperatorField op_field;
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->diff_filter->op_rhs_ctx->op, "v0", &op_field));
-    PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_filtered_state));
+    PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_filtered_state, &basis_filtered_state, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_filtered_state, &num_comp_filtered_state));
-    PetscCallCeed(ceed, CeedOperatorFieldGetBasis(op_field, &basis_filtered_state));
     PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, STATEVAR_PRIMITIVE, elem_restr_filtered_state, basis_filtered_state,
                                               &sgs_dd_train->filtered_grad_velo_proj));
     PetscCallCeed(ceed, CeedBasisDestroy(&basis_filtered_state));
