@@ -81,11 +81,11 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
     CeedBasis         basis_filtered_state;
     CeedOperatorField op_field;
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->diff_filter->op_rhs_ctx->op, "v0", &op_field));
-    PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_filtered_state));
+    PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_filtered_state, &basis_filtered_state, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_filtered_state, &num_comp_filtered_state));
-    PetscCallCeed(ceed, CeedOperatorFieldGetBasis(op_field, &basis_filtered_state));
     PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, STATEVAR_PRIMITIVE, elem_restr_filtered_state, basis_filtered_state,
                                               &sgs_dd_train->filtered_grad_velo_proj));
+    PetscCallCeed(ceed, CeedBasisDestroy(&basis_filtered_state));
     // Get velocity gradient information
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sgs_dd_train->filtered_grad_velo_proj->l2_rhs_ctx->op, "velocity gradient", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_grad_velo));
@@ -130,6 +130,9 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   PetscCallCeed(ceed, CeedVectorDestroy(&inv_multiplicity));
   PetscCallCeed(ceed, CeedVectorDestroy(&filtered_fields));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_inv_multiplicity));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_filtered_state));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_grad_velo));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_filtered_velo_prod));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_dd_train));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_sgs_dd_train));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -308,6 +311,7 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
       PetscCall(DMRestoreGlobalVector(sgs_dd_train->filtered_grad_velo_proj->dm, &FilteredVelocityGradient));
       PetscCall(DMRestoreGlobalVector(honee->diff_filter->dm_filter, &FilteredFields));
       PetscCall(DMRestoreLocalVector(honee->diff_filter->dm_filter, &FilteredFields_loc));
+      PetscCallCeed(ceed, CeedVectorDestroy(&filtered_fields));
     }
     PetscCall(PetscLogEventEnd(FLUIDS_TrainDataCompute, 0, 0, 0, 0));
 

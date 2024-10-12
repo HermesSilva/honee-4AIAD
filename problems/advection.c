@@ -18,7 +18,7 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(Honee honee, CeedOperat
   Ceed                 ceed = honee->ceed;
   CeedInt              num_comp_q, q_data_size;
   CeedQFunction        qf_mass = NULL;
-  CeedElemRestriction  elem_restr_q, elem_restr_qd_i;
+  CeedElemRestriction  elem_restr_q, elem_restr_qd;
   CeedBasis            basis_q;
   CeedVector           q_data;
   CeedQFunctionContext qfctx = NULL;
@@ -28,23 +28,20 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(Honee honee, CeedOperat
   PetscCall(DMGetDimension(honee->dm, &dim));
   {  // Get restriction and basis from the RHS function
     CeedOperator     *sub_ops;
-    CeedOperatorField field;
+    CeedOperatorField op_field;
     PetscInt          sub_op_index = 0;  // will be 0 for the volume op
 
     PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &field));
-    PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(field, &elem_restr_q));
-    PetscCallCeed(ceed, CeedOperatorFieldGetBasis(field, &basis_q));
-
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "qdata", &field));
-    PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(field, &elem_restr_qd_i));
-    PetscCallCeed(ceed, CeedOperatorFieldGetVector(field, &q_data));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &op_field));
+    PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_q, &basis_q, NULL));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "qdata", &op_field));
+    PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_qd, NULL, &q_data));
 
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &qfctx));
   }
 
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_qd_i, &q_data_size));
+  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_qd, &q_data_size));
 
   switch (dim) {
     case 2:
@@ -66,10 +63,14 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(Honee honee, CeedOperat
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, op_mass));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q_dot", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q", elem_restr_q, basis_q, honee->q_ceed));
-  PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "qdata", elem_restr_qd_i, CEED_BASIS_NONE, q_data));
+  PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
 
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
+  PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&qfctx));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
   PetscFunctionReturn(PETSC_SUCCESS);

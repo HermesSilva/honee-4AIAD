@@ -141,6 +141,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   PetscCallCeed(ceed, CeedVectorDestroy(&inv_multiplicity));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_to_q));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_inv_multiplicity));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_grad_velo));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_dd_nodal));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_sgs_dd_nodal));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -425,6 +426,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_eigvec));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_dd_inputs));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_dd_outputs));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_grad_velo));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
