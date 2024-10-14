@@ -410,7 +410,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   PetscOptionsBegin(comm, NULL, "Options for ADVECTION problem", NULL);
   // -- Physics
-  PetscCall(PetscOptionsScalar("-rc", "Characteristic radius of thermal bubble", NULL, rc, &rc, NULL));
   PetscBool translation;
   PetscCall(PetscOptionsEnum("-wind_type", "Wind type in Advection", NULL, AdvDifWindTypes, (PetscEnum)(wind_type = ADVDIF_WIND_ROTATION),
                              (PetscEnum *)&wind_type, &translation));
@@ -432,20 +431,27 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscCall(PetscOptionsScalar("-Ctau_d", "Coefficient for the stabilization, diffusion component", NULL, Ctau_d, &Ctau_d, NULL));
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
 
-  if (advectionic_type == ADVDIF_IC_WAVE) {
-    PetscCall(PetscOptionsEnum("-wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)(wave_type = ADVDIF_WAVE_SINE),
-                               (PetscEnum *)&wave_type, NULL));
-    PetscCall(PetscOptionsScalar("-wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
-    PetscCall(PetscOptionsScalar("-wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
-  }
-
-  if (advectionic_type == ADVDIF_IC_BOUNDARY_LAYER)
-    PetscCall(PetscOptionsScalar("-bl_height_factor", "Height of boundary layer in IC", NULL, bl_height_factor, &bl_height_factor, NULL));
-
-  if (advectionic_type == ADVDIF_IC_BUBBLE_CYLINDER || advectionic_type == ADVDIF_IC_BUBBLE_SPHERE) {
-    bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
-    PetscCall(PetscOptionsEnum("-bubble_continuity", "Smooth, back_sharp, or thick", NULL, AdvDifBubbleContinuityTypes,
-                               (PetscEnum)bubble_continuity_type, (PetscEnum *)&bubble_continuity_type, NULL));
+  // IC-specific options
+  switch (advectionic_type) {
+    case ADVDIF_IC_WAVE:
+      PetscCall(PetscOptionsEnum("-wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)(wave_type = ADVDIF_WAVE_SINE),
+                                 (PetscEnum *)&wave_type, NULL));
+      PetscCall(PetscOptionsScalar("-wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
+      PetscCall(PetscOptionsScalar("-wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
+      break;
+    case ADVDIF_IC_BOUNDARY_LAYER:
+      PetscCall(PetscOptionsScalar("-bl_height_factor", "Height of boundary layer in IC", NULL, bl_height_factor, &bl_height_factor, NULL));
+      break;
+    case ADVDIF_IC_BUBBLE_CYLINDER:
+    case ADVDIF_IC_BUBBLE_SPHERE:
+      PetscCall(PetscOptionsScalar("-rc", "Characteristic radius of thermal bubble", NULL, rc, &rc, NULL));
+      bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
+      PetscCall(PetscOptionsEnum("-bubble_continuity", "Smooth, back_sharp, or thick", NULL, AdvDifBubbleContinuityTypes,
+                                 (PetscEnum)bubble_continuity_type, (PetscEnum *)&bubble_continuity_type, NULL));
+      break;
+    case ADVDIF_IC_SKEW:
+    case ADVDIF_IC_COSINE_HILL:
+      break;
   }
 
   // -- Units
