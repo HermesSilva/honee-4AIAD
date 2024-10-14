@@ -387,6 +387,11 @@ The following additional command-line options are available:
   - Phase angle of the wave
   - $2\pi$
   -
+
+* - `-bl_height_factor`
+  - For `boundary_layer` IC, sets the height of the linear boundary layer initial condition in proportion to the domain height
+  - $1$
+  -
 :::
 
 For 3D advection, an example of the `rotation` mode can be run with:

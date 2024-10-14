@@ -59,6 +59,7 @@ struct SetupContextAdv_ {
   CeedScalar wind[3];
   CeedScalar time;
   CeedScalar wave_frequency, wave_phase;
+  CeedScalar bl_height_factor;  // !< height of boundary layer IC relative to domain height
 
   AdvDifWaveType             wave_type;
   AdvDifWindType             wind_type;

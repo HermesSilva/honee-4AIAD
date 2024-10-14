@@ -380,18 +380,19 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   // ------------------------------------------------------
   //             Create the libCEED context
   // ------------------------------------------------------
-  CeedScalar     rc              = 1000.;  // m (Radius of bubble)
-  CeedScalar     CtauS           = 0.;     // dimensionless
-  PetscBool      strong_form     = PETSC_FALSE;
-  CeedScalar     E_wind          = 1.e6;  // J
-  CeedScalar     Ctau_a          = PetscPowScalarInt(honee->app_ctx->degree, 2);
-  CeedScalar     Ctau_d          = PetscPowScalarInt(honee->app_ctx->degree, 4);
-  CeedScalar     Ctau_t          = 0.;
-  PetscReal      wind[3]         = {1., 0, 0};  // m/s
-  CeedScalar     diffusion_coeff = 0.;
-  CeedScalar     wave_frequency  = 2 * M_PI;
-  CeedScalar     wave_phase      = 0;
-  AdvDifWaveType wave_type       = -1;
+  CeedScalar     rc               = 1000.;  // m (Radius of bubble)
+  CeedScalar     CtauS            = 0.;     // dimensionless
+  PetscBool      strong_form      = PETSC_FALSE;
+  CeedScalar     E_wind           = 1.e6;  // J
+  CeedScalar     Ctau_a           = PetscPowScalarInt(honee->app_ctx->degree, 2);
+  CeedScalar     Ctau_d           = PetscPowScalarInt(honee->app_ctx->degree, 4);
+  CeedScalar     Ctau_t           = 0.;
+  PetscReal      wind[3]          = {1., 0, 0};  // m/s
+  CeedScalar     diffusion_coeff  = 0.;
+  CeedScalar     wave_frequency   = 2 * M_PI;
+  CeedScalar     wave_phase       = 0;
+  AdvDifWaveType wave_type        = -1;
+  PetscScalar    bl_height_factor = 1.;
   PetscReal      domain_min[3], domain_max[3], domain_size[3] = {0.};
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
   for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
@@ -437,6 +438,9 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
     PetscCall(PetscOptionsScalar("-wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
     PetscCall(PetscOptionsScalar("-wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
   }
+
+  if (advectionic_type == ADVDIF_IC_BOUNDARY_LAYER)
+    PetscCall(PetscOptionsScalar("-bl_height_factor", "Height of boundary layer in IC", NULL, bl_height_factor, &bl_height_factor, NULL));
 
   if (advectionic_type == ADVDIF_IC_BUBBLE_CYLINDER || advectionic_type == ADVDIF_IC_BUBBLE_SPHERE) {
     bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
@@ -505,6 +509,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   setup_context->wave_frequency         = wave_frequency;
   setup_context->wave_phase             = wave_phase;
   setup_context->wave_type              = wave_type;
+  setup_context->bl_height_factor       = bl_height_factor;
 
   // -- QFunction Context
   honee->phys->implicit            = implicit;
