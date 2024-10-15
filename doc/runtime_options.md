@@ -288,11 +288,6 @@ The following additional command-line options are available:
   - Default value
   - Unit
 
-* - `-rc`
-  - Characteristic radius of thermal bubble
-  - `1000`
-  - `m`
-
 * - `-units_meter`
   - 1 meter in scaled length units
   - `1E-2`
@@ -368,24 +363,34 @@ The following additional command-line options are available:
   - `sphere`
   -
 
-* - `-bubble_continuity`
-  - Different shapes for `sphere` and `cylinder` initial conditions, from `smooth`, `back_sharp`, `thick`, or `cosine`
+* - `-advection_ic_bubble_rc`
+  - For `sphere` or `cylinder` IC, characteristic radius of thermal bubble
+  - `1000`
+  - `m`
+
+* - `-advection_ic_bubble_continuity`
+  - For `sphere` or `cylinder` IC, different shapes of bubble, (`smooth`, `back_sharp`, `thick`, `cosine`)
   - `smooth`
   -
 
-* - `-wave_type`
-  - The wave form used for `-advection_ic_type wave` (`sine`, `square`)
+* - `-advection_ic_wave_type`
+  - For `wave` IC, the wave form used for `-advection_ic_type wave` (`sine`, `square`)
   - `sine`
   -
 
-* - `-wave_frequency`
-  - Frequency of the wave
+* - `-advection_ic_wave_frequency`
+  - For `wave` IC, frequency of the wave
   - $2\pi$
   - `1/s`
 
-* - `-wave_phase`
-  - Phase angle of the wave
+* - `-advection_ic_wave_phase`
+  - For `wave` IC, phase angle of the wave
   - $2\pi$
+  -
+
+* - `-advection_ic_bl_height_factor`
+  - For `boundary_layer` IC, sets the height of the linear boundary layer initial condition in proportion to the domain height
+  - $1$
   -
 :::
 

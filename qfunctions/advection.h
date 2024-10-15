@@ -163,8 +163,10 @@ CEED_QFUNCTION_HELPER int Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, c
         q[4] = 1;  // inflow and top boundary
       } else if (y < boundary_threshold) {
         q[4] = 0;  // lower wall
-      } else {
-        q[4] = y / ly;  // interior and outflow boundary
+      } else {     // interior and outflow boundary
+        CeedScalar bl_height = ly * context->bl_height_factor;
+        if (y > bl_height) q[4] = 1;
+        else q[4] = y / bl_height;
       }
     } break;
   }
