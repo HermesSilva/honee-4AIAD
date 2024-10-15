@@ -10,7 +10,7 @@ units_second: 1
 wind_type: translation
 wind_translation: -0.7071067811865475,0.7071067811865475
 advection_ic_type: wave
-wave:
+advection_ic_wave:
   type: square
   frequency: 17.771531752633464 # 8 pi / sqrt(2)
   phase: 0

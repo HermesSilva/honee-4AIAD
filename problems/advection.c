@@ -421,8 +421,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscCall(PetscOptionsBool("-strong_form", "Strong (true) or weak/integrated by parts (false) advection residual", NULL, strong_form, &strong_form,
                              NULL));
   PetscCall(PetscOptionsScalar("-E_wind", "Total energy of inflow wind", NULL, E_wind, &E_wind, NULL));
-  PetscCall(PetscOptionsEnum("-advection_ic_type", "Initial condition for Advection problem", NULL, AdvDifICTypes,
-                             (PetscEnum)(advectionic_type = ADVDIF_IC_BUBBLE_SPHERE), (PetscEnum *)&advectionic_type, NULL));
   PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
   PetscCall(PetscOptionsEnum("-stab_tau", "Stabilization constant, tau", NULL, StabilizationTauTypes, (PetscEnum)(stab_tau = STAB_TAU_CTAU),
                              (PetscEnum *)&stab_tau, NULL));
@@ -430,23 +428,30 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   PetscCall(PetscOptionsScalar("-Ctau_a", "Coefficient for the stabilization, advection component", NULL, Ctau_a, &Ctau_a, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_d", "Coefficient for the stabilization, diffusion component", NULL, Ctau_d, &Ctau_d, NULL));
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
-
+  PetscCall(PetscOptionsEnum("-advection_ic_type", "Initial condition for Advection problem", NULL, AdvDifICTypes,
+                             (PetscEnum)(advectionic_type = ADVDIF_IC_BUBBLE_SPHERE), (PetscEnum *)&advectionic_type, NULL));
   // IC-specific options
   switch (advectionic_type) {
     case ADVDIF_IC_WAVE:
-      PetscCall(PetscOptionsEnum("-wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)(wave_type = ADVDIF_WAVE_SINE),
+      PetscCall(PetscOptionsDeprecated("-wave_type", "-advection_ic_wave_type", "HONEE 0.0", NULL));
+      PetscCall(PetscOptionsDeprecated("-wave_frequency", "-advection_ic_wave_frequency", "HONEE 0.0", NULL));
+      PetscCall(PetscOptionsDeprecated("-wave_phase", "-advection_ic_wave_phase", "HONEE 0.0", NULL));
+      PetscCall(PetscOptionsEnum("-advection_ic_wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)(wave_type = ADVDIF_WAVE_SINE),
                                  (PetscEnum *)&wave_type, NULL));
-      PetscCall(PetscOptionsScalar("-wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
-      PetscCall(PetscOptionsScalar("-wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
+      PetscCall(PetscOptionsScalar("-advection_ic_wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
+      PetscCall(PetscOptionsScalar("-advection_ic_wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
       break;
     case ADVDIF_IC_BOUNDARY_LAYER:
-      PetscCall(PetscOptionsScalar("-bl_height_factor", "Height of boundary layer in IC", NULL, bl_height_factor, &bl_height_factor, NULL));
+      PetscCall(
+          PetscOptionsScalar("-advection_ic_bl_height_factor", "Height of boundary layer in IC", NULL, bl_height_factor, &bl_height_factor, NULL));
       break;
     case ADVDIF_IC_BUBBLE_CYLINDER:
     case ADVDIF_IC_BUBBLE_SPHERE:
-      PetscCall(PetscOptionsScalar("-rc", "Characteristic radius of thermal bubble", NULL, rc, &rc, NULL));
+      PetscCall(PetscOptionsDeprecated("-rc", "-advection_ic_bubble_rc", "HONEE 0.0", NULL));
+      PetscCall(PetscOptionsDeprecated("-bubble_continuity", "-advection_ic_bubble_continuity", "HONEE 0.0", NULL));
+      PetscCall(PetscOptionsScalar("-advection_ic_bubble_rc", "Characteristic radius of thermal bubble", NULL, rc, &rc, NULL));
       bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
-      PetscCall(PetscOptionsEnum("-bubble_continuity", "Smooth, back_sharp, or thick", NULL, AdvDifBubbleContinuityTypes,
+      PetscCall(PetscOptionsEnum("-advection_ic_bubble_continuity", "Smooth, back_sharp, or thick", NULL, AdvDifBubbleContinuityTypes,
                                  (PetscEnum)bubble_continuity_type, (PetscEnum *)&bubble_continuity_type, NULL));
       break;
     case ADVDIF_IC_SKEW:
