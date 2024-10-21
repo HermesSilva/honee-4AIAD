@@ -468,7 +468,7 @@ PetscErrorCode MatCreateCeed(DM dm_x, DM dm_y, CeedOperator op_mult, CeedOperato
     PetscCall(PetscStrallocpy(coo_mat_type, &ctx->coo_mat_type));
   }
   // -- Set mat operations
-  PetscCall(MatShellSetContextDestroy(*mat, (PetscErrorCode(*)(void *))MatCeedContextDestroy));
+  PetscCall(MatShellSetContextDestroy(*mat, (PetscCtxDestroyFn *)MatCeedContextDestroy));
   PetscCall(MatShellSetOperation(*mat, MATOP_VIEW, (void (*)(void))MatView_Ceed));
   PetscCall(MatShellSetOperation(*mat, MATOP_MULT, (void (*)(void))MatMult_Ceed));
   if (op_mult_transpose) PetscCall(MatShellSetOperation(*mat, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_Ceed));
@@ -534,7 +534,7 @@ PetscErrorCode MatCeedCopy(Mat mat_ceed, Mat mat_other) {
     PetscCall(MatShellGetContext(mat_ceed, &ctx));
     PetscCall(MatCeedContextReference(ctx));
     PetscCall(MatShellSetContext(mat_other, ctx));
-    PetscCall(MatShellSetContextDestroy(mat_other, (PetscErrorCode(*)(void *))MatCeedContextDestroy));
+    PetscCall(MatShellSetContextDestroy(mat_other, (PetscCtxDestroyFn *)MatCeedContextDestroy));
     PetscCall(MatShellSetOperation(mat_other, MATOP_VIEW, (void (*)(void))MatView_Ceed));
     PetscCall(MatShellSetOperation(mat_other, MATOP_MULT, (void (*)(void))MatMult_Ceed));
     if (ctx->op_mult_transpose) PetscCall(MatShellSetOperation(mat_other, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_Ceed));
@@ -969,14 +969,14 @@ PetscErrorCode MatCeedSetShifts(Mat mat, PetscReal shift_v, PetscReal shift_a) {
 
   @return An error code: 0 - success, otherwise - failure
 **/
-PetscErrorCode MatCeedSetContext(Mat mat, PetscErrorCode (*f)(void *), void *ctx) {
+PetscErrorCode MatCeedSetContext(Mat mat, PetscCtxDestroyFn f, void *ctx) {
   PetscContainer user_ctx = NULL;
 
   PetscFunctionBeginUser;
   if (ctx) {
     PetscCall(PetscContainerCreate(PetscObjectComm((PetscObject)mat), &user_ctx));
     PetscCall(PetscContainerSetPointer(user_ctx, ctx));
-    PetscCall(PetscContainerSetUserDestroy(user_ctx, f));
+    PetscCall(PetscContainerSetCtxDestroy(user_ctx, f));
   }
   PetscCall(PetscObjectCompose((PetscObject)mat, "MatCeed user context", (PetscObject)user_ctx));
   PetscCall(PetscContainerDestroy(&user_ctx));
@@ -1459,7 +1459,7 @@ PetscErrorCode MatCeedContextReference(MatCeedContext ctx) {
 PetscErrorCode MatCeedContextReferenceCopy(MatCeedContext ctx, MatCeedContext *ctx_copy) {
   PetscFunctionBeginUser;
   PetscCall(MatCeedContextReference(ctx));
-  PetscCall(MatCeedContextDestroy(*ctx_copy));
+  PetscCall(MatCeedContextDestroy(ctx_copy));
   *ctx_copy = ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1473,33 +1473,33 @@ PetscErrorCode MatCeedContextReferenceCopy(MatCeedContext ctx, MatCeedContext *c
 
   @return An error code: 0 - success, otherwise - failure
 **/
-PetscErrorCode MatCeedContextDestroy(MatCeedContext ctx) {
+PetscErrorCode MatCeedContextDestroy(MatCeedContext *ctx) {
   PetscFunctionBeginUser;
-  if (!ctx || --ctx->ref_count > 0) PetscFunctionReturn(PETSC_SUCCESS);
+  if (!ctx || --(*ctx)->ref_count > 0) PetscFunctionReturn(PETSC_SUCCESS);
 
   // PETSc objects
-  PetscCall(DMDestroy(&ctx->dm_x));
-  PetscCall(DMDestroy(&ctx->dm_y));
-  PetscCall(VecDestroy(&ctx->X_loc));
-  PetscCall(VecDestroy(&ctx->Y_loc_transpose));
-  PetscCall(MatDestroy(&ctx->mat_assembled_full_internal));
-  PetscCall(MatDestroy(&ctx->mat_assembled_pbd_internal));
-  PetscCall(PetscFree(ctx->coo_mat_type));
-  PetscCall(PetscFree(ctx->mats_assembled_full));
-  PetscCall(PetscFree(ctx->mats_assembled_pbd));
+  PetscCall(DMDestroy(&(*ctx)->dm_x));
+  PetscCall(DMDestroy(&(*ctx)->dm_y));
+  PetscCall(VecDestroy(&(*ctx)->X_loc));
+  PetscCall(VecDestroy(&(*ctx)->Y_loc_transpose));
+  PetscCall(MatDestroy(&(*ctx)->mat_assembled_full_internal));
+  PetscCall(MatDestroy(&(*ctx)->mat_assembled_pbd_internal));
+  PetscCall(PetscFree((*ctx)->coo_mat_type));
+  PetscCall(PetscFree((*ctx)->mats_assembled_full));
+  PetscCall(PetscFree((*ctx)->mats_assembled_pbd));
 
   // libCEED objects
-  PetscCallCeed(ctx->ceed, CeedVectorDestroy(&ctx->x_loc));
-  PetscCallCeed(ctx->ceed, CeedVectorDestroy(&ctx->y_loc));
-  PetscCallCeed(ctx->ceed, CeedVectorDestroy(&ctx->coo_values_full));
-  PetscCallCeed(ctx->ceed, CeedVectorDestroy(&ctx->coo_values_pbd));
-  PetscCallCeed(ctx->ceed, CeedOperatorDestroy(&ctx->op_mult));
-  PetscCallCeed(ctx->ceed, CeedOperatorDestroy(&ctx->op_mult_transpose));
-  PetscCheck(CeedDestroy(&ctx->ceed) == CEED_ERROR_SUCCESS, PETSC_COMM_SELF, PETSC_ERR_LIB, "destroying libCEED context object failed");
+  PetscCallCeed((*ctx)->ceed, CeedVectorDestroy(&(*ctx)->x_loc));
+  PetscCallCeed((*ctx)->ceed, CeedVectorDestroy(&(*ctx)->y_loc));
+  PetscCallCeed((*ctx)->ceed, CeedVectorDestroy(&(*ctx)->coo_values_full));
+  PetscCallCeed((*ctx)->ceed, CeedVectorDestroy(&(*ctx)->coo_values_pbd));
+  PetscCallCeed((*ctx)->ceed, CeedOperatorDestroy(&(*ctx)->op_mult));
+  PetscCallCeed((*ctx)->ceed, CeedOperatorDestroy(&(*ctx)->op_mult_transpose));
+  PetscCheck(CeedDestroy(&(*ctx)->ceed) == CEED_ERROR_SUCCESS, PETSC_COMM_SELF, PETSC_ERR_LIB, "destroying libCEED context object failed");
 
   // Deallocate
-  ctx->is_destroyed = PETSC_TRUE;  // Flag as destroyed in case someone has stale ref
-  PetscCall(PetscFree(ctx));
+  (*ctx)->is_destroyed = PETSC_TRUE;  // Flag as destroyed in case someone has stale ref
+  PetscCall(PetscFree(*ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
