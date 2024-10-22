@@ -7,7 +7,7 @@
 /// correction models for data-informed Reynolds stress closure' 2022
 #pragma once
 
-#include <ceed.h>
+#include <ceed/types.h>
 
 #include "newtonian_state.h"
 #include "newtonian_types.h"

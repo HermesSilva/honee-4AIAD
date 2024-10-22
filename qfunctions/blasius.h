@@ -3,7 +3,7 @@
 
 /// @file
 /// Operator for Navier-Stokes example using PETSc
-#include <ceed.h>
+#include <ceed/types.h>
 
 #include "newtonian_state.h"
 #include "newtonian_types.h"

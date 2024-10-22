@@ -3,7 +3,7 @@
 //
 /// @file
 /// Implementation of differential filtering
-#include <ceed.h>
+#include <ceed/types.h>
 
 #include "differential_filter_enums.h"
 #include "newtonian_state.h"
