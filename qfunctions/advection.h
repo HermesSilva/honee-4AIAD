@@ -3,8 +3,7 @@
 
 /// @file
 /// Advection initial condition and operator for Navier-Stokes example using PETSc
-#include <ceed.h>
-#include <math.h>
+#include <ceed/types.h>
 
 #include "advection_types.h"
 #include "newtonian_state.h"

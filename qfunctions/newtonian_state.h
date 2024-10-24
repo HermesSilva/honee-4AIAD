@@ -5,8 +5,7 @@
 /// Structs and helper functions regarding the state of a newtonian simulation
 #pragma once
 
-#include <ceed.h>
-#include <math.h>
+#include <ceed/types.h>
 
 #include "newtonian_types.h"
 #include "utils.h"

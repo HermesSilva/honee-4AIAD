@@ -3,8 +3,7 @@
 
 /// @file
 /// Mass operator for Navier-Stokes example using PETSc
-#include <ceed.h>
-#include <math.h>
+#include <ceed/types.h>
 
 // *****************************************************************************
 // This QFunction applies the mass matrix to N components

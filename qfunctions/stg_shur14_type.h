@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed.h>
+#include <ceed/types.h>
 
 #include "newtonian_types.h"
 
