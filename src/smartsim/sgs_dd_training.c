@@ -24,6 +24,7 @@ static PetscErrorCode SGS_DD_TrainingSetupDataDestroy(SGS_DD_TrainingSetupData s
   PetscCallCeed(ceed, CeedVectorDestroy(&sgs_dd_train_setup_data->grid_aniso_ceed));
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&sgs_dd_train_setup_data->sgs_dd_train_qfctx));
   PetscCall(PetscFree(sgs_dd_train_setup_data));
+  PetscCheck(CeedDestroy(&ceed) == CEED_ERROR_SUCCESS, PETSC_COMM_SELF, PETSC_ERR_LIB, "Destroying Ceed object failed");
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

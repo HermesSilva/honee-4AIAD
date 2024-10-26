@@ -27,6 +27,7 @@ PetscErrorCode SgsDDSetupDataDestroy(SgsDDSetupData sgs_dd_setup_data) {
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&sgs_dd_setup_data->sgsdd_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&sgs_dd_setup_data->ifunction_qfctx));
   PetscCall(PetscFree(sgs_dd_setup_data));
+  PetscCheck(CeedDestroy(&ceed) == CEED_ERROR_SUCCESS, PETSC_COMM_SELF, PETSC_ERR_LIB, "Destroying Ceed object failed");
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

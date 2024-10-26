@@ -234,6 +234,7 @@ PetscErrorCode SpanStatsSetupDataDestroy(SpanStatsSetupData data) {
   PetscCallCeed(ceed, CeedVectorDestroy(&data->x_coord));
 
   PetscCall(PetscFree(data));
+  PetscCheck(CeedDestroy(&ceed) == CEED_ERROR_SUCCESS, PETSC_COMM_SELF, PETSC_ERR_LIB, "Destroying Ceed object failed");
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
