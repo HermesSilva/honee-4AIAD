@@ -6,6 +6,26 @@
 
 #include <honee-file.h>
 
+/**
+  @brief Check if a filename has a file extension
+
+  @param[in]  comm         `MPI_Comm` used for error handling
+  @param[in]  filename     Filename to check
+  @param[in]  extension    Extension to check for
+  @param[out] is_extension Whether the filename has the extension
+**/
+PetscErrorCode HoneeCheckFilenameExtension(MPI_Comm comm, const char filename[], const char extension[], PetscBool *is_extension) {
+  size_t len, ext_len;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscStrlen(filename, &len));
+  PetscCall(PetscStrlen(extension, &ext_len));
+  PetscCheck(ext_len, comm, PETSC_ERR_ARG_WRONG, "Zero-size extension: %s", extension);
+  if (len < ext_len) *is_extension = PETSC_FALSE; 
+  else PetscCall(PetscStrncmp(filename + len - ext_len, extension, ext_len, is_extension));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 const PetscInt32 HONEE_FILE_TOKEN    = 0xceedf00;  // for backwards compatibility
 const PetscInt32 HONEE_FILE_TOKEN_32 = 0xceedf32;
 const PetscInt32 HONEE_FILE_TOKEN_64 = 0xceedf64;
