@@ -341,16 +341,6 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   }
   honee->time_bc_set = -1.0;  // require all BCs be updated
   if (app_ctx->cont_steps) {  // continue from previous timestep data
-    PetscInt    count;
-    PetscViewer viewer;
-
-    if (app_ctx->cont_time <= 0) {  // Legacy files did not include step number and time
-      PetscCall(PetscViewerBinaryOpen(comm, app_ctx->cont_time_file, FILE_MODE_READ, &viewer));
-      PetscCall(PetscViewerBinaryRead(viewer, &app_ctx->cont_time, 1, &count, PETSC_REAL));
-      PetscCall(PetscViewerDestroy(&viewer));
-      PetscCheck(app_ctx->cont_steps != -1, comm, PETSC_ERR_ARG_INCOMP,
-                 "-continue step number not specified, but checkpoint file does not contain a step number (likely written by older code version)");
-    }
     PetscCall(TSSetTime(*ts, app_ctx->cont_time * honee->units->second));
     PetscCall(TSSetStepNumber(*ts, app_ctx->cont_steps));
   }

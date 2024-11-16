@@ -90,10 +90,8 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
   if (!option_set) PetscCall(PetscSNPrintf(app_ctx->cont_file, sizeof app_ctx->cont_file, "%s/ns-solution.bin", app_ctx->output_dir));
   if (option_set && app_ctx->cont_steps == 0) app_ctx->cont_steps = -1;  // Read time from file
 
-  PetscCall(PetscStrcpy(app_ctx->cont_time_file, "[output_dir]/ns-time.bin"));
-  PetscCall(PetscOptionsString("-continue_time_filename", "Filename to get initial condition time from", NULL, app_ctx->cont_time_file,
-                               app_ctx->cont_time_file, sizeof(app_ctx->cont_time_file), &option_set));
-  if (!option_set) PetscCall(PetscSNPrintf(app_ctx->cont_time_file, sizeof app_ctx->cont_time_file, "%s/ns-time.bin", app_ctx->output_dir));
+  PetscCall(
+      PetscOptionsDeprecated("-continue_time_filename", NULL, "HONEE 0.0.0", "HONEE no longer supports reading in solution times from binary file"));
 
   app_ctx->degree = 1;
   PetscCall(PetscOptionsInt("-degree", "Polynomial degree of finite elements", NULL, app_ctx->degree, &app_ctx->degree, NULL));

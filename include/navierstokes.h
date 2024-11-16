@@ -115,7 +115,6 @@ struct AppCtx_private {
   PetscInt  cont_steps;
   PetscReal cont_time;
   char      cont_file[PETSC_MAX_PATH_LEN];
-  char      cont_time_file[PETSC_MAX_PATH_LEN];
   char      output_dir[PETSC_MAX_PATH_LEN];
   PetscBool add_stepnum2bin;
   PetscBool checkpoint_vtk;

@@ -71,10 +71,6 @@ The following options are common among all problem types:
   - Path to solution binary file from which to continue from
   - `[output_dir]/ns-solution.bin`
 
-* - `-continue_time_filename`
-  - Path to time stamp binary file (only for legacy checkpoints)
-  - `[output_dir]/ns-time.bin`
-
 * - `-bc_wall`
   - Use wall boundary conditions on this list of faces
   -
