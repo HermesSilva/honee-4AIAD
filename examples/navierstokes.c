@@ -229,11 +229,7 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   // -- Set up initial values from binary file
   if (app_ctx->use_continue_file) {
-    PetscViewer viewer;
-
-    PetscCall(PetscViewerBinaryOpen(comm, app_ctx->cont_file, FILE_MODE_READ, &viewer));
-    PetscCall(HoneeLoadBinaryVec(viewer, Q, &app_ctx->cont_time, &app_ctx->cont_steps));
-    PetscCall(PetscViewerDestroy(&viewer));
+    PetscCall(HoneeLoadInitialCondition(app_ctx->cont_file, &app_ctx->cont_steps, &app_ctx->cont_time, Q));
   }
 
   // -- Zero Q_loc

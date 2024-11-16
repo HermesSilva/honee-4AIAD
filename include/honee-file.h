@@ -10,6 +10,7 @@ extern const PetscInt32 HONEE_FILE_TOKEN_64;
 
 PetscErrorCode HoneeCheckFilenameExtension(MPI_Comm comm, const char filename[], const char extension[], PetscBool *is_extension);
 
+PetscErrorCode HoneeLoadInitialCondition(const char filename[], PetscInt *solution_steps, PetscReal *solution_time, Vec Q);
 PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, PetscInt *step_number);
 PetscErrorCode HoneeWriteBinaryVec(PetscViewer viewer, Vec Q, PetscReal time, PetscInt step_number);
 

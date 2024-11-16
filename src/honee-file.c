@@ -21,7 +21,7 @@ PetscErrorCode HoneeCheckFilenameExtension(MPI_Comm comm, const char filename[],
   PetscCall(PetscStrlen(filename, &len));
   PetscCall(PetscStrlen(extension, &ext_len));
   PetscCheck(ext_len, comm, PETSC_ERR_ARG_WRONG, "Zero-size extension: %s", extension);
-  if (len < ext_len) *is_extension = PETSC_FALSE; 
+  if (len < ext_len) *is_extension = PETSC_FALSE;
   else PetscCall(PetscStrncmp(filename + len - ext_len, extension, ext_len, is_extension));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -45,6 +45,31 @@ static PetscErrorCode BinaryReadIntoInt(PetscViewer viewer, PetscInt *out, Petsc
   } else {
     PetscCall(PetscViewerBinaryRead(viewer, out, 1, NULL, PETSC_INT));
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Load initial condition from file
+
+  @param[in]  filename       File to get data from (must be '*.bin' file)
+  @param[out] solution_steps Number of timesteps that the initial condition was taken from
+  @param[out] solution_time  Solution time that the initial condition was taken from
+  @param[out] Q              Vec to hold the initial condition
+**/
+PetscErrorCode HoneeLoadInitialCondition(const char filename[], PetscInt *solution_steps, PetscReal *solution_time, Vec Q) {
+  MPI_Comm    comm;
+  PetscViewer viewer;
+  PetscBool   isBin;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscObjectGetComm((PetscObject)Q, &comm));
+  PetscCall(HoneeCheckFilenameExtension(comm, filename, ".bin", &isBin));
+
+  if (isBin) {
+    PetscCall(PetscViewerBinaryOpen(comm, filename, FILE_MODE_READ, &viewer));
+    PetscCall(HoneeLoadBinaryVec(viewer, Q, solution_time, solution_steps));
+    PetscCall(PetscViewerDestroy(&viewer));
+  } else SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "File does not have a valid extension, recieved '%s'", filename);
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
