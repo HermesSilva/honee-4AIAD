@@ -68,8 +68,8 @@ The following options are common among all problem types:
   - `0`
 
 * - `-continue_filename`
-  - Path to solution binary file from which to continue from
-  - `[output_dir]/ns-solution.bin`
+  - Path to file from which to continue from
+  -
 
 * - `-bc_wall`
   - Use wall boundary conditions on this list of faces
