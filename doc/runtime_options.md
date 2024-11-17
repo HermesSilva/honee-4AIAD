@@ -63,10 +63,6 @@ The following options are common among all problem types:
   - Whether to add step numbers to output binary files
   - `false`
 
-* - `-continue`
-  - Continue from previous solution (input is step number of previous solution)
-  - `0`
-
 * - `-continue_filename`
   - Path to file from which to continue from
   -

@@ -81,13 +81,12 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
   PetscCall(PetscStrncpy(app_ctx->output_dir, ".", 2));
   PetscCall(PetscOptionsString("-output_dir", "Output directory", NULL, app_ctx->output_dir, app_ctx->output_dir, sizeof(app_ctx->output_dir), NULL));
 
-  app_ctx->cont_steps = 0;
-  PetscCall(PetscOptionsInt("-continue", "Continue from previous solution", NULL, app_ctx->cont_steps, &app_ctx->cont_steps, NULL));
-
   PetscCall(PetscOptionsString("-continue_filename", "Filename to get initial condition from", NULL, app_ctx->cont_file, app_ctx->cont_file,
-                               sizeof(app_ctx->cont_file), &option_set));
-  if (option_set && app_ctx->cont_steps == 0) app_ctx->cont_steps = -1;  // Read time from file
+                               sizeof(app_ctx->cont_file), NULL));
+  if (app_ctx->cont_file[0] != '\0') app_ctx->use_continue_file = PETSC_TRUE;
 
+  PetscCall(
+      PetscOptionsDeprecated("-continue", NULL, "HONEE 0.0.0", "Set -continue_filename to non-empty string to continue from previous solution"));
   PetscCall(
       PetscOptionsDeprecated("-continue_time_filename", NULL, "HONEE 0.0.0", "HONEE no longer supports reading in solution times from binary file"));
 

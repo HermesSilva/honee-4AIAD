@@ -112,6 +112,7 @@ struct AppCtx_private {
   // Post-processing arguments
   PetscInt  checkpoint_interval;
   PetscInt  viz_refine;
+  PetscBool use_continue_file;
   PetscInt  cont_steps;
   PetscReal cont_time;
   char      cont_file[PETSC_MAX_PATH_LEN];

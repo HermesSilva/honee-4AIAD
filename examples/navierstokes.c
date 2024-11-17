@@ -228,7 +228,7 @@ int main(int argc, char **argv) {
   // Gather initial Q values in case of continuation of simulation
   // ---------------------------------------------------------------------------
   // -- Set up initial values from binary file
-  if (app_ctx->cont_steps) {
+  if (app_ctx->use_continue_file) {
     PetscViewer viewer;
 
     PetscCall(PetscViewerBinaryOpen(comm, app_ctx->cont_file, FILE_MODE_READ, &viewer));
