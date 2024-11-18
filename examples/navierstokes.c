@@ -228,12 +228,8 @@ int main(int argc, char **argv) {
   // Gather initial Q values in case of continuation of simulation
   // ---------------------------------------------------------------------------
   // -- Set up initial values from binary file
-  if (app_ctx->cont_steps) {
-    PetscViewer viewer;
-
-    PetscCall(PetscViewerBinaryOpen(comm, app_ctx->cont_file, FILE_MODE_READ, &viewer));
-    PetscCall(HoneeLoadBinaryVec(viewer, Q, &app_ctx->cont_time, &app_ctx->cont_steps));
-    PetscCall(PetscViewerDestroy(&viewer));
+  if (app_ctx->use_continue_file) {
+    PetscCall(HoneeLoadInitialCondition(app_ctx->cont_file, &app_ctx->cont_steps, &app_ctx->cont_time, Q));
   }
 
   // -- Zero Q_loc

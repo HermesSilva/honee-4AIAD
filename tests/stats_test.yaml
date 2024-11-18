@@ -40,5 +40,4 @@ stg:
 ts_monitor_turbulence_spanstats:
   viewer:
 
-continue:
 continue_filename: tests/output/fluids-navierstokes-turb-spanstats-IC.bin

@@ -327,7 +327,7 @@ PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, 
                             amat_type, pmat_type_str));
     }
   }
-  if (honee->app_ctx->cont_steps) {
+  if (honee->app_ctx->use_continue_file) {
     PetscCall(PetscPrintf(comm,
                           "  Continue:\n"
                           "    Filename:                          : %s\n"

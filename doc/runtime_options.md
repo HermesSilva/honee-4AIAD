@@ -63,17 +63,9 @@ The following options are common among all problem types:
   - Whether to add step numbers to output binary files
   - `false`
 
-* - `-continue`
-  - Continue from previous solution (input is step number of previous solution)
-  - `0`
-
 * - `-continue_filename`
-  - Path to solution binary file from which to continue from
-  - `[output_dir]/ns-solution.bin`
-
-* - `-continue_time_filename`
-  - Path to time stamp binary file (only for legacy checkpoints)
-  - `[output_dir]/ns-time.bin`
+  - Path to file from which to continue from
+  -
 
 * - `-bc_wall`
   - Use wall boundary conditions on this list of faces
