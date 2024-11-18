@@ -101,6 +101,7 @@ PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, Pe
     PetscCall(BinaryReadIntoInt(viewer, &file_step_number, file_type));
     PetscCall(PetscViewerBinaryRead(viewer, &file_time, 1, NULL, PETSC_REAL));
   } else if (token == VEC_FILE_CLASSID) {  // Legacy format of just the vector, encoded as [VEC_FILE_CLASSID, length, ]
+    // NOTE: Only used for regression testing now
     PetscInt length, N;
     PetscCall(BinaryReadIntoInt(viewer, &length, file_type));
     PetscCall(VecGetSize(Q, &N));
