@@ -13,10 +13,22 @@
 
 // Create mesh
 PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, VecType vec_type, DM *dm) {
+  PetscBool isCGNS;
+  char      filename[PETSC_MAX_PATH_LEN] = "";
+
   PetscFunctionBeginUser;
-  // Create DMPLEX
-  PetscCall(DMCreate(comm, dm));
-  PetscCall(DMSetType(*dm, DMPLEX));
+  PetscCall(PetscOptionsGetString(NULL, NULL, "-dm_plex_filename", filename, sizeof(filename), NULL));
+  PetscCall(HoneeCheckFilenameExtension(comm, filename, ".cgns", &isCGNS));
+
+  if (isCGNS) {
+    // Must create from file to keep the sfNatural field in tact
+    PetscCall(DMPlexCreateFromFile(comm, filename, "HONEE", PETSC_TRUE, dm));
+    PetscCall(PetscOptionsSetValue(NULL, "-dm_plex_filename", ""));
+  } else {
+    PetscCall(DMCreate(comm, dm));
+    PetscCall(DMSetType(*dm, DMPLEX));
+  }
+
   {
     PetscBool skip = PETSC_TRUE;
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-dm_mat_preallocate_skip", &skip, NULL));
@@ -24,8 +36,6 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
   }
   PetscCall(DMSetMatType(*dm, mat_type));
   PetscCall(DMSetVecType(*dm, vec_type));
-
-  // Set Tensor elements
   PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_plex_simplex", "0"));
   PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_localize", "0"));  // Delay localization until DMSetupByOrderEnd_FEM
   PetscCall(DMSetSparseLocalize(*dm, PETSC_FALSE));
@@ -34,14 +44,21 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
   // Set CL options
   PetscCall(DMSetFromOptions(*dm));
   PetscCall(DMViewFromOptions(*dm, NULL, "-dm_view"));
+  {  // Force isoperiodic point SF to be created to update sfNatural.
+    // Needs to be done before removing the field corresponding to sfNatural, but after IsoperiodicFaces have been set
+    PetscSection dummy;
+    PetscCall(DMGetGlobalSection(*dm, &dummy));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // Setup DM
 PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, SimpleBC bc, Physics phys) {
   PetscInt num_comp_q = 5;
-  PetscFunctionBeginUser;
 
+  PetscFunctionBeginUser;
+  PetscCall(DMClearFields(dm));
+  PetscCall(DMSetLocalSection(dm, NULL));
   PetscCall(DMSetupByOrderBegin_FEM(PETSC_TRUE, PETSC_TRUE, degree, PETSC_DECIDE, q_extra, 1, &num_comp_q, dm));
 
   {  // Add strong boundary conditions to DM

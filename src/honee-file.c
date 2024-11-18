@@ -51,24 +51,62 @@ static PetscErrorCode BinaryReadIntoInt(PetscViewer viewer, PetscInt *out, Petsc
 /**
   @brief Load initial condition from file
 
-  @param[in]  filename       File to get data from (must be '*.bin' file)
+  @param[in]  filename       File to get data from (must be binary or CGNS file)
   @param[out] solution_steps Number of timesteps that the initial condition was taken from
   @param[out] solution_time  Solution time that the initial condition was taken from
-  @param[out] Q              Vec to hold the initial condition
+  @param[out] Q              `Vec` to hold the initial condition
 **/
 PetscErrorCode HoneeLoadInitialCondition(const char filename[], PetscInt *solution_steps, PetscReal *solution_time, Vec Q) {
   MPI_Comm    comm;
   PetscViewer viewer;
-  PetscBool   isBin;
+  PetscBool   isBin, isCGNS;
 
   PetscFunctionBeginUser;
   PetscCall(PetscObjectGetComm((PetscObject)Q, &comm));
   PetscCall(HoneeCheckFilenameExtension(comm, filename, ".bin", &isBin));
+  PetscCall(HoneeCheckFilenameExtension(comm, filename, ".cgns", &isCGNS));
 
   if (isBin) {
     PetscCall(PetscViewerBinaryOpen(comm, filename, FILE_MODE_READ, &viewer));
     PetscCall(HoneeLoadBinaryVec(viewer, Q, solution_time, solution_steps));
     PetscCall(PetscViewerDestroy(&viewer));
+  } else if (isCGNS) {
+#if defined(PETSC_HAVE_CGNS)
+    DM        dm, dm_output;
+    Vec       V_output, V_local;
+    PetscBool set;
+
+    PetscCall(VecGetDM(Q, &dm));
+    PetscCall(PetscViewerCGNSOpen(comm, filename, FILE_MODE_READ, &viewer));
+    PetscCall(DMGetOutputDM(dm, &dm_output));
+    PetscCall(DMCreateGlobalVector(dm_output, &V_output));
+    PetscCall(DMGetLocalVector(dm, &V_local));
+    PetscCall(VecLoad(V_output, viewer));
+    PetscCall(DMGlobalToLocal(dm_output, V_output, INSERT_VALUES, V_local));
+    PetscCall(DMLocalToGlobal(dm, V_local, INSERT_VALUES, Q));
+    PetscCall(VecDestroy(&V_output));
+    PetscCall(DMRestoreLocalVector(dm, &V_local));
+
+    PetscCall(PetscViewerCGNSGetSolutionTime(viewer, solution_time, &set));
+    if (!set) PetscCall(PetscPrintf(comm, "WARNING: Couldn't find solution time in file\n"));
+    PetscCall(PetscViewerCGNSGetSolutionIteration(viewer, solution_steps, &set));
+    if (!set) {  // Based on assumption that solution name of has form "FlowSolutionXXX"
+      const char *name, flowsolution[] = "FlowSolution";
+      size_t      flowsolutionlen;
+      PetscBool   isFlowSolution;
+
+      PetscCall(PetscViewerCGNSGetSolutionName(viewer, &name));
+      PetscCall(PetscStrlen(flowsolution, &flowsolutionlen));
+      PetscCall(PetscStrncmp(flowsolution, name, flowsolutionlen, &isFlowSolution));
+      PetscCheck(isFlowSolution, comm, PETSC_ERR_FILE_UNEXPECTED,
+                 "CGNS file %s does not have FlowIterations array and solution name have 'FlowSolution' (found '%s')", filename, name);
+      *solution_steps = atoi(&name[flowsolutionlen]);
+    }
+
+    PetscCall(PetscViewerDestroy(&viewer));
+#else
+    SETERRQ(comm, PETSC_ERR_SUP, "Loading initial condition from CGNS requires PETSc to be built with support. Reconfigure using --with-cgns-dir");
+#endif
   } else SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "File does not have a valid extension, recieved '%s'", filename);
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -64,7 +64,7 @@ The following options are common among all problem types:
   - `false`
 
 * - `-continue_filename`
-  - Path to file from which to continue from
+  - Path to file from which to continue from. Either binary file or CGNS
   -
 
 * - `-bc_wall`
