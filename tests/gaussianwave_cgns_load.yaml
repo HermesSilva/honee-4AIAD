@@ -1,0 +1,41 @@
+problem: gaussian_wave
+mu: 0 # Effectively solving Euler momentum equations
+
+bc_freestream: 4,6,3,5
+bc_symmetry_z: 1,2
+
+reference:
+  temperature: 0.25
+  pressure: 71.75
+freestream:
+  # riemann: hll # causes thermal bubble to reflect acoustic waves from boundary
+  velocity: 2,2,0
+
+epicenter: 0.33,0.75,0
+amplitude: 2
+width: 0.05
+
+ts:
+  adapt_type: none
+  max_steps: 100
+  dt: 2e-3
+  type: alpha
+  #monitor_solution: cgns:nwave.cgns
+  #monitor_solution_interval: 10
+
+implicit: true
+stab: supg
+state_var: primitive
+
+snes_rtol: 1e-4
+ksp_rtol: 1e-2
+snes_lag_jacobian: 20
+snes_lag_jacobian_persists:
+
+## Demonstrate acoustic wave dissipation using an internal damping layer
+# idl:
+#   decay_time: 2e-3
+#   start: 0
+#   length: .25
+
+options_left: false # to ignore error with -dm_localize and -dm_plex_simplex being set but not used

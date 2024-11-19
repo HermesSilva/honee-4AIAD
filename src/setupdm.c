@@ -46,8 +46,12 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
   PetscCall(DMViewFromOptions(*dm, NULL, "-dm_view"));
   {  // Force isoperiodic point SF to be created to update sfNatural.
     // Needs to be done before removing the field corresponding to sfNatural, but after IsoperiodicFaces have been set
-    PetscSection dummy;
-    PetscCall(DMGetGlobalSection(*dm, &dummy));
+    PetscInt num_fields;
+    PetscCall(DMGetNumFields(*dm, &num_fields));
+    if (num_fields) {
+      PetscSection dummy;
+      PetscCall(DMGetGlobalSection(*dm, &dummy));
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

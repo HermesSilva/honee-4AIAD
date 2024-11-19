@@ -119,6 +119,8 @@ class HoneeSuiteSpec(SuiteSpec):
         """
         if 'No SYCL devices of the requested type are available' in stderr:
             return f'SYCL device type not available'
+        elif 'Loading meshes requires CGNS support. Reconfigure using --with-cgns-dir' in stderr:
+            return f'CGNS not installed in PETSc for {test}, {spec.name}'
         elif 'You may need to add --download-ctetgen or --download-tetgen' in stderr:
             return f'Tet mesh generator not installed for {test}, {spec.name}'
         return None
