@@ -226,10 +226,14 @@ int main(int argc, char **argv) {
   PetscCheck(CeedDestroy(&ceed) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Destroying Ceed object failed");
 
   if (app_ctx->test_type != TESTTYPE_NONE) {
-    PetscInt num_options_left = 0;
+    PetscInt  num_options_left = 0;
+    PetscBool options_left     = PETSC_TRUE;
+
     PetscCall(PetscOptionsLeftGet(NULL, &num_options_left, NULL, NULL));
-    PetscCheck(num_options_left == 0, PETSC_COMM_WORLD, -1,
-               "There are unused options. This is not allowed. See error message for the unused options (or use -options_left directly)");
+    PetscCall(PetscOptionsGetBool(NULL, NULL, "-options_left", &options_left, NULL));
+    if (options_left)
+      PetscCheck(num_options_left == 0, PETSC_COMM_WORLD, -1,
+                 "There are unused options. This is not allowed. See error message for the unused options (or use -options_left directly)");
   }
 
   // ---------------------------------------------------------------------------
