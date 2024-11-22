@@ -424,6 +424,7 @@ PetscErrorCode PrintError(DM dm, Honee honee, Vec Q, PetscScalar final_time);
 PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q, PetscScalar final_time);
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
 PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
+PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume);
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
 
 // -----------------------------------------------------------------------------
@@ -483,3 +484,6 @@ PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionDa
 PetscErrorCode DivDiffFluxProjectionSetup(Honee honee, DivDiffFluxProjectionData diff_flux_proj);
 PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_proj, Vec Q_loc);
 PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_flux_proj);
+
+PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx);
+PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);

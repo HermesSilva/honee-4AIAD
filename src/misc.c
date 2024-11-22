@@ -205,6 +205,48 @@ PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume) {
+  DM                   dm   = honee->dm, dm_coord;
+  Ceed                 ceed = honee->ceed;
+  CeedQFunction        qf_mass;
+  CeedOperator         op_mass;
+  OperatorApplyContext op_mass_ctx;
+  CeedElemRestriction  elem_restr_qd;
+  CeedVector           qdata;
+  CeedInt              q_data_size, num_comps_x;
+  DMLabel              domain_label = 0;
+  PetscInt             label_value  = 0;
+  Vec                  u, v;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetCoordinateDM(dm, &dm_coord));
+  PetscCall(QDataGet(ceed, dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &qdata, &q_data_size));
+  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comps_x));
+
+  PetscCall(HoneeMassQFunctionCreate(ceed, num_comps_x, q_data_size, &qf_mass));
+  PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", honee->elem_restr_x, honee->basis_x, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, qdata));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", honee->elem_restr_x, honee->basis_x, CEED_VECTOR_ACTIVE));
+
+  PetscCall(OperatorApplyContextCreate(NULL, dm_coord, ceed, op_mass, NULL, NULL, NULL, NULL, &op_mass_ctx));
+  PetscCall(CeedOperatorCreateLocalVecs(op_mass, DMReturnVecType(dm), PETSC_COMM_SELF, &u, NULL));
+  PetscCall(DMCreateGlobalVector(dm_coord, &v));
+  PetscCall(VecSet(u, 1.));
+  PetscCall(ApplyCeedOperatorLocalToGlobal(u, v, op_mass_ctx));
+  PetscCall(VecSum(v, volume));
+  *volume /= num_comps_x;  // Correct for number of components != 1
+
+  PetscCall(VecDestroy(&u));
+  PetscCall(VecDestroy(&v));
+  PetscCall(OperatorApplyContextDestroy(op_mass_ctx));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
+  PetscCallCeed(ceed, CeedVectorDestroy(&qdata));
+  PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
+  PetscCallCeed(ceed, CeedOperatorDestroy(&op_mass));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // Print information about the given simulation run
 PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, TS ts) {
   Ceed     ceed = honee->ceed;

@@ -15,6 +15,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add projection of the divergence of diffusive flux for advection-diffusion equations, see !43
 - Add boundary layer IC and wind type to advection-diffusion equations, see !46
 - Add `-bl_height_factor` option for boundary layer IC in advection-diffusion equations, see !70
+- Add `-ts_monitor_total_kinetic_energy`
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic

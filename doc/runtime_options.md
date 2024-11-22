@@ -123,6 +123,14 @@ The following options are common among all problem types:
   - Viewer for the force on each no-slip wall, e.g., `ascii:force.csv:ascii_csv` to write a CSV file.
   -
 
+* - `-ts_monitor_total_kinetic_energy`
+  - Viewer for the total kinetic energy in the domain and other terms, e.g., `ascii:total_ke.csv:ascii_csv` to write a CSV file.
+  -
+
+* - `-ts_monitor_total_kinetic_energy_interval`
+  - Number of timesteps between calculating and printing the total kinetic energy
+  - `1`
+
 * - `-mesh_transform`
   - Transform the mesh, usually for an initial box mesh.
   - `none`
