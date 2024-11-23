@@ -81,6 +81,9 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
 
   PetscCall(PetscStrncpy(app_ctx->output_dir, ".", 2));
   PetscCall(PetscOptionsString("-output_dir", "Output directory", NULL, app_ctx->output_dir, app_ctx->output_dir, sizeof(app_ctx->output_dir), NULL));
+  PetscMPIInt rank;
+  MPI_Comm_rank(comm, &rank);
+  if (!rank) PetscCall(PetscMkdir(app_ctx->output_dir));
 
   PetscCall(PetscOptionsString("-continue_filename", "Filename to get initial condition from", NULL, app_ctx->cont_file, app_ctx->cont_file,
                                sizeof(app_ctx->cont_file), NULL));

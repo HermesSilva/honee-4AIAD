@@ -213,15 +213,6 @@ int main(int argc, char **argv) {
   }
 
   // ---------------------------------------------------------------------------
-  // Create output directory
-  // ---------------------------------------------------------------------------
-  PetscMPIInt rank;
-  MPI_Comm_rank(comm, &rank);
-  if (!rank) {
-    PetscCall(PetscMkdir(app_ctx->output_dir));
-  }
-
-  // ---------------------------------------------------------------------------
   // Gather initial Q values in case of continuation of simulation
   // ---------------------------------------------------------------------------
   // -- Set up initial values from binary file
