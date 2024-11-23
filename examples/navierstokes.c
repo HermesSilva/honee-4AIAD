@@ -72,35 +72,34 @@ int main(int argc, char **argv) {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Set up global mesh
-  // ---------------------------------------------------------------------------
-  // -- Create DM
-  DM      dm;
-  VecType vec_type = NULL;
-  MatType mat_type = NULL;
-  CeedMemType mem_type_backend;
-  PetscCallCeed(ceed, CeedGetPreferredMemType(ceed, &mem_type_backend));
+  DM dm;
+  {  // Create DM
+    VecType     vec_type = NULL;
+    MatType     mat_type = NULL;
+    CeedMemType mem_type_backend;
 
-  switch (mem_type_backend) {
-    case CEED_MEM_HOST:
-      vec_type = VECSTANDARD;
-      break;
-    case CEED_MEM_DEVICE: {
-      const char *resolved;
-      PetscCallCeed(ceed, CeedGetResource(ceed, &resolved));
-      if (strstr(resolved, "/gpu/cuda")) vec_type = VECCUDA;
-      else if (strstr(resolved, "/gpu/hip")) vec_type = VECKOKKOS;
-      else if (strstr(resolved, "/gpu/sycl")) vec_type = VECKOKKOS;
-      else vec_type = VECSTANDARD;
+    PetscCallCeed(ceed, CeedGetPreferredMemType(ceed, &mem_type_backend));
+    switch (mem_type_backend) {
+      case CEED_MEM_HOST:
+        vec_type = VECSTANDARD;
+        break;
+      case CEED_MEM_DEVICE: {
+        const char *resource;
+        PetscCallCeed(ceed, CeedGetResource(ceed, &resource));
+        if (strstr(resource, "/gpu/cuda")) vec_type = VECCUDA;
+        else if (strstr(resource, "/gpu/hip")) vec_type = VECKOKKOS;
+        else if (strstr(resource, "/gpu/sycl")) vec_type = VECKOKKOS;
+        else vec_type = VECSTANDARD;
+      }
     }
+    if (strstr(vec_type, VECCUDA)) mat_type = MATAIJCUSPARSE;
+    else if (strstr(vec_type, VECKOKKOS)) mat_type = MATAIJKOKKOS;
+    else mat_type = MATAIJ;
+
+    PetscCall(CreateDM(comm, problem, mat_type, vec_type, &dm));
+    honee->dm = dm;
+    PetscCall(DMSetApplicationContext(dm, honee));
   }
-  if (strstr(vec_type, VECCUDA)) mat_type = MATAIJCUSPARSE;
-  else if (strstr(vec_type, VECKOKKOS)) mat_type = MATAIJKOKKOS;
-  else mat_type = MATAIJ;
-  PetscCall(CreateDM(comm, problem, mat_type, vec_type, &dm));
-  honee->dm = dm;
-  PetscCall(DMSetApplicationContext(dm, honee));
 
   {  // Run problem setup function
     PetscErrorCode (*p)(ProblemData, DM, void *, SimpleBC);
