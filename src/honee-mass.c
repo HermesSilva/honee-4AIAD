@@ -24,13 +24,13 @@ PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_siz
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_1, Mass_1_loc, qf));
       break;
     case 2:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 2, Mass_2, Mass_2_loc, qf));
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_2, Mass_2_loc, qf));
       break;
     case 3:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 3, Mass_3, Mass_3_loc, qf));
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_3, Mass_3_loc, qf));
       break;
     case 4:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 4, Mass_4, Mass_4_loc, qf));
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_4, Mass_4_loc, qf));
       break;
     case 5:
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_5, Mass_5_loc, qf));
