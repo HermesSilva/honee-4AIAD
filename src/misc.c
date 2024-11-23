@@ -10,7 +10,6 @@
 #include <petscts.h>
 
 #include <navierstokes.h>
-#include "../qfunctions/mass.h"
 
 PetscErrorCode ICs_FixMultiplicity(DM dm, Honee honee, Vec Q_loc, Vec Q, CeedScalar time) {
   Ceed         ceed = honee->ceed;
@@ -178,49 +177,6 @@ PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q
 int FreeContextPetsc(void *data) {
   if (PetscFree(data)) return CeedError(NULL, CEED_ERROR_ACCESS, "PetscFree failed");
   return CEED_ERROR_SUCCESS;
-}
-
-// @brief Return mass qfunction specification for number of components N
-PetscErrorCode CreateMassQFunction(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf) {
-  PetscFunctionBeginUser;
-  switch (N) {
-    case 1:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_1, Mass_1_loc, qf));
-      break;
-    case 2:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 2, Mass_2, Mass_2_loc, qf));
-      break;
-    case 3:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 3, Mass_3, Mass_3_loc, qf));
-      break;
-    case 4:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 4, Mass_4, Mass_4_loc, qf));
-      break;
-    case 5:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_5, Mass_5_loc, qf));
-      break;
-    case 7:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_7, Mass_7_loc, qf));
-      break;
-    case 9:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_9, Mass_9_loc, qf));
-      break;
-    case 12:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_12, Mass_12_loc, qf));
-      break;
-    case 22:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_22, Mass_22_loc, qf));
-      break;
-    default:
-      SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP,
-              "Mass qfunction of size %" CeedInt_FMT " does not exist.\nA new mass qfunction can be easily added; see source code for pattern.", N);
-  }
-
-  PetscCallCeed(ceed, CeedQFunctionAddInput(*qf, "u", N, CEED_EVAL_INTERP));
-  PetscCallCeed(ceed, CeedQFunctionAddInput(*qf, "qdata", q_data_size, CEED_EVAL_NONE));
-  PetscCallCeed(ceed, CeedQFunctionAddOutput(*qf, "v", N, CEED_EVAL_INTERP));
-  PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(*qf, N));
-  PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context) {

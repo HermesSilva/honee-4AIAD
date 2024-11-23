@@ -424,7 +424,7 @@ PetscErrorCode RegressionTest(AppCtx app_ctx, Vec Q);
 PetscErrorCode PrintError(DM dm, Honee honee, Vec Q, PetscScalar final_time);
 PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q, PetscScalar final_time);
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
-PetscErrorCode CreateMassQFunction(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
+PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
 
 // -----------------------------------------------------------------------------
