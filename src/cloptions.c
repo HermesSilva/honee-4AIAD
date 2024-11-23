@@ -10,7 +10,7 @@
 #include <navierstokes.h>
 
 // Register problems to be available on the command line
-PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {
+static PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {
   app_ctx->problems = NULL;
 
   PetscFunctionBeginUser;
@@ -43,6 +43,7 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
     PetscCall(PetscOptionsLeftRestore(NULL, &num_options, NULL, NULL));
   }
 
+  PetscCall(RegisterProblems_NS(app_ctx));
   PetscOptionsBegin(comm, NULL, "Navier-Stokes in PETSc with libCEED", NULL);
 
   PetscCall(PetscOptionsString("-ceed", "CEED resource specifier", NULL, app_ctx->ceed_resource, app_ctx->ceed_resource,

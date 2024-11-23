@@ -101,9 +101,6 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   // Process command line options
   // ---------------------------------------------------------------------------
-  // -- Register problems to be available on the command line
-  PetscCall(RegisterProblems_NS(app_ctx));
-
   // -- Process general command line options
   MPI_Comm comm = PETSC_COMM_WORLD;
   honee->comm   = comm;

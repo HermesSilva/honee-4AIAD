@@ -405,7 +405,6 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
 // -----------------------------------------------------------------------------
 // Process command line options
 // -----------------------------------------------------------------------------
-PetscErrorCode RegisterProblems_NS(AppCtx app_ctx);
 PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC bc);
 PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name[], const char value[]);
 
