@@ -44,7 +44,7 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
   }
 
   PetscCall(RegisterProblems_NS(app_ctx));
-  PetscOptionsBegin(comm, NULL, "Navier-Stokes in PETSc with libCEED", NULL);
+  PetscOptionsBegin(comm, NULL, "HONEE - High-Order Navier-stokes Equation Evaluator", NULL);
 
   PetscCall(PetscOptionsString("-ceed", "CEED resource specifier", NULL, app_ctx->ceed_resource, app_ctx->ceed_resource,
                                sizeof(app_ctx->ceed_resource), &ceed_flag));

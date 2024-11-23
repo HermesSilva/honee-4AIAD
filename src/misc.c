@@ -182,12 +182,9 @@ int FreeContextPetsc(void *data) {
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context) {
   PetscFunctionBeginUser;
   if (context == NULL) PetscFunctionReturn(PETSC_SUCCESS);
-
   PetscCall(DMDestroy(&context->dm));
   PetscCall(KSPDestroy(&context->ksp));
-
   PetscCall(OperatorApplyContextDestroy(context->l2_rhs_ctx));
-
   PetscCall(PetscFree(context));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -221,7 +218,7 @@ PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, 
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   PetscCallMPI(MPI_Comm_size(comm, &comm_size));
   PetscCall(PetscPrintf(comm,
-                        "\n-- Navier-Stokes solver - libCEED + PETSc --\n"
+                        "\n-- HONEE - High-Order Navier-stokes Equation Evaluator --\n"
                         "  MPI:\n"
                         "    Host Name                          : %s\n"
                         "    Total ranks                        : %d\n",
