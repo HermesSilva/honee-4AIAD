@@ -54,24 +54,21 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   // -- Initialize backend
   Ceed ceed;
-  PetscCheck(CeedInit(app_ctx->ceed_resource, &ceed) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Ceed initialization failed");
-  honee->ceed = ceed;
+  {  // Initialize Ceed
+    PetscCheck(CeedInit(app_ctx->ceed_resource, &ceed) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Ceed initialization failed");
+    honee->ceed = ceed;
+    PetscCheck(CeedSetErrorHandler(ceed, CeedErrorStore) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Setting libCEED error handler failed");
 
-  PetscCheck(CeedSetErrorHandler(ceed, CeedErrorStore) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Setting libCEED error handler failed");
-
-  // -- Check preferred MemType
-  CeedMemType mem_type_backend;
-  PetscCallCeed(ceed, CeedGetPreferredMemType(ceed, &mem_type_backend));
-
-  {
-    const char *resource;
-    PetscCallCeed(ceed, CeedGetResource(ceed, &resource));
-    if (strstr(resource, "/gpu/sycl")) {
-      PetscDeviceContext dctx;
-      PetscCall(PetscDeviceContextGetCurrentContext(&dctx));
-      void *stream_handle;
-      PetscCall(PetscDeviceContextGetStreamHandle(dctx, &stream_handle));
-      PetscCallCeed(ceed, CeedSetStream(ceed, stream_handle));
+    {  // For SYCL backend, get stream handle from PETSc
+      const char *resource;
+      PetscCallCeed(ceed, CeedGetResource(ceed, &resource));
+      if (strstr(resource, "/gpu/sycl")) {
+        PetscDeviceContext dctx;
+        PetscCall(PetscDeviceContextGetCurrentContext(&dctx));
+        void *stream_handle;
+        PetscCall(PetscDeviceContextGetStreamHandle(dctx, &stream_handle));
+        PetscCallCeed(ceed, CeedSetStream(ceed, stream_handle));
+      }
     }
   }
 
@@ -82,6 +79,9 @@ int main(int argc, char **argv) {
   DM      dm;
   VecType vec_type = NULL;
   MatType mat_type = NULL;
+  CeedMemType mem_type_backend;
+  PetscCallCeed(ceed, CeedGetPreferredMemType(ceed, &mem_type_backend));
+
   switch (mem_type_backend) {
     case CEED_MEM_HOST:
       vec_type = VECSTANDARD;
