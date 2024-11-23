@@ -103,7 +103,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
     CeedQFunction qf_mass;
     Mat           mat_mass;
 
-    PetscCall(CreateMassQFunction(ceed, grad_velo_proj->num_comp, q_data_size, &qf_mass));
+    PetscCall(HoneeMassQFunctionCreate(ceed, grad_velo_proj->num_comp, q_data_size, &qf_mass));
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
     PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", elem_restr_grad_velo, basis_grad_velo, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));

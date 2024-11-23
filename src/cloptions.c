@@ -10,7 +10,7 @@
 #include <navierstokes.h>
 
 // Register problems to be available on the command line
-PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {
+static PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {
   app_ctx->problems = NULL;
 
   PetscFunctionBeginUser;
@@ -43,7 +43,8 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
     PetscCall(PetscOptionsLeftRestore(NULL, &num_options, NULL, NULL));
   }
 
-  PetscOptionsBegin(comm, NULL, "Navier-Stokes in PETSc with libCEED", NULL);
+  PetscCall(RegisterProblems_NS(app_ctx));
+  PetscOptionsBegin(comm, NULL, "HONEE - High-Order Navier-stokes Equation Evaluator", NULL);
 
   PetscCall(PetscOptionsString("-ceed", "CEED resource specifier", NULL, app_ctx->ceed_resource, app_ctx->ceed_resource,
                                sizeof(app_ctx->ceed_resource), &ceed_flag));
@@ -80,6 +81,9 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
 
   PetscCall(PetscStrncpy(app_ctx->output_dir, ".", 2));
   PetscCall(PetscOptionsString("-output_dir", "Output directory", NULL, app_ctx->output_dir, app_ctx->output_dir, sizeof(app_ctx->output_dir), NULL));
+  PetscMPIInt rank;
+  MPI_Comm_rank(comm, &rank);
+  if (!rank) PetscCall(PetscMkdir(app_ctx->output_dir));
 
   PetscCall(PetscOptionsString("-continue_filename", "Filename to get initial condition from", NULL, app_ctx->cont_file, app_ctx->cont_file,
                                sizeof(app_ctx->cont_file), NULL));

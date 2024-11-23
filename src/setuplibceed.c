@@ -34,7 +34,7 @@ static PetscErrorCode CreateKSPMassOperator_Unstabilized(Honee honee, CeedOperat
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_qd, &q_data_size));
 
-  PetscCall(CreateMassQFunction(ceed, num_comp_q, q_data_size, &qf_mass));
+  PetscCall(HoneeMassQFunctionCreate(ceed, num_comp_q, q_data_size, &qf_mass));
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, op_mass));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "u", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));

@@ -148,7 +148,7 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Direct(Honee honee, DivDiffFlux
     PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
                        &q_data_size));
 
-    PetscCall(CreateMassQFunction(ceed, projection->num_comp, q_data_size, &qf_mass));
+    PetscCall(HoneeMassQFunctionCreate(ceed, projection->num_comp, q_data_size, &qf_mass));
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
     PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", elem_restr_div_diff_flux_volume, basis_div_diff_flux, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
@@ -222,7 +222,7 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, DivDiffFl
     CeedQFunction qf_mass;
     CeedOperator  op_mass;
 
-    PetscCall(CreateMassQFunction(ceed, projection->num_comp, q_data_size, &qf_mass));
+    PetscCall(HoneeMassQFunctionCreate(ceed, projection->num_comp, q_data_size, &qf_mass));
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
     PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", elem_restr_diff_flux, basis_diff_flux, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));

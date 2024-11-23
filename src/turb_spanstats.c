@@ -313,7 +313,7 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, SpanStatsSetupData
                      &elem_restr_qd, &q_data, &q_data_size));
 
   // Create Mass CeedOperator
-  PetscCall(CreateMassQFunction(ceed, num_comp_stats, q_data_size, &qf_mass));
+  PetscCall(HoneeMassQFunctionCreate(ceed, num_comp_stats, q_data_size, &qf_mass));
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
   PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", stats_data->elem_restr_parent_stats, stats_data->basis_stats, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
