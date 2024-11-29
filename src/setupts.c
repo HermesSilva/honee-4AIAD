@@ -292,6 +292,25 @@ PetscErrorCode TSMonitor_NS(TS ts, PetscInt step_no, PetscReal time, Vec Q, void
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+PetscErrorCode TSPostStep_CheckStep(TS ts) {
+  Honee     honee;
+  PetscReal norm;
+  PetscInt  step;
+  Vec       Q;
+
+  PetscFunctionBeginUser;
+  PetscCall(TSGetApplicationContext(ts, &honee));
+  PetscCall(TSGetStepNumber(ts, &step));
+  PetscCall(TSGetSolution(ts, &Q));
+  if (step % honee->app_ctx->check_step_interval) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(VecNorm(Q, NORM_1, &norm));
+  if (PetscIsNanReal(norm)) {
+    PetscCall(PetscPrintf(PetscObjectComm((PetscObject)ts), "Solution diverged: Nans found in solution\n"));
+    PetscCall(TSSetConvergedReason(ts, TS_DIVERGED_NONLINEAR_SOLVE));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // TS: Create, setup, and solve
 PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts) {
   MPI_Comm    comm = honee->comm;
@@ -358,6 +377,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   }
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
+  if (app_ctx->check_step_interval > 0) PetscCall(TSSetPostStep(*ts, TSPostStep_CheckStep));
   if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
 
   if (app_ctx->sgs_train_enable) {

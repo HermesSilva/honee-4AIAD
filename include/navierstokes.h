@@ -148,6 +148,8 @@ struct AppCtx_private {
   MeshTransformType mesh_transform_type;
   // Divergence of Diffusive Flux Projection
   DivDiffFluxProjectionMethod divFdiffproj_method;
+
+  PetscInt check_step_interval;
 };
 
 typedef struct {
