@@ -35,7 +35,7 @@ def create_argparser() -> argparse.ArgumentParser:
 
 
 # Necessary functions for running tests
-class CeedSuiteSpec(SuiteSpec):
+class HoneeSuiteSpec(SuiteSpec):
     def __init__(self, has_torch: bool):
         self.has_torch: bool = has_torch
 
@@ -218,7 +218,7 @@ if __name__ == '__main__':
             args.ceed_backends,
             args.mode,
             args.nproc,
-            CeedSuiteSpec(args.has_torch),
+            HoneeSuiteSpec(args.has_torch),
             args.pool_size)
 
     # write output and check for failures
