@@ -1,0 +1,44 @@
+# -- General Problem Setup
+problem: 'taylor_green'
+
+dm_plex:
+  shape: zbox
+  box_lower: 0,0,0
+  box_upper: 6.283185307179586,6.283185307179586,6.283185307179586 #2pi x 2pi x 2pi
+  dim: 3
+  box_faces: 33,33,33
+  box_bd: 'periodic,periodic,periodic'
+
+# For Re=1600, M=0.1, Pr= 0.71
+reference:
+  velocity: 1,0,0
+  temperature: 0.2490535963
+  pressure: 71.42857143
+mu: 0.000625
+k: 0.8836267606 #thermal conductivity
+cv: 717
+cp: 1003.8
+gravity: 0,0,0
+
+# -- Discretization Setup
+degree: 2
+state_var: conservative
+
+stab: 'supg'
+Ctau_t: 1
+Ctau_v: 60
+Ctau_C: 0.5
+Ctau_M: 0.5
+Ctau_E: 0.5
+
+ts:
+  dt: 2e-3
+  type: rk
+  rk_type: 4
+  adapt_type: none
+  max_time: 10
+  exact_final_time: matchstep
+mass:
+  ksp_type: gmres
+  pc_jacobi_type: diagonal
+dm_mat_preallocate_skip: true

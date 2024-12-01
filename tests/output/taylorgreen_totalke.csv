@@ -1,0 +1,14 @@
+# petsc_version: Petsc Development GIT revision: v3.22.1-234-ga8f198c3f45  GIT Date: 2024-11-23 01:11:07 +0000
+# petsc_directory: /home/jrwrigh/software/petsc
+# petsc_arch: arch-devdebug-test-asan
+# date: 2024-12-01T16:24:19-0700
+# date_timezone: MST
+# username: jrwrigh
+# hostname: fermat
+# working_directory: /home/jrwrigh/software/HONEE
+# original_file_path: /home/jrwrigh/software/HONEE/taylorgreen_totalke.csv
+#
+step,time,TotalKineticEnergy,StrainDissipation,DivergenceDissipation,VolumeExpansion,MuVorticity2
+0,0.00000000000000000e+00,5.92566700864139706e-02,-2.55138215471065492e-04,3.21139228240293017e-35,7.96137724098732575e-17,2.55138220056047083e-04
+2,4.00000000000000008e-03,5.92556306267529101e-02,-2.55133673730399051e-04,3.24120294429494780e-24,1.86998431944362881e-16,2.55133678174299322e-04
+3,6.00000000000000012e-03,5.92551109131174564e-02,-2.55131402983775060e-04,2.21962450837810301e-23,9.11903815423132112e-17,2.55131407358111185e-04
