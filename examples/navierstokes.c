@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
   honee->phys              = phys_ctx;
   problem->set_bc_from_ics = PETSC_TRUE;
   honee->comm = comm = PETSC_COMM_WORLD;
+  honee->start_time  = time(NULL);
 
   PetscCall(RegisterLogEvents());
 

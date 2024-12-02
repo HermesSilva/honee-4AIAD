@@ -10,6 +10,7 @@
 #include <petsc-ceed-utils.h>
 #include <petscts.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include <petsc_ops.h>
 #include "../qfunctions/newtonian_types.h"
@@ -269,6 +270,10 @@ struct Honee_private {
   CeedBasis            basis_x, basis_q;
   CeedElemRestriction  elem_restr_x, elem_restr_q;
   OperatorApplyContext op_ics_ctx;
+
+  time_t   start_time;
+  time_t   max_wall_time;
+  PetscInt max_wall_time_interval;
 };
 
 // Units

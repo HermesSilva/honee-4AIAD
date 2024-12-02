@@ -4,6 +4,7 @@
 /// @file
 /// Command line option processing for Navier-Stokes example using PETSc
 
+#include <ctype.h>
 #include <petscdevice.h>
 #include <petscsys.h>
 
@@ -210,6 +211,26 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
   PetscCall(PetscOptionsDeprecated("-ts_monitor_nan_interval", "-honee_check_step_interval", "HONEE 0.0", NULL));
   PetscCall(PetscOptionsInt("-honee_check_step_interval", "Number of timesteps between verifying the validity of the solution", NULL,
                             app_ctx->check_step_interval, &app_ctx->check_step_interval, NULL));
+
+  {
+    char   buffer[2048] = "0";
+    time_t max_wall_time_buffer, max_wall_time_duration;
+    PetscCall(PetscOptionsString("-honee_max_wall_time_duration", "Maximum wall time duration HONEE should wait before stopping TSSolve", NULL,
+                                 buffer, buffer, sizeof(buffer), NULL));
+    PetscCall(ISO8601TimeDurationToSeconds(comm, buffer, &max_wall_time_duration));
+    PetscCall(PetscStrncpy(buffer, "0:1", sizeof(buffer)));  // Default 1 minute buffer
+    PetscCall(PetscOptionsString("-honee_max_wall_time_buffer",
+                                 "Time before max_wall_time_duration when TSSolve should be stopped and checkpoint files written", NULL, buffer,
+                                 buffer, sizeof(buffer), NULL));
+    PetscCall(ISO8601TimeDurationToSeconds(comm, buffer, &max_wall_time_buffer));
+    if (max_wall_time_duration == 0) honee->max_wall_time = -1;
+    else honee->max_wall_time = honee->start_time + max_wall_time_duration - max_wall_time_buffer;
+
+    honee->max_wall_time_interval = 1;
+    PetscCall(PetscOptionsInt("-honee_max_wall_time_interval",
+                              "Number of timesteps between checking whether TSSolve should be stopped due to max_wall_time", NULL,
+                              honee->max_wall_time_interval, &honee->max_wall_time_interval, NULL));
+  }
 
   PetscOptionsEnd();
   PetscFunctionReturn(PETSC_SUCCESS);

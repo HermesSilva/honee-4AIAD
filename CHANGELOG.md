@@ -16,6 +16,8 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add boundary layer IC and wind type to advection-diffusion equations, see !46
 - Add `-bl_height_factor` option for boundary layer IC in advection-diffusion equations, see !70
 - Add `-ts_monitor_total_kinetic_energy`
+- Add `-honee_check_step_interval` to verify solution validity during simulation
+- Add `-honee_max_wall_time_{duration,buffer,interval}` for stopping a simulation based on expired wall clock time
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
