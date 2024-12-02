@@ -26,6 +26,46 @@ static PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+  @brief Convert ISO 8601 time string to duration in seconds
+
+  Accepted formats are 'hh', 'hh:mm', and 'hh:mm:ss'.
+
+  @param[in]  comm     MPI_Comm for error handling
+  @param[in]  string   string of the ISO 8601 duration
+  @param[out] duration Duration in number of seconds
+**/
+PetscErrorCode ISO8601TimeDurationToSeconds(MPI_Comm comm, const char *string, time_t *duration) {
+  int    num_items;
+  char **entries;
+
+  PetscFunctionBeginUser;
+  if (string[0] == '\0') {
+    *duration = 0;
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+  for (PetscInt i = 0; i < strlen(string); i++) {
+    PetscCheck(isdigit(string[i]) || string[i] == ':', comm, PETSC_ERR_SUP, "Time duration may only include digits and ':' separator, found '%c'",
+               string[i]);
+  }
+  PetscCall(PetscStrToArray(string, ':', &num_items, &entries));
+  switch (num_items) {
+    case 1:  // Only hours
+      *duration = 60 * 60 * atoi(entries[0]);
+      break;
+    case 2:  // Hours and Minutes
+      *duration = 60 * 60 * atoi(entries[0]) + 60 * atoi(entries[1]);
+      break;
+    case 3:  // Hours, Minutes, and Seconds
+      *duration = 60 * 60 * atoi(entries[0]) + 60 * atoi(entries[1]) + atoi(entries[2]);
+      break;
+    default:
+      SETERRQ(comm, PETSC_ERR_SUP, "Recieved %d ':' delimited entries, expect either 1, 2, or 3", num_items);
+  }
+  PetscCall(PetscStrToArrayDestroy(num_items, entries));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // Process general command line options
 PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
   MPI_Comm  comm         = honee->comm;
