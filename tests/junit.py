@@ -99,13 +99,6 @@ class HoneeSuiteSpec(SuiteSpec):
         Returns:
             Optional[str]: Skip reason, or `None` if test case should not be skipped
         """
-        if contains_any(resource, ['occa']) and startswith_any(
-                test, ['t4', 't5', 'ex', 'mfem', 'nek', 'petsc', 'fluids', 'solids']):
-            return 'OCCA mode not supported'
-        if test.startswith('t318') and contains_any(resource, ['/gpu/cuda/ref']):
-            return 'CUDA ref backend not supported'
-        if test.startswith('t506') and contains_any(resource, ['/gpu/cuda/shared']):
-            return 'CUDA shared backend not supported'
         for condition in spec.only:
             if (condition == 'cpu') and ('gpu' in resource):
                 return 'CPU only test with GPU backend'
@@ -124,17 +117,7 @@ class HoneeSuiteSpec(SuiteSpec):
         Returns:
             Optional[str]: Skip reason, or `None` if unexpeced error
         """
-        if 'OCCA backend failed to use' in stderr:
-            return f'OCCA mode not supported'
-        elif 'Backend does not implement' in stderr:
-            return f'Backend does not implement'
-        elif 'Can only provide HOST memory for this backend' in stderr:
-            return f'Device memory not supported'
-        elif 'Can only set HOST memory for this backend' in stderr:
-            return f'Device memory not supported'
-        elif 'Test not implemented in single precision' in stderr:
-            return f'Test not implemented in single precision'
-        elif 'No SYCL devices of the requested type are available' in stderr:
+        if 'No SYCL devices of the requested type are available' in stderr:
             return f'SYCL device type not available'
         elif 'You may need to add --download-ctetgen or --download-tetgen' in stderr:
             return f'Tet mesh generator not installed for {test}, {spec.name}'
@@ -152,32 +135,7 @@ class HoneeSuiteSpec(SuiteSpec):
         Returns:
             tuple[str, bool]: Tuple of the expected failure string and whether it was present in `stderr`
         """
-        test_id: str = test[:4]
-        fail_str: str = ''
-        if test_id in ['t006', 't007']:
-            fail_str = 'No suitable backend:'
-        elif test_id in ['t008']:
-            fail_str = 'Available backend resources:'
-        elif test_id in ['t110', 't111', 't112', 't113', 't114']:
-            fail_str = 'Cannot grant CeedVector array access'
-        elif test_id in ['t115']:
-            fail_str = 'Cannot grant CeedVector read-only array access, the access lock is already in use'
-        elif test_id in ['t116']:
-            fail_str = 'Cannot destroy CeedVector, the writable access lock is in use'
-        elif test_id in ['t117']:
-            fail_str = 'Cannot restore CeedVector array access, access was not granted'
-        elif test_id in ['t118']:
-            fail_str = 'Cannot sync CeedVector, the access lock is already in use'
-        elif test_id in ['t215']:
-            fail_str = 'Cannot destroy CeedElemRestriction, a process has read access to the offset data'
-        elif test_id in ['t303']:
-            fail_str = 'Length of input/output vectors incompatible with basis dimensions'
-        elif test_id in ['t408']:
-            fail_str = 'CeedQFunctionContextGetData(): Cannot grant CeedQFunctionContext data access, a process has read access'
-        elif test_id in ['t409'] and contains_any(resource, ['memcheck']):
-            fail_str = 'Context data changed while accessed in read-only mode'
-
-        return fail_str, fail_str in stderr
+        return '', True
 
     def check_allowed_stdout(self, test: str) -> bool:
         """Check whether a test is allowed to print console output
@@ -188,7 +146,7 @@ class HoneeSuiteSpec(SuiteSpec):
         Returns:
             bool: True if the test is allowed to print console output
         """
-        return test[:4] in ['t003']
+        return False
 
 
 if __name__ == '__main__':
