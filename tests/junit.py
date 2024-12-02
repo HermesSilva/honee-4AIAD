@@ -34,10 +34,20 @@ def create_argparser() -> argparse.ArgumentParser:
     return parser
 
 
-# Necessary functions for running tests
-class CeedSuiteSpec(SuiteSpec):
+def diff_csv_comment_function(test_line: str, true_line: str) -> Optional[str]:
+    test_line_split = test_line.split(':')[0]
+    true_line_split = true_line.split(':')[0]
+    diff_output = ''.join(difflib.unified_diff([test_line_split + '\n'],
+                                               [true_line_split + '\n'],
+                                               tofile='test created file',
+                                               fromfile='expected output'))
+    return diff_output if diff_output else None
+
+
+class HoneeSuiteSpec(SuiteSpec):
     def __init__(self, has_torch: bool):
         self.has_torch: bool = has_torch
+        self.diff_csv_kwargs: dict = {'comment_func': diff_csv_comment_function, 'rel_tol': 1e-9}
 
     def get_source_path(self, test: str) -> Path:
         """Compute path to test source file
@@ -218,7 +228,7 @@ if __name__ == '__main__':
             args.ceed_backends,
             args.mode,
             args.nproc,
-            CeedSuiteSpec(args.has_torch),
+            HoneeSuiteSpec(args.has_torch),
             args.pool_size)
 
     # write output and check for failures

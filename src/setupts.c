@@ -356,6 +356,8 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     PetscCallCeed(honee->ceed,
                   CeedOperatorSetContextDouble(honee->spanstats.op_stats_collect_ctx->op, honee->spanstats.previous_time_label, &previous_time));
   }
+  PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
+                                    TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
   if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
 
   if (app_ctx->sgs_train_enable) {
