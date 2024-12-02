@@ -252,7 +252,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
   global_stg_ctx->P0                 = P0;
   global_stg_ctx->h_scale_factor     = stg_h_scale_factor;
 
-  {  // Calculate dx assuming constant spacing
+  if (!use_stgstrong) {  // Calculate dx assuming constant spacing
     PetscReal domain_min[3], domain_max[3], domain_size[3];
     PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
     for (PetscInt i = 0; i < 3; i++) domain_size[i] = domain_max[i] - domain_min[i];
