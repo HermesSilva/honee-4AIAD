@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
   // Process command line options
   // ---------------------------------------------------------------------------
   // -- Process general command line options
-  PetscCall(ProcessCommandLineOptions(comm, app_ctx, bc));
+  PetscCall(ProcessCommandLineOptions(honee, bc));
   PetscCall(BoundaryConditionSetUp(honee, problem, app_ctx, bc));
 
   // ---------------------------------------------------------------------------
