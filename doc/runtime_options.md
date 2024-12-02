@@ -131,6 +131,10 @@ The following options are common among all problem types:
   - Number of timesteps between calculating and printing the total kinetic energy
   - `1`
 
+* - `-honee_check_step_interval`
+  - Number of time steps between checking the solution for Nans. Negative interval indicates it will not run.
+  - `-1`
+
 * - `-mesh_transform`
   - Transform the mesh, usually for an initial box mesh.
   - `none`

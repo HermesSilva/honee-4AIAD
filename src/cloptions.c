@@ -164,6 +164,11 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
                              DivDiffFluxProjectionMethods, (PetscEnum)(app_ctx->divFdiffproj_method), (PetscEnum *)&app_ctx->divFdiffproj_method,
                              NULL));
 
+  app_ctx->check_step_interval = -1;
+  PetscCall(PetscOptionsDeprecated("-ts_monitor_nan_interval", "-honee_check_step_interval", "HONEE 0.0", NULL));
+  PetscCall(PetscOptionsInt("-honee_check_step_interval", "Number of timesteps between verifying the validity of the solution", NULL,
+                            app_ctx->check_step_interval, &app_ctx->check_step_interval, NULL));
+
   PetscOptionsEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
 }
