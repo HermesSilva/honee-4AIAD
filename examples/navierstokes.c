@@ -39,6 +39,7 @@ int main(int argc, char **argv) {
   honee->phys              = phys_ctx;
   problem->set_bc_from_ics = PETSC_TRUE;
   honee->comm = comm = PETSC_COMM_WORLD;
+  honee->start_time  = time(NULL);
 
   PetscCall(RegisterLogEvents());
 
@@ -46,7 +47,7 @@ int main(int argc, char **argv) {
   // Process command line options
   // ---------------------------------------------------------------------------
   // -- Process general command line options
-  PetscCall(ProcessCommandLineOptions(comm, app_ctx, bc));
+  PetscCall(ProcessCommandLineOptions(honee, bc));
   PetscCall(BoundaryConditionSetUp(honee, problem, app_ctx, bc));
 
   // ---------------------------------------------------------------------------

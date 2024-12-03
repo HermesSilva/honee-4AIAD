@@ -311,6 +311,29 @@ PetscErrorCode TSPostStep_CheckStep(TS ts) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+PetscErrorCode TSPostStep_MaxWallTime(TS ts) {
+  Honee       honee;
+  PetscInt    step;
+  PetscMPIInt rank;
+  MPI_Comm    comm;
+  PetscBool   is_wall_time_exceeded = PETSC_FALSE;
+
+  PetscFunctionBeginUser;
+  PetscCall(TSGetApplicationContext(ts, &honee));
+  PetscCall(TSGetStepNumber(ts, &step));
+  if (step % honee->max_wall_time_interval) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(PetscObjectGetComm((PetscObject)ts, &comm));
+  PetscCallMPI(MPI_Comm_rank(comm, &rank));
+  if (rank == 0) is_wall_time_exceeded = time(NULL) > honee->max_wall_time ? PETSC_TRUE : PETSC_FALSE;
+  // Must broadcast to avoid race condition
+  PetscCallMPI(MPI_Bcast(&is_wall_time_exceeded, 1, MPIU_BOOL, 0, comm));
+  if (PetscUnlikely(is_wall_time_exceeded)) {
+    PetscCall(PetscPrintf(PetscObjectComm((PetscObject)ts), "Stopping TSSolve: Set max wall time exceeded\n"));
+    PetscCall(TSSetConvergedReason(ts, TS_CONVERGED_USER));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // TS: Create, setup, and solve
 PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts) {
   MPI_Comm    comm = honee->comm;
@@ -378,6 +401,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
   if (app_ctx->check_step_interval > 0) PetscCall(TSSetPostStep(*ts, TSPostStep_CheckStep));
+  if (honee->max_wall_time > 0) PetscCall(TSSetPostStep(*ts, TSPostStep_MaxWallTime));
   if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
 
   if (app_ctx->sgs_train_enable) {

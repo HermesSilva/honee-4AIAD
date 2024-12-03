@@ -135,6 +135,18 @@ The following options are common among all problem types:
   - Number of time steps between checking the solution for Nans. Negative interval indicates it will not run.
   - `-1`
 
+* - `-honee_max_wall_time_duration`
+  - Wall clock duration of simulation before it should be stopped. Acceptable formats are `hh`, `hh:mm`, and `hh:mm:ss`. Simulation is stopped at `start_time + duration - buffer`
+  - `'0'`
+
+* - `-honee_max_wall_time_buffer`
+  - Approximate time required to exit simulation cleanly (write checkpoints, etc.)
+  - `'00:01'`
+
+* - `-honee_max_wall_time_interval`
+  - Number of time steps between checking whether simulation should stop based on `-honee_max_wall_time_duration`
+  - `1`
+
 * - `-mesh_transform`
   - Transform the mesh, usually for an initial box mesh.
   - `none`

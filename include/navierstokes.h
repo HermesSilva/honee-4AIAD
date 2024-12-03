@@ -10,6 +10,7 @@
 #include <petsc-ceed-utils.h>
 #include <petscts.h>
 #include <stdbool.h>
+#include <time.h>
 
 #include <petsc_ops.h>
 #include "../qfunctions/newtonian_types.h"
@@ -269,6 +270,10 @@ struct Honee_private {
   CeedBasis            basis_x, basis_q;
   CeedElemRestriction  elem_restr_x, elem_restr_q;
   OperatorApplyContext op_ics_ctx;
+
+  time_t   start_time;
+  time_t   max_wall_time;
+  PetscInt max_wall_time_interval;
 };
 
 // Units
@@ -407,7 +412,7 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
 // -----------------------------------------------------------------------------
 // Process command line options
 // -----------------------------------------------------------------------------
-PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC bc);
+PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc);
 PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name[], const char value[]);
 
 // -----------------------------------------------------------------------------

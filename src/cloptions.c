@@ -4,6 +4,7 @@
 /// @file
 /// Command line option processing for Navier-Stokes example using PETSc
 
+#include <ctype.h>
 #include <petscdevice.h>
 #include <petscsys.h>
 
@@ -26,8 +27,50 @@ static PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+  @brief Convert ISO 8601 time string to duration in seconds
+
+  Accepted formats are 'hh', 'hh:mm', and 'hh:mm:ss'.
+
+  @param[in]  comm     MPI_Comm for error handling
+  @param[in]  string   string of the ISO 8601 duration
+  @param[out] duration Duration in number of seconds
+**/
+PetscErrorCode ISO8601TimeDurationToSeconds(MPI_Comm comm, const char *string, time_t *duration) {
+  int    num_items;
+  char **entries;
+
+  PetscFunctionBeginUser;
+  if (string[0] == '\0') {
+    *duration = 0;
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+  for (PetscInt i = 0; i < strlen(string); i++) {
+    PetscCheck(isdigit(string[i]) || string[i] == ':', comm, PETSC_ERR_SUP, "Time duration may only include digits and ':' separator, found '%c'",
+               string[i]);
+  }
+  PetscCall(PetscStrToArray(string, ':', &num_items, &entries));
+  switch (num_items) {
+    case 1:  // Only hours
+      *duration = 60 * 60 * atoi(entries[0]);
+      break;
+    case 2:  // Hours and Minutes
+      *duration = 60 * 60 * atoi(entries[0]) + 60 * atoi(entries[1]);
+      break;
+    case 3:  // Hours, Minutes, and Seconds
+      *duration = 60 * 60 * atoi(entries[0]) + 60 * atoi(entries[1]) + atoi(entries[2]);
+      break;
+    default:
+      SETERRQ(comm, PETSC_ERR_SUP, "Recieved %d ':' delimited entries, expect either 1, 2, or 3", num_items);
+  }
+  PetscCall(PetscStrToArrayDestroy(num_items, entries));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // Process general command line options
-PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC bc) {
+PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
+  MPI_Comm  comm         = honee->comm;
+  AppCtx    app_ctx      = honee->app_ctx;
   PetscBool ceed_flag    = PETSC_FALSE;
   PetscBool problem_flag = PETSC_FALSE;
   PetscBool option_set   = PETSC_FALSE;
@@ -168,6 +211,26 @@ PetscErrorCode ProcessCommandLineOptions(MPI_Comm comm, AppCtx app_ctx, SimpleBC
   PetscCall(PetscOptionsDeprecated("-ts_monitor_nan_interval", "-honee_check_step_interval", "HONEE 0.0", NULL));
   PetscCall(PetscOptionsInt("-honee_check_step_interval", "Number of timesteps between verifying the validity of the solution", NULL,
                             app_ctx->check_step_interval, &app_ctx->check_step_interval, NULL));
+
+  {
+    char   buffer[2048] = "0";
+    time_t max_wall_time_buffer, max_wall_time_duration;
+    PetscCall(PetscOptionsString("-honee_max_wall_time_duration", "Maximum wall time duration HONEE should wait before stopping TSSolve", NULL,
+                                 buffer, buffer, sizeof(buffer), NULL));
+    PetscCall(ISO8601TimeDurationToSeconds(comm, buffer, &max_wall_time_duration));
+    PetscCall(PetscStrncpy(buffer, "0:1", sizeof(buffer)));  // Default 1 minute buffer
+    PetscCall(PetscOptionsString("-honee_max_wall_time_buffer",
+                                 "Time before max_wall_time_duration when TSSolve should be stopped and checkpoint files written", NULL, buffer,
+                                 buffer, sizeof(buffer), NULL));
+    PetscCall(ISO8601TimeDurationToSeconds(comm, buffer, &max_wall_time_buffer));
+    if (max_wall_time_duration == 0) honee->max_wall_time = -1;
+    else honee->max_wall_time = honee->start_time + max_wall_time_duration - max_wall_time_buffer;
+
+    honee->max_wall_time_interval = 1;
+    PetscCall(PetscOptionsInt("-honee_max_wall_time_interval",
+                              "Number of timesteps between checking whether TSSolve should be stopped due to max_wall_time", NULL,
+                              honee->max_wall_time_interval, &honee->max_wall_time_interval, NULL));
+  }
 
   PetscOptionsEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
