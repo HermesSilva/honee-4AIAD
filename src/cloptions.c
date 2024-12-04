@@ -202,6 +202,7 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
 
   PetscCall(
       PetscOptionsBool("-sgs_train_enable", "Enable Data-Driven SGS training", NULL, app_ctx->sgs_train_enable, &app_ctx->sgs_train_enable, NULL));
+  if (app_ctx->sgs_train_enable) honee->set_poststep = PETSC_TRUE;
 
   PetscCall(PetscOptionsEnum("-div_diff_flux_projection_method", "Method of divergence of diffusive flux projection", NULL,
                              DivDiffFluxProjectionMethods, (PetscEnum)(app_ctx->divFdiffproj_method), (PetscEnum *)&app_ctx->divFdiffproj_method,
@@ -211,6 +212,7 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
   PetscCall(PetscOptionsDeprecated("-ts_monitor_nan_interval", "-honee_check_step_interval", "HONEE 0.0", NULL));
   PetscCall(PetscOptionsInt("-honee_check_step_interval", "Number of timesteps between verifying the validity of the solution", NULL,
                             app_ctx->check_step_interval, &app_ctx->check_step_interval, NULL));
+  if (app_ctx->check_step_interval > 0) honee->set_poststep = PETSC_TRUE;
 
   {
     char   buffer[2048] = "0";
@@ -224,7 +226,10 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
                                  buffer, sizeof(buffer), NULL));
     PetscCall(ISO8601TimeDurationToSeconds(comm, buffer, &max_wall_time_buffer));
     if (max_wall_time_duration == 0) honee->max_wall_time = -1;
-    else honee->max_wall_time = honee->start_time + max_wall_time_duration - max_wall_time_buffer;
+    else {
+      honee->set_poststep  = PETSC_TRUE;
+      honee->max_wall_time = honee->start_time + max_wall_time_duration - max_wall_time_buffer;
+    }
 
     honee->max_wall_time_interval = 1;
     PetscCall(PetscOptionsInt("-honee_max_wall_time_interval",

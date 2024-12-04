@@ -334,6 +334,25 @@ PetscErrorCode TSPostStep_MaxWallTime(TS ts) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+  @brief TSPostStep for HONEE
+
+  `TSSetPostStep()` only accepts a single function argument, so this function groups together all post-step 
+  functionality needed for HONEE features
+
+  @param[in] ts TS object
+**/
+PetscErrorCode TSPostStep_Honee(TS ts) {
+  Honee honee;
+
+  PetscFunctionBeginUser;
+  PetscCall(TSGetApplicationContext(ts, &honee));
+  if (honee->max_wall_time > 0) PetscCall(TSPostStep_MaxWallTime(ts));
+  if (honee->app_ctx->sgs_train_enable) PetscCall(TSPostStep_SGS_DD_Training(ts));
+  if (honee->app_ctx->check_step_interval > 0) PetscCall(TSPostStep_CheckStep(ts));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // TS: Create, setup, and solve
 PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts) {
   MPI_Comm    comm = honee->comm;
@@ -386,12 +405,9 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     PetscCall(TSSetTime(*ts, app_ctx->cont_time * honee->units->second));
     PetscCall(TSSetStepNumber(*ts, app_ctx->cont_steps));
   }
-  if (app_ctx->test_type == TESTTYPE_NONE) {
-    PetscCall(TSMonitorSet(*ts, TSMonitor_NS, honee, NULL));
-  }
-  if (app_ctx->wall_forces.viewer) {
-    PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, honee, NULL));
-  }
+  if (honee->set_poststep) PetscCall(TSSetPostStep(*ts, TSPostStep_Honee));
+  if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(TSMonitorSet(*ts, TSMonitor_NS, honee, NULL));
+  if (app_ctx->wall_forces.viewer) PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, honee, NULL));
   if (app_ctx->turb_spanstats_enable) {
     PetscCall(TSMonitorSet(*ts, TSMonitor_TurbulenceStatistics, honee, NULL));
     CeedScalar previous_time = app_ctx->cont_time * honee->units->second;
@@ -400,14 +416,8 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   }
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
-  if (app_ctx->check_step_interval > 0) PetscCall(TSSetPostStep(*ts, TSPostStep_CheckStep));
-  if (honee->max_wall_time > 0) PetscCall(TSSetPostStep(*ts, TSPostStep_MaxWallTime));
   if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
-
-  if (app_ctx->sgs_train_enable) {
-    PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
-    PetscCall(TSSetPostStep(*ts, TSPostStep_SGS_DD_Training));
-  }
+  if (app_ctx->sgs_train_enable) PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
 
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(PrintRunInfo(honee, honee->phys, problem, *ts));
   // Solve

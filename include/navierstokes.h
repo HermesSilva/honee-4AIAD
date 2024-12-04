@@ -271,9 +271,10 @@ struct Honee_private {
   CeedElemRestriction  elem_restr_x, elem_restr_q;
   OperatorApplyContext op_ics_ctx;
 
-  time_t   start_time;
-  time_t   max_wall_time;
-  PetscInt max_wall_time_interval;
+  PetscBool set_poststep;
+  time_t    start_time;
+  time_t    max_wall_time;
+  PetscInt  max_wall_time_interval;
 };
 
 // Units
