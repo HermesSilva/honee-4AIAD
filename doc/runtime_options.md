@@ -31,78 +31,6 @@ The following options are common among all problem types:
   - Number of extra quadrature points
   - `0`
 
-* - `-ts_monitor_solution`
-  - PETSc output format, such as `cgns:output-%d.cgns` (requires PETSc `--download-cgns`)
-  -
-
-* - `-ts_monitor_solution_interval`
-  - Number of time steps between visualization output frames.
-  - `1`
-
-* - `-viewer_cgns_batch_size`
-  - Number of frames written per CGNS file if the CGNS file name includes a format specifier (`%d`).
-  - `20`
-
-* - `-checkpoint_interval`
-  - Number of steps between writing binary checkpoints. `0` has no output, `-1` outputs final state only
-  - `10`
-
-* - `-checkpoint_vtk`
-  - Checkpoints include VTK (`*.vtu`) files for visualization. Consider `-ts_monitor_solution`instead.
-  - `false`
-
-* - `-viz_refine`
-  - Use regular refinement for VTK visualization
-  - `0`
-
-* - `-output_dir`
-  - Output directory for binary checkpoints and VTK files (if enabled).
-  - `.`
-
-* - `-output_add_stepnum2bin`
-  - Whether to add step numbers to output binary files
-  - `false`
-
-* - `-continue_filename`
-  - Path to file from which to continue from
-  -
-
-* - `-bc_wall`
-  - Use wall boundary conditions on this list of faces
-  -
-
-* - `-wall_comps`
-  - An array of constrained component numbers for wall BCs
-  -
-
-* - `-bc_slip`
-  - Use weak slip boundary condition on this list of faces
-  -
-
-* - `-bc_symmetry_x`
-  - Use symmetry boundary conditions, for the x component, on this list of faces
-  -
-
-* - `-bc_symmetry_y`
-  - Use symmetry boundary conditions, for the y component, on this list of faces
-  -
-
-* - `-bc_symmetry_z`
-  - Use symmetry boundary conditions, for the z component, on this list of faces
-  -
-
-* - `-bc_inflow`
-  - Use inflow boundary conditions on this list of faces
-  -
-
-* - `-bc_outflow`
-  - Use outflow boundary conditions on this list of faces
-  -
-
-* - `-bc_freestream`
-  - Use freestream boundary conditions on this list of faces
-  -
-
 * - `-ts_monitor_turbulence_spanstats_collect_interval`
   - Number of timesteps between statistics collection
   - `1`
@@ -177,6 +105,96 @@ The following options are common among all problem types:
 
 :::
 
+### File I/O Options
+
+:::{list-table} File I/O Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+
+* - `-dm_plex_filename`
+  - Filename of mesh file to load in
+  -
+
+* - `-ts_monitor_solution`
+  - PETSc output format, such as `cgns:output-%d.cgns` (requires PETSc `--download-cgns`)
+  -
+
+* - `-ts_monitor_solution_interval`
+  - Number of time steps between visualization output frames.
+  - `1`
+
+* - `-viewer_cgns_batch_size`
+  - Number of frames written per CGNS file if the CGNS file name includes a format specifier (`%d`).
+  - `20`
+
+* - `-checkpoint_interval`
+  - Number of steps between writing binary checkpoints. `0` has no output, `-1` outputs final state only
+  - `10`
+
+* - `-checkpoint_vtk`
+  - Checkpoints include VTK (`*.vtu`) files for visualization. Consider `-ts_monitor_solution`instead.
+  - `false`
+
+* - `-viz_refine`
+  - Use regular refinement for VTK visualization
+  - `0`
+
+* - `-output_dir`
+  - Output directory for binary checkpoints and VTK files (if enabled).
+  - `.`
+
+* - `-output_add_stepnum2bin`
+  - Whether to add step numbers to output binary files
+  - `false`
+
+* - `-continue_filename`
+  - Path to file from which to continue from. Either binary file or CGNS
+  -
+
+:::
+
+Note that to use `-continue_filename` with CGNS files, the same file must be used with `-dm_plex_filename` and `-dm_plex_cgns_parallel`.
+
+## Boundary conditions
+
+:::{list-table} Boundary Condition Options
+:header-rows: 1
+
+* - Option
+  - Description
+
+* - `-bc_wall`
+  - Use wall boundary conditions on this list of faces
+
+* - `-wall_comps`
+  - An array of constrained component numbers for wall BCs
+
+* - `-bc_slip`
+  - Use weak slip boundary condition on this list of faces
+
+* - `-bc_symmetry_x`
+  - Use symmetry boundary conditions, for the x component, on this list of faces
+
+* - `-bc_symmetry_y`
+  - Use symmetry boundary conditions, for the y component, on this list of faces
+
+* - `-bc_symmetry_z`
+  - Use symmetry boundary conditions, for the z component, on this list of faces
+
+* - `-bc_inflow`
+  - Use inflow boundary conditions on this list of faces
+
+* - `-bc_outflow`
+  - Use outflow boundary conditions on this list of faces
+
+* - `-bc_freestream`
+  - Use freestream boundary conditions on this list of faces
+
+:::
+
 For the case of a square/cubic mesh, the list of face indices to be used with `-bc_wall`, `bc_inflow`, `bc_outflow`, `bc_freestream`  and/or `-bc_symmetry_x`, `-bc_symmetry_y`, and `-bc_symmetry_z` are:
 
 :::{list-table} 2D Face ID Labels
@@ -231,9 +249,9 @@ For the case of a square/cubic mesh, the list of face indices to be used with `-
 * - faceMarkerLeft
   - -x
   - 6
+
 :::
 
-## Boundary conditions
 
 Boundary conditions for compressible viscous flows are notoriously tricky.
 Here we offer some recommendations.

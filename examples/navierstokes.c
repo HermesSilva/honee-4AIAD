@@ -226,10 +226,14 @@ int main(int argc, char **argv) {
   PetscCheck(CeedDestroy(&ceed) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Destroying Ceed object failed");
 
   if (app_ctx->test_type != TESTTYPE_NONE) {
-    PetscInt num_options_left = 0;
+    PetscInt  num_options_left = 0;
+    PetscBool options_left     = PETSC_TRUE;
+
     PetscCall(PetscOptionsLeftGet(NULL, &num_options_left, NULL, NULL));
-    PetscCheck(num_options_left == 0, PETSC_COMM_WORLD, -1,
-               "There are unused options. This is not allowed. See error message for the unused options (or use -options_left directly)");
+    PetscCall(PetscOptionsGetBool(NULL, NULL, "-options_left", &options_left, NULL));
+    if (options_left)
+      PetscCheck(num_options_left == 0, PETSC_COMM_WORLD, -1,
+                 "There are unused options. This is not allowed. See error message for the unused options (or use -options_left directly)");
   }
 
   // ---------------------------------------------------------------------------
@@ -280,6 +284,7 @@ int main(int argc, char **argv) {
 
 // ---------- Test Cases ----------
 
+//TESTARGS(name="Gaussian Wave, CGNS load",only="cpu") -ceed {ceed_resource} -options_file tests/gaussianwave_cgns_load.yaml -test_type solver -ts_max_steps 7 -dm_plex_filename tests/gaussianwave_test_5.cgns -continue_filename tests/gaussianwave_test_5.cgns -dm_plex_cgns_parallel -dm_plex_box_label -dm_plex_box_label_bd none,none,periodic -compare_final_state_atol 2e-11 -compare_final_state_filename tests/output/fluids-navierstokes-gaussianwave-cgns-load.bin
 //TESTARGS(name="Taylor-Green Vortex Total KE") -ceed {ceed_resource} -test_type solver -options_file examples/taylor_green_vortex.yaml -dm_plex_box_faces 2,2,2 -ts_max_steps 3 -ts_monitor_total_kinetic_energy_interval 2 -ts_monitor_total_kinetic_energy ascii:taylorgreen_totalke.csv:ascii_csv -compare_final_state_atol 1e-10 -compare_final_state_filename tests/output/fluids-navierstokes-taylor-green.bin
 //TESTARGS(name="Flat Plate STG",only="cpu") -ceed {ceed_resource} -options_file examples/flatplate_STG.yaml -dm_plex_box_faces 3,63,3 -dm_plex_box_upper -3.082,2.4,.00726 -ts_max_steps 1 -test_type solver -compare_final_state_atol 1e-10 -compare_final_state_filename tests/output/fluids-navierstokes-flatplate-STG.bin
 //TESTARGS(name="Advection 2D, boundary layer IC",only="cpu") -ceed {ceed_resource} -test_type solver -options_file examples/advection_bl.yaml -dm_plex_box_faces 3,3 -ts_max_steps 0 -advection_ic_bl_height_factor 0.5 -compare_final_state_atol 1e-12 -compare_final_state_filename tests/output/fluids-navierstokes-adv2d-boundary-layer-ic.bin
