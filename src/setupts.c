@@ -28,7 +28,7 @@ PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
   Honee        honee = *(Honee *)user_data;
   Ceed         ceed  = honee->ceed;
   PetscScalar  dt;
-  Vec          Q_loc = honee->Q_loc;
+  Vec          Q_loc = honee->Q_loc, R;
   PetscMemType q_mem_type;
 
   PetscFunctionBeginUser;
@@ -40,16 +40,17 @@ PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
   if (honee->phys->timestep_size_label)
     PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_rhs_ctx->op, honee->phys->timestep_size_label, &dt));
 
+  PetscCall(DMGetNamedGlobalVector(honee->dm, "RHS Residual", &R));
   PetscCall(DMGlobalToLocal(honee->dm, Q, INSERT_VALUES, Q_loc));
   if (honee->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(honee->diff_flux_proj, Q_loc));
-  PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, G, honee->op_rhs_ctx));
-
-  PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, honee->q_ceed));
+  PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, R, honee->op_rhs_ctx));
 
   // Inverse of the mass matrix
-  PetscCall(KSPSolve(honee->mass_ksp, G, G));
-
+  PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, honee->q_ceed));
+  PetscCall(KSPSolve(honee->mass_ksp, R, G));
   PetscCall(VecReadCeedToPetsc(honee->q_ceed, q_mem_type, Q_loc));
+
+  PetscCall(DMRestoreNamedGlobalVector(honee->dm, "RHS Residual", &R));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -106,7 +107,7 @@ PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *u
   PetscMemType q_mem_type, q_dot_mem_type, g_mem_type;
 
   PetscFunctionBeginUser;
-  // Get local vectors
+  PetscCall(DMGlobalToLocalBegin(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
   PetscCall(DMGetNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
 
   // Update time dependent data
@@ -117,7 +118,6 @@ PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *u
 
   // Global-to-local
   PetscCall(DMGlobalToLocalBegin(honee->dm, Q, INSERT_VALUES, Q_loc));
-  PetscCall(DMGlobalToLocalBegin(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
   PetscCall(DMGlobalToLocalEnd(honee->dm, Q, INSERT_VALUES, Q_loc));
   if (honee->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(honee->diff_flux_proj, Q_loc));
   PetscCall(DMGlobalToLocalEnd(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
