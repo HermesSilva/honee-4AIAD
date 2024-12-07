@@ -12,10 +12,10 @@ typedef struct {
   PetscScalar          volume;
   PetscInt             num_comps;
   PetscBool            is_header_written;
-} *MonitorDissipation;
+} *MonitorTotalKE;
 
-PetscErrorCode MonitorDissipationDestroy(void **ctx) {
-  MonitorDissipation monitor_ctx = *(MonitorDissipation *)ctx;
+PetscErrorCode MonitorTotalKEDestroy(void **ctx) {
+  MonitorTotalKE monitor_ctx = *(MonitorTotalKE *)ctx;
 
   PetscFunctionBeginUser;
   PetscCall(OperatorApplyContextDestroy(monitor_ctx->op_monitor_ctx));
@@ -54,7 +54,7 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
   CeedInt              num_comp_q, q_data_size;
   DMLabel              domain_label = NULL;
   PetscInt             label_value = 0, num_comp_totalke = 5, dim;
-  MonitorDissipation   monitor_ctx;
+  MonitorTotalKE       monitor_ctx;
   CeedQFunctionContext newt_qfctx;
   PetscBool            is_ascii;
 
@@ -119,7 +119,7 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
   PetscCall(PetscMalloc1(num_comp_totalke, &monitor_ctx->sum_values));
 
   ctx->data         = monitor_ctx;
-  ctx->data_destroy = MonitorDissipationDestroy;
+  ctx->data_destroy = MonitorTotalKEDestroy;
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&newt_qfctx));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
@@ -133,7 +133,7 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
 }
 
 PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt step, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx) {
-  MonitorDissipation monitor_ctx = (MonitorDissipation)ctx->data;
+  MonitorTotalKE     monitor_ctx = (MonitorTotalKE)ctx->data;
   Honee              honee;
   MPI_Comm           comm;
   PetscMPIInt        rank;
