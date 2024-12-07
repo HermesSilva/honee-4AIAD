@@ -167,6 +167,7 @@ PetscErrorCode DMPlexInsertBoundaryValues_StrongBCCeed(DM dm, PetscBool insert_e
   Honee honee;
 
   PetscFunctionBeginUser;
+  PetscCall(PetscLogEventBegin(HONEE_StrongBCInsert, dm, Q_loc, 0, 0));
   PetscCall(DMGetApplicationContext(dm, &honee));
 
   if (honee->phys->stg_solution_time_label) {
@@ -178,7 +179,10 @@ PetscErrorCode DMPlexInsertBoundaryValues_StrongBCCeed(DM dm, PetscBool insert_e
   PetscCall(VecPointwiseMult(Q_loc, Q_loc, boundary_mask));
   PetscCall(DMRestoreNamedLocalVector(dm, "boundary mask", &boundary_mask));
 
+  PetscCall(PetscLogEventBegin(HONEE_StrongBCCeed, dm, Q_loc, 0, 0));
   PetscCall(ApplyAddCeedOperatorLocalToLocal(NULL, Q_loc, honee->op_strong_bc_ctx));
+  PetscCall(PetscLogEventEnd(HONEE_StrongBCCeed, dm, Q_loc, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_StrongBCInsert, dm, Q_loc, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

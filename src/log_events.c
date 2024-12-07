@@ -11,6 +11,8 @@ PetscLogEvent HONEE_CeedOperatorAssemble;
 PetscLogEvent HONEE_CeedOperatorAssembleDiagonal;
 PetscLogEvent HONEE_CeedOperatorAssemblePointBlockDiagonal;
 PetscLogEvent HONEE_DivDiffFluxProjection;
+PetscLogEvent HONEE_StrongBCInsert;
+PetscLogEvent HONEE_StrongBCCeed;
 PetscLogEvent HONEE_SmartRedis_Init;
 PetscLogEvent HONEE_SmartRedis_Meta;
 PetscLogEvent HONEE_SmartRedis_Train;
@@ -44,5 +46,7 @@ PetscErrorCode RegisterLogEvents() {
   PetscCall(PetscLogEventRegister("DiffFilter", misc_classid, &HONEE_DifferentialFilter));
   PetscCall(PetscLogEventRegister("VeloGradProj", misc_classid, &HONEE_VelocityGradientProjection));
   PetscCall(PetscLogEventRegister("DivDiffFluxProj", misc_classid, &HONEE_DivDiffFluxProjection));
+  PetscCall(PetscLogEventRegister("StrongBCInsert", misc_classid, &HONEE_StrongBCInsert));
+  PetscCall(PetscLogEventRegister("StrongBCCeed", misc_classid, &HONEE_StrongBCCeed));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
