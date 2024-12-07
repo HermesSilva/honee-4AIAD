@@ -107,7 +107,7 @@ PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *u
   PetscMemType q_mem_type, q_dot_mem_type, g_mem_type;
 
   PetscFunctionBeginUser;
-  // Get local vectors
+  PetscCall(DMGlobalToLocalBegin(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
   PetscCall(DMGetNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
 
   // Update time dependent data
@@ -118,7 +118,6 @@ PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *u
 
   // Global-to-local
   PetscCall(DMGlobalToLocalBegin(honee->dm, Q, INSERT_VALUES, Q_loc));
-  PetscCall(DMGlobalToLocalBegin(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
   PetscCall(DMGlobalToLocalEnd(honee->dm, Q, INSERT_VALUES, Q_loc));
   if (honee->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionApply(honee->diff_flux_proj, Q_loc));
   PetscCall(DMGlobalToLocalEnd(honee->dm, Q_dot, INSERT_VALUES, Q_dot_loc));
