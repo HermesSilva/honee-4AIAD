@@ -49,7 +49,6 @@ PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx) {
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
   PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
                      &q_data_size));
-
   PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, domain_label, label_value, 0, num_comp_cfl, &elem_restr_cfl));
 
   {  // Get restriction and basis from the RHS function

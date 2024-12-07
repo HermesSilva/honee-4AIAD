@@ -304,7 +304,7 @@ PetscErrorCode TSPostStep_CheckStep(TS ts) {
   PetscCall(TSGetSolution(ts, &Q));
   if (step % honee->app_ctx->check_step_interval) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(VecNorm(Q, NORM_1, &norm));
-  if (PetscIsNanReal(norm)) {
+  if (PetscIsInfOrNanReal(norm)) {
     PetscCall(PetscPrintf(PetscObjectComm((PetscObject)ts), "Solution diverged: Nans found in solution\n"));
     PetscCall(TSSetConvergedReason(ts, TS_DIVERGED_NONLINEAR_SOLVE));
   }
