@@ -371,7 +371,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   }
 
   // ------------------------------------------------------
-  //             Create the libCEED context
+  //             Create the QFunction context
   // ------------------------------------------------------
   CeedScalar cv         = 717.;          // J/(kg K)
   CeedScalar cp         = 1004.;         // J/(kg K)
@@ -529,7 +529,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   honee->units->W_per_m_K       = W_per_m_K;
 
   // ------------------------------------------------------
-  //           Set up the libCEED context
+  //           Set up the QFunction context
   // ------------------------------------------------------
   // -- Scale variables to desired units
   cv *= J_per_kg_K;

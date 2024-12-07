@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Density current initial condition and operator for Navier-Stokes example using PETSc
+/// Density current initial condition and operator for HONEE
 
 // Model from:
 //   Semi-Implicit Formulations of the Navier-Stokes Equations: Application to

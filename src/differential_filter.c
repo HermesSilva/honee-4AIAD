@@ -294,7 +294,7 @@ PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_tim
   Vec              RHS;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscLogEventBegin(FLUIDS_DifferentialFilter, Q, Filtered_Solution, 0, 0));
+  PetscCall(PetscLogEventBegin(HONEE_DifferentialFilter, Q, Filtered_Solution, 0, 0));
   PetscCall(DMGetNamedGlobalVector(diff_filter->dm_filter, "RHS", &RHS));
   PetscCall(UpdateBoundaryValues(honee, diff_filter->op_rhs_ctx->X_loc, solution_time));
   PetscCall(VecGetState(diff_filter->op_rhs_ctx->X_loc, &X_loc_state));
@@ -307,7 +307,7 @@ PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_tim
 
   PetscCall(KSPSolve(diff_filter->ksp, RHS, Filtered_Solution));
   PetscCall(DMRestoreNamedGlobalVector(diff_filter->dm_filter, "RHS", &RHS));
-  PetscCall(PetscLogEventEnd(FLUIDS_DifferentialFilter, Q, Filtered_Solution, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_DifferentialFilter, Q, Filtered_Solution, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

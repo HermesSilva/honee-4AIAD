@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Advection initial condition and operator for Navier-Stokes example using PETSc
+/// Advection initial condition and operator for HONEE
 #include <ceed/types.h>
 
 #include "advection_types.h"

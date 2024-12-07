@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Euler traveling vortex initial condition and operator for Navier-Stokes
-/// example using PETSc
+/// Euler traveling vortex initial condition and operator for HONEE
 
 // Model from:
 //   On the Order of Accuracy and Numerical Performance of Two Classes of Finite Volume WENO Schemes, Zhang, Zhang, and Shu (2011).

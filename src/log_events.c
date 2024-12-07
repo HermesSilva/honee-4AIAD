@@ -6,43 +6,43 @@
 
 static PetscClassId libCEED_classid, onlineTrain_classid, sgs_model_classid, misc_classid;
 
-PetscLogEvent FLUIDS_CeedOperatorApply;
-PetscLogEvent FLUIDS_CeedOperatorAssemble;
-PetscLogEvent FLUIDS_CeedOperatorAssembleDiagonal;
-PetscLogEvent FLUIDS_CeedOperatorAssemblePointBlockDiagonal;
-PetscLogEvent FLUIDS_DivDiffFluxProjection;
-PetscLogEvent FLUIDS_SmartRedis_Init;
-PetscLogEvent FLUIDS_SmartRedis_Meta;
-PetscLogEvent FLUIDS_SmartRedis_Train;
-PetscLogEvent FLUIDS_TrainDataCompute;
-PetscLogEvent FLUIDS_DifferentialFilter;
-PetscLogEvent FLUIDS_VelocityGradientProjection;
-PetscLogEvent FLUIDS_SgsModel;
-PetscLogEvent FLUIDS_SgsModelDDInference;
-PetscLogEvent FLUIDS_SgsModelDDData;
+PetscLogEvent HONEE_CeedOperatorApply;
+PetscLogEvent HONEE_CeedOperatorAssemble;
+PetscLogEvent HONEE_CeedOperatorAssembleDiagonal;
+PetscLogEvent HONEE_CeedOperatorAssemblePointBlockDiagonal;
+PetscLogEvent HONEE_DivDiffFluxProjection;
+PetscLogEvent HONEE_SmartRedis_Init;
+PetscLogEvent HONEE_SmartRedis_Meta;
+PetscLogEvent HONEE_SmartRedis_Train;
+PetscLogEvent HONEE_TrainDataCompute;
+PetscLogEvent HONEE_DifferentialFilter;
+PetscLogEvent HONEE_VelocityGradientProjection;
+PetscLogEvent HONEE_SgsModel;
+PetscLogEvent HONEE_SgsModelDDInference;
+PetscLogEvent HONEE_SgsModelDDData;
 
 PetscErrorCode RegisterLogEvents() {
   PetscFunctionBeginUser;
   PetscCall(PetscClassIdRegister("libCEED", &libCEED_classid));
-  PetscCall(PetscLogEventRegister("CeedOpApply", libCEED_classid, &FLUIDS_CeedOperatorApply));
-  PetscCall(PetscLogEventRegister("CeedOpAsm", libCEED_classid, &FLUIDS_CeedOperatorAssemble));
-  PetscCall(PetscLogEventRegister("CeedOpAsmD", libCEED_classid, &FLUIDS_CeedOperatorAssembleDiagonal));
-  PetscCall(PetscLogEventRegister("CeedOpAsmPBD", libCEED_classid, &FLUIDS_CeedOperatorAssemblePointBlockDiagonal));
+  PetscCall(PetscLogEventRegister("CeedOpApply", libCEED_classid, &HONEE_CeedOperatorApply));
+  PetscCall(PetscLogEventRegister("CeedOpAsm", libCEED_classid, &HONEE_CeedOperatorAssemble));
+  PetscCall(PetscLogEventRegister("CeedOpAsmD", libCEED_classid, &HONEE_CeedOperatorAssembleDiagonal));
+  PetscCall(PetscLogEventRegister("CeedOpAsmPBD", libCEED_classid, &HONEE_CeedOperatorAssemblePointBlockDiagonal));
 
   PetscCall(PetscClassIdRegister("onlineTrain", &onlineTrain_classid));
-  PetscCall(PetscLogEventRegister("SmartRedis_Init", onlineTrain_classid, &FLUIDS_SmartRedis_Init));
-  PetscCall(PetscLogEventRegister("SmartRedis_Meta", onlineTrain_classid, &FLUIDS_SmartRedis_Meta));
-  PetscCall(PetscLogEventRegister("SmartRedis_Train", onlineTrain_classid, &FLUIDS_SmartRedis_Train));
-  PetscCall(PetscLogEventRegister("TrainDataCompute", onlineTrain_classid, &FLUIDS_TrainDataCompute));
+  PetscCall(PetscLogEventRegister("SmartRedis_Init", onlineTrain_classid, &HONEE_SmartRedis_Init));
+  PetscCall(PetscLogEventRegister("SmartRedis_Meta", onlineTrain_classid, &HONEE_SmartRedis_Meta));
+  PetscCall(PetscLogEventRegister("SmartRedis_Train", onlineTrain_classid, &HONEE_SmartRedis_Train));
+  PetscCall(PetscLogEventRegister("TrainDataCompute", onlineTrain_classid, &HONEE_TrainDataCompute));
 
   PetscCall(PetscClassIdRegister("SGS Model", &sgs_model_classid));
-  PetscCall(PetscLogEventRegister("SgsModel", sgs_model_classid, &FLUIDS_SgsModel));
-  PetscCall(PetscLogEventRegister("SgsModelDDInfer", sgs_model_classid, &FLUIDS_SgsModelDDInference));
-  PetscCall(PetscLogEventRegister("SgsModelDDData", sgs_model_classid, &FLUIDS_SgsModelDDData));
+  PetscCall(PetscLogEventRegister("SgsModel", sgs_model_classid, &HONEE_SgsModel));
+  PetscCall(PetscLogEventRegister("SgsModelDDInfer", sgs_model_classid, &HONEE_SgsModelDDInference));
+  PetscCall(PetscLogEventRegister("SgsModelDDData", sgs_model_classid, &HONEE_SgsModelDDData));
 
   PetscCall(PetscClassIdRegister("Miscellaneous", &misc_classid));
-  PetscCall(PetscLogEventRegister("DiffFilter", misc_classid, &FLUIDS_DifferentialFilter));
-  PetscCall(PetscLogEventRegister("VeloGradProj", misc_classid, &FLUIDS_VelocityGradientProjection));
-  PetscCall(PetscLogEventRegister("DivDiffFluxProj", misc_classid, &FLUIDS_DivDiffFluxProjection));
+  PetscCall(PetscLogEventRegister("DiffFilter", misc_classid, &HONEE_DifferentialFilter));
+  PetscCall(PetscLogEventRegister("VeloGradProj", misc_classid, &HONEE_VelocityGradientProjection));
+  PetscCall(PetscLogEventRegister("DivDiffFluxProj", misc_classid, &HONEE_DivDiffFluxProjection));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

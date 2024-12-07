@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Setup libCEED for Navier-Stokes example using PETSc
+/// Setup libCEED Operators for HONEE
 
 #include <ceed.h>
 #include <petscdmplex.h>

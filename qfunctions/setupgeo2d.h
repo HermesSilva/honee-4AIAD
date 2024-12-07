@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Geometric factors (2D) for Navier-Stokes example using PETSc
+/// Geometric factors (2D) for HONEE
 #include <ceed/types.h>
 #include "setupgeo_helpers.h"
 #include "utils.h"

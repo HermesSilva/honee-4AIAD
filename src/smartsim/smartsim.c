@@ -10,10 +10,10 @@ PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const
   bool does_exist = true;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+  PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscCallSmartRedis(tensor_exists(c_client, name, name_length, &does_exist));
   PetscCheck(does_exist, PETSC_COMM_SELF, -1, "Tensor of name '%s' was not written to the database successfully", name);
-  PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -28,10 +28,10 @@ PetscErrorCode SmartSimTrainingSetup(Honee honee) {
 
   if (rank % smartsim->collocated_database_num_ranks == 0) {
     // -- Send array that communicates when ML is done training
-    PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+    PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
     PetscCallSmartRedis(put_tensor(smartsim->client, "check-run", 9, checkrun, dim_2, 1, SRTensorTypeDouble, SRMemLayoutContiguous));
     PetscCall(SmartRedisVerifyPutTensor(smartsim->client, "check-run", 9));
-    PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+    PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -54,9 +54,9 @@ PetscErrorCode SmartSimSetup(Honee honee) {
   PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
   PetscCall(PetscSNPrintf(smartsim->rank_id_name, sizeof(smartsim->rank_id_name), "y.%d", rank));
 
-  PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Init, 0, 0, 0, 0));
+  PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Init, 0, 0, 0, 0));
   PetscCallSmartRedis(SmartRedisCClient(num_orchestrator_nodes != 1, smartsim->rank_id_name, strlen(smartsim->rank_id_name), &smartsim->client));
-  PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Init, 0, 0, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Init, 0, 0, 0, 0));
 
   PetscCall(SmartSimTrainingSetup(honee));
   PetscFunctionReturn(PETSC_SUCCESS);

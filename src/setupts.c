@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Time-stepping functions for Navier-Stokes example using PETSc
+/// Time-stepping functions for HONEE
 
 #include <ceed.h>
 #include <petscdmplex.h>
@@ -128,11 +128,11 @@ PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *u
   PetscCall(VecPetscToCeed(G_loc, &g_mem_type, honee->g_ceed));
 
   // Apply CEED operator
-  PetscCall(PetscLogEventBegin(FLUIDS_CeedOperatorApply, Q, G, 0, 0));
+  PetscCall(PetscLogEventBegin(HONEE_CeedOperatorApply, Q, G, 0, 0));
   PetscCall(PetscLogGpuTimeBegin());
   PetscCallCeed(honee->ceed, CeedOperatorApply(honee->op_ifunction, honee->q_ceed, honee->g_ceed, CEED_REQUEST_IMMEDIATE));
   PetscCall(PetscLogGpuTimeEnd());
-  PetscCall(PetscLogEventEnd(FLUIDS_CeedOperatorApply, Q, G, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_CeedOperatorApply, Q, G, 0, 0));
 
   // Restore vectors
   PetscCall(VecReadCeedToPetsc(honee->q_ceed, q_mem_type, Q_loc));
@@ -428,7 +428,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   PetscCall(TSGetStepNumber(*ts, &start_step));
 
   PetscCall(PetscLogDefaultBegin());  // So we can use PetscLogStageGetPerfInfo without -log_view
-  PetscPreLoadBegin(PETSC_FALSE, "Fluids Solve");
+  PetscPreLoadBegin(PETSC_FALSE, "HONEE Solve");
   PetscCall(TSSetTime(*ts, start_time));
   PetscCall(TSSetStepNumber(*ts, start_step));
   if (PetscPreLoadingOn) {
@@ -470,7 +470,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     PetscLogStage      stage_id;
     PetscEventPerfInfo stage_perf;
 
-    PetscCall(PetscLogStageGetId("Fluids Solve", &stage_id));
+    PetscCall(PetscLogStageGetId("HONEE Solve", &stage_id));
     PetscCall(PetscLogStageGetPerfInfo(stage_id, &stage_perf));
     PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Time taken for solution (sec): %g\n", stage_perf.time));
   }

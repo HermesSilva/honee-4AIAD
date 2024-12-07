@@ -147,7 +147,7 @@ PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, Pe
     PetscCall(PetscViewerBinarySetSkipHeader(viewer, PETSC_TRUE));
     file_time        = 0;
     file_step_number = 0;
-  } else SETERRQ(comm, PETSC_ERR_FILE_UNEXPECTED, "Not a fluids header token or a PETSc Vec in file");
+  } else SETERRQ(comm, PETSC_ERR_FILE_UNEXPECTED, "Not a HONEE header token or a PETSc Vec in file");
 
   if (time) *time = file_time;
   if (step_number) *step_number = file_step_number;

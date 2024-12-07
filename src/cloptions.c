@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Command line option processing for Navier-Stokes example using PETSc
+/// Command line option processing for HONEE
 
 #include <ctype.h>
 #include <petscdevice.h>

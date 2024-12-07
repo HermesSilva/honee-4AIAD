@@ -41,7 +41,7 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   problem->print_info                      = PRINT_SHOCKTUBE;
 
   // ------------------------------------------------------
-  //             Create the libCEED context
+  //             Create the QFunction context
   // ------------------------------------------------------
   // Driver section initial conditions
   CeedScalar P_high   = 1.0;  // Pa
@@ -99,7 +99,7 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   honee->units->second = second;
 
   // ------------------------------------------------------
-  //           Set up the libCEED context
+  //           Set up the QFunction context
   // ------------------------------------------------------
   // -- Scale variables to desired units
   for (PetscInt i = 0; i < 3; i++) {

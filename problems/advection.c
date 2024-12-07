@@ -378,7 +378,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   }
 
   // ------------------------------------------------------
-  //             Create the libCEED context
+  //             Create the QFunction context
   // ------------------------------------------------------
   CeedScalar     rc               = 1000.;  // m (Radius of bubble)
   CeedScalar     CtauS            = 0.;     // dimensionless
@@ -495,7 +495,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
   honee->units->Joule    = Joule;
 
   // ------------------------------------------------------
-  //           Set up the libCEED context
+  //           Set up the QFunction contexts
   // ------------------------------------------------------
   // -- Scale variables to desired units
   E_wind *= Joule;

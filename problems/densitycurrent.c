@@ -31,7 +31,7 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   problem->ics.qf_loc      = ICsDC_loc;
 
   // ------------------------------------------------------
-  //             Create the libCEED context
+  //             Create the QFunction context
   // ------------------------------------------------------
   CeedScalar theta0 = 300.;   // K
   CeedScalar thetaC = -15.;   // K
