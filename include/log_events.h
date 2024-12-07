@@ -9,6 +9,8 @@ extern PetscLogEvent HONEE_CeedOperatorAssemble;
 extern PetscLogEvent HONEE_CeedOperatorAssembleDiagonal;
 extern PetscLogEvent HONEE_CeedOperatorAssemblePointBlockDiagonal;
 extern PetscLogEvent HONEE_DivDiffFluxProjection;
+extern PetscLogEvent HONEE_StrongBCInsert;
+extern PetscLogEvent HONEE_StrongBCCeed;
 extern PetscLogEvent HONEE_SmartRedis_Init;
 extern PetscLogEvent HONEE_SmartRedis_Meta;
 extern PetscLogEvent HONEE_SmartRedis_Train;
