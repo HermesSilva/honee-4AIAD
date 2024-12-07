@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Shock tube initial condition and Euler equation operator for Navier-Stokes example using PETSc - modified from eulervortex.h
+/// Shock tube initial condition and Euler equation operator for HONEE - modified from eulervortex.h
 
 // Model from:
 //   On the Order of Accuracy and Numerical Performance of Two Classes of Finite Volume WENO Schemes, Zhang, Zhang, and Shu (2011).

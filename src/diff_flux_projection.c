@@ -345,7 +345,7 @@ PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_pr
   NodalProjectionData projection = diff_flux_proj->projection;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscLogEventBegin(FLUIDS_DivDiffFluxProjection, Q_loc, 0, 0, 0));
+  PetscCall(PetscLogEventBegin(HONEE_DivDiffFluxProjection, Q_loc, 0, 0, 0));
   switch (diff_flux_proj->method) {
     case DIV_DIFF_FLUX_PROJ_DIRECT: {
       Vec DivDiffFlux;
@@ -386,7 +386,7 @@ PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_pr
               DivDiffFluxProjectionMethods[diff_flux_proj->method]);
       break;
   }
-  PetscCall(PetscLogEventEnd(FLUIDS_DivDiffFluxProjection, Q_loc, 0, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_DivDiffFluxProjection, Q_loc, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

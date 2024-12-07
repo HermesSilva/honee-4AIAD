@@ -216,12 +216,12 @@ PetscErrorCode ApplyCeedOperator_Core(Vec X, Vec X_loc, CeedVector x_ceed, CeedV
 
   if (Y_loc) PetscCall(VecPetscToCeed(Y_loc, &y_mem_type, y_ceed));
 
-  PetscCall(PetscLogEventBegin(FLUIDS_CeedOperatorApply, X, Y, 0, 0));
+  PetscCall(PetscLogEventBegin(HONEE_CeedOperatorApply, X, Y, 0, 0));
   PetscCall(PetscLogGpuTimeBegin());
   if (use_apply_add) PetscCallCeed(ceed, CeedOperatorApplyAdd(ctx->op, x_ceed, y_ceed, CEED_REQUEST_IMMEDIATE));
   else PetscCallCeed(ceed, CeedOperatorApply(ctx->op, x_ceed, y_ceed, CEED_REQUEST_IMMEDIATE));
   PetscCall(PetscLogGpuTimeEnd());
-  PetscCall(PetscLogEventEnd(FLUIDS_CeedOperatorApply, X, Y, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_CeedOperatorApply, X, Y, 0, 0));
 
   if (X_loc) PetscCall(VecReadCeedToPetsc(ctx->x_ceed, x_mem_type, X_loc));
 

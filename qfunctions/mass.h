@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 /// @file
-/// Mass operator for Navier-Stokes example using PETSc
+/// Mass operator for HONEE
 #include <ceed/types.h>
 
 // *****************************************************************************

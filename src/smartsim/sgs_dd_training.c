@@ -212,11 +212,11 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
         array_info[4] = smartsim->collocated_database_num_ranks;
         array_info[5] = rank;
 
-        PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
         PetscCallSmartRedis(
             put_tensor(smartsim->client, tensor_name, strlen(tensor_name), array_info, &array_info_dim, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
         PetscCall(SmartRedisVerifyPutTensor(smartsim->client, tensor_name, strlen(tensor_name)));
-        PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
       }
 
       {  // Send array that communicates if tensors are overwritten in database
@@ -224,11 +224,11 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
         PetscInt64 tensor_overwrite[2] = {sgs_dd_train->overwrite_training_data};
         size_t     dim_2[1]            = {2};
 
-        PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
         PetscCallSmartRedis(
             put_tensor(smartsim->client, tensor_name, strlen(tensor_name), tensor_overwrite, dim_2, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
         PetscCall(SmartRedisVerifyPutTensor(smartsim->client, tensor_name, strlen(tensor_name)));
-        PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
       }
 
       {  // Communicate number of filter widths used
@@ -236,11 +236,11 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
         PetscInt64 num_filter_widths = sgs_dd_train->num_filter_widths;
         size_t     dim_2             = 1;
 
-        PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
         PetscCallSmartRedis(
             put_tensor(smartsim->client, tensor_name, strlen(tensor_name), &num_filter_widths, &dim_2, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
         PetscCall(SmartRedisVerifyPutTensor(smartsim->client, tensor_name, strlen(tensor_name)));
-        PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
       }
     }
   }
@@ -272,7 +272,7 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
   PetscCall(DMGetGlobalVector(sgs_dd_train->dm_dd_training, &TrainingData));
 
   for (PetscInt filter_index = 0; filter_index < sgs_dd_train->num_filter_widths; filter_index++) {
-    PetscCall(PetscLogEventBegin(FLUIDS_TrainDataCompute, 0, 0, 0, 0));
+    PetscCall(PetscLogEventBegin(HONEE_TrainDataCompute, 0, 0, 0, 0));
     {  // -- Compute and assemble training data
       Vec          FilteredVelocityGradient, FilteredFields, FilteredFields_loc;
       PetscMemType filtered_fields_mem_type;
@@ -314,7 +314,7 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
       PetscCall(DMRestoreLocalVector(honee->diff_filter->dm_filter, &FilteredFields_loc));
       PetscCallCeed(ceed, CeedVectorDestroy(&filtered_fields));
     }
-    PetscCall(PetscLogEventEnd(FLUIDS_TrainDataCompute, 0, 0, 0, 0));
+    PetscCall(PetscLogEventEnd(HONEE_TrainDataCompute, 0, 0, 0, 0));
 
     {  // -- Send training data to SmartSim
       char   array_key[PETSC_MAX_PATH_LEN];
@@ -330,10 +330,10 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
       {
         const PetscScalar *training_data;
         PetscCall(VecGetArrayRead(TrainingData, &training_data));
-        PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Train, 0, 0, 0, 0));
+        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Train, 0, 0, 0, 0));
         PetscCallSmartRedis(put_tensor(smartsim->client, array_key, array_key_len, (void *)training_data, sgs_dd_train->training_data_array_dims, 2,
                                        SRTensorTypeDouble, SRMemLayoutContiguous));
-        PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Train, 0, 0, 0, 0));
+        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Train, 0, 0, 0, 0));
         PetscCall(VecRestoreArrayRead(TrainingData, &training_data));
       }
     }
@@ -344,10 +344,10 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
     size_t     dim_2[1]      = {2};
     PetscInt64 step_array[2] = {step_num, step_num};
 
-    PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+    PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
     PetscCallSmartRedis(
         put_tensor(smartsim->client, tensor_name, strlen(tensor_name), step_array, dim_2, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
-    PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+    PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   }
 
   PetscCall(DMRestoreGlobalVector(honee->sgs_dd_train->dm_dd_training, &TrainingData));
@@ -366,10 +366,10 @@ PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
   PetscCall(TSGetApplicationContext(ts, &honee));
   SmartSimData smartsim = honee->smartsim;
 
-  PetscCall(PetscLogEventBegin(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+  PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscCallSmartRedis(
       unpack_tensor(smartsim->client, check_run_key, check_run_key_size, check_run, check_run_dims, 1, SRTensorTypeDouble, SRMemLayoutContiguous));
-  PetscCall(PetscLogEventEnd(FLUIDS_SmartRedis_Meta, 0, 0, 0, 0));
+  PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   if (check_run[0] == 0) {
     PetscCall(PetscPrintf(honee->comm, "-- Simulation stopped by 'check-run' tensor in Redis database\n"));
     PetscCall(TSSetConvergedReason(ts, TS_CONVERGED_USER));
