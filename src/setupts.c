@@ -433,16 +433,21 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   if (PetscPreLoadingOn) {
     // LCOV_EXCL_START
     SNES      snes;
+    KSP       ksp;
     Vec       Q_preload;
-    PetscReal rtol;
+    PetscReal rtol_snes, rtol_ksp;
     PetscCall(VecDuplicate(*Q, &Q_preload));
     PetscCall(VecCopy(*Q, Q_preload));
     PetscCall(TSGetSNES(*ts, &snes));
-    PetscCall(SNESGetTolerances(snes, NULL, &rtol, NULL, NULL, NULL));
-    PetscCall(SNESSetTolerances(snes, PETSC_DEFAULT, .99, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
+    PetscCall(SNESGetTolerances(snes, NULL, &rtol_snes, NULL, NULL, NULL));
+    PetscCall(SNESSetTolerances(snes, PETSC_CURRENT, .99, PETSC_CURRENT, PETSC_CURRENT, PETSC_CURRENT));
+    PetscCall(SNESGetKSP(snes, &ksp));
+    PetscCall(KSPGetTolerances(ksp, &rtol_ksp, NULL, NULL, NULL));
+    PetscCall(KSPSetTolerances(ksp, .99, PETSC_CURRENT, PETSC_CURRENT, PETSC_CURRENT));
     PetscCall(TSSetSolution(*ts, Q_preload));
     PetscCall(TSStep(*ts));
-    PetscCall(SNESSetTolerances(snes, PETSC_DEFAULT, rtol, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
+    PetscCall(SNESSetTolerances(snes, PETSC_CURRENT, rtol_snes, PETSC_CURRENT, PETSC_CURRENT, PETSC_CURRENT));
+    PetscCall(KSPSetTolerances(ksp, rtol_ksp, PETSC_CURRENT, PETSC_CURRENT, PETSC_CURRENT));
     PetscCall(VecDestroy(&Q_preload));
     // LCOV_EXCL_STOP
   } else {
