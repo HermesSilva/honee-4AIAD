@@ -11,6 +11,7 @@ typedef struct {
   PetscScalar         *sum_values;
   PetscScalar          volume;
   PetscInt             num_comps;
+  PetscInt             tab_level;
   PetscBool            is_header_written;
 } *MonitorTotalKE;
 
@@ -53,7 +54,7 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
   CeedVector           q_data;
   CeedInt              num_comp_q, q_data_size;
   DMLabel              domain_label = NULL;
-  PetscInt             label_value = 0, num_comp_totalke = 5, dim;
+  PetscInt             label_value = 0, num_comp_totalke = 5, dim, tab_level;
   MonitorTotalKE       monitor_ctx;
   CeedQFunctionContext newt_qfctx;
   PetscBool            is_ascii;
@@ -117,6 +118,8 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
   PetscCall(VecSetBlockSize(monitor_ctx->values, num_comp_totalke));
   monitor_ctx->num_comps = num_comp_totalke;
   PetscCall(PetscMalloc1(num_comp_totalke, &monitor_ctx->sum_values));
+  PetscCall(PetscObjectGetTabLevel((PetscObject)ts, &tab_level));
+  monitor_ctx->tab_level = tab_level + 1;
 
   ctx->data         = monitor_ctx;
   ctx->data_destroy = MonitorTotalKEDestroy;
@@ -205,13 +208,17 @@ PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt step, PetscReal solu
     }
     PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "\n"));
   } else {
+    PetscCall(PetscViewerASCIIAddTab(ctx->viewer, monitor_ctx->tab_level));
     for (PetscInt i = 0; i < monitor_ctx->num_comps; i++) {
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "%s: %0.12e ", field_names[i], monitor_ctx->sum_values[i]));
+      if (i == 0) PetscCall(PetscViewerASCIIUseTabs(ctx->viewer, PETSC_FALSE));
     }
     PetscScalar sum_rates = 0;
     for (PetscInt i = 1; i < monitor_ctx->num_comps - 1; i++) sum_rates += monitor_ctx->sum_values[i];
     PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "SumOfRates: %0.12e ", sum_rates));
     PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "\n"));
+    PetscCall(PetscViewerASCIIUseTabs(ctx->viewer, PETSC_TRUE));
+    PetscCall(PetscViewerASCIISubtractTab(ctx->viewer, monitor_ctx->tab_level));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -91,6 +91,8 @@ static const char *const DifferentialFilterDampingFunctions[] = {
 
 static const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "INDIRECT", "DivDiffFluxProjectionMethod", "DIV_DIFF_FLUX_PROJ_", NULL};
 
+static const char *const StateVariables[] = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};
+
 // -----------------------------------------------------------------------------
 // Structs
 // -----------------------------------------------------------------------------
@@ -495,3 +497,6 @@ PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_f
 
 PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx);
 PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
+
+PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx);
+PetscErrorCode TSMonitor_Cfl(TS ts, PetscInt step, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);

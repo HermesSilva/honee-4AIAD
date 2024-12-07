@@ -59,6 +59,14 @@ The following options are common among all problem types:
   - Number of timesteps between calculating and printing the total kinetic energy
   - `1`
 
+* - `-ts_monitor_cfl`
+  - Viewer for the min/max CFL in the domain e.g., `ascii:cfl.csv:ascii_csv` to write a CSV file.
+  -
+
+* - `-ts_monitor_cfl_interval`
+  - Number of timesteps between calculating and printing the min/max CFL
+  - `1`
+
 * - `-honee_check_step_interval`
   - Number of time steps between checking the solution for Nans. Negative interval indicates it will not run.
   - `-1`
