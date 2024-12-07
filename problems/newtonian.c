@@ -11,9 +11,6 @@
 
 #include <navierstokes.h>
 
-// For use with PetscOptionsEnum
-static const char *const StateVariables[] = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};
-
 static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIdealGasContext gas);
 
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping

@@ -416,6 +416,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   }
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
+  PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_cfl", "Monitor element CFL statistics", NULL, TSMonitor_Cfl, SetupMontiorCfl));
   if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
   if (app_ctx->sgs_train_enable) PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
 

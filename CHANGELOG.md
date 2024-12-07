@@ -19,6 +19,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `-honee_check_step_interval` to verify solution validity during simulation
 - Add `-honee_max_wall_time_{duration,buffer,interval}` for stopping a simulation based on expired wall clock time
 - Add initial condition loading from CGNS files. Requires PETSc to be built with CGNS with parallel support (e.g. with MPI).
+- Add `-ts_monitor_cfl` for CFL statistics monitoring
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
