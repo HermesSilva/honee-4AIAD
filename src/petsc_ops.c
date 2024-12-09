@@ -305,7 +305,7 @@ PetscErrorCode ApplyAddCeedOperatorLocalToLocal(Vec X_loc, Vec Y_loc, OperatorAp
  * @param[out] Pmat     `Mat` to be used for the solver `Pmat`
  */
 PetscErrorCode CreateSolveOperatorsFromMatCeed(KSP ksp, Mat mat_ceed, PetscBool assemble, Mat *Amat, Mat *Pmat) {
-  PetscBool use_matceed_pmat, assemble_amat = PETSC_FALSE;
+  PetscBool use_matceed_pmat, assemble_amat = PETSC_FALSE, add_postsolve_residual = PETSC_FALSE;
 
   PetscFunctionBeginUser;
   {  // Determine if Amat should be MATCEED or assembled
@@ -314,7 +314,14 @@ PetscErrorCode CreateSolveOperatorsFromMatCeed(KSP ksp, Mat mat_ceed, PetscBool 
     PetscCall(KSPGetOptionsPrefix(ksp, &ksp_prefix));
     PetscOptionsBegin(PetscObjectComm((PetscObject)mat_ceed), ksp_prefix, "", NULL);
     PetscCall(PetscOptionsBool("-matceed_assemble_amat", "Assemble the A matrix for KSP solve", NULL, assemble_amat, &assemble_amat, NULL));
+    PetscCall(PetscOptionsBool("-ksp_post_solve_residual", "Adds residual history summary to KSPPostSolve", NULL, add_postsolve_residual,
+                               &add_postsolve_residual, NULL));
     PetscOptionsEnd();
+  }
+
+  if (add_postsolve_residual) {
+    PetscCall(KSPSetResidualHistory(ksp, NULL, PETSC_DECIDE, PETSC_TRUE));
+    PetscCall(KSPSetPostSolve(ksp, KSPPostSolve_Honee, NULL));
   }
 
   if (assemble_amat) {

@@ -405,6 +405,18 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     PetscCall(TSSetTime(*ts, app_ctx->cont_time * honee->units->second));
     PetscCall(TSSetStepNumber(*ts, app_ctx->cont_steps));
   }
+
+  PetscBool add_ksp_postsolve_residual = PETSC_FALSE;
+  PetscCall(PetscOptionsGetBool(NULL, NULL, "-ksp_post_solve_residual", &add_ksp_postsolve_residual, NULL));
+  if (add_ksp_postsolve_residual) {
+    SNES snes;
+    KSP  ksp;
+
+    PetscCall(TSGetSNES(*ts, &snes));
+    PetscCall(SNESGetKSP(snes, &ksp));
+    PetscCall(KSPSetResidualHistory(ksp, NULL, PETSC_DECIDE, PETSC_TRUE));
+    PetscCall(KSPSetPostSolve(ksp, KSPPostSolve_Honee, NULL));
+  }
   if (honee->set_poststep) PetscCall(TSSetPostStep(*ts, TSPostStep_Honee));
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(TSMonitorSet(*ts, TSMonitor_NS, honee, NULL));
   if (app_ctx->wall_forces.viewer) PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, honee, NULL));

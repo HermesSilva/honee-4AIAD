@@ -111,6 +111,10 @@ The following options are common among all problem types:
   - Test filename
   -
 
+* - `-ksp_post_solve_residual`
+  - Print KSP residual summary information after each
+  -
+
 :::
 
 ### File I/O Options
