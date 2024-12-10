@@ -21,6 +21,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add initial condition loading from CGNS files. Requires PETSc to be built with CGNS with parallel support (e.g. with MPI).
 - Add `-ts_monitor_cfl` for CFL statistics monitoring
 - Add `HONEE_StrongBCInsert` and `HONEE_StrongBCCeed` log events
+- Add `-ksp_post_solve_residual` to print KSP residual summary information (can be done for `-mass` as well)
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
