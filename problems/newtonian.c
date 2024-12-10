@@ -91,10 +91,10 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
   PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_q, &num_comp_q));
 
   {  // Get newtonian QF context
-    CeedOperator *sub_ops;
+    CeedOperator *sub_ops, main_op = honee->op_ifunction ? honee->op_ifunction : honee->op_rhs_ctx->op;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(main_op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qfctx));
   }
   PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, op_rhs));
@@ -257,10 +257,10 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, Di
   PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_q, &num_comp_q));
 
   {  // Get newtonian QF context
-    CeedOperator *sub_ops;
+    CeedOperator *sub_ops, main_op = honee->op_ifunction ? honee->op_ifunction : honee->op_rhs_ctx->op;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(main_op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qfctx));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
@@ -493,8 +493,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   // -- Warnings
   PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
              "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
-  PetscCheck(!(honee->app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE && !implicit), comm, PETSC_ERR_SUP,
-             "Projection of divergence of diffusive flux is not implemented for Navier-Stokes with explicit timestepping");
 
   PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
                                NULL, idl_decay_time, &idl_decay_time, &idl_enable));
