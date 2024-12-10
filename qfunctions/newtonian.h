@@ -138,17 +138,20 @@ CEED_QFUNCTION(MassFunction_Newtonian_Conserv)(void *ctx, CeedInt Q, const CeedS
 // gradu )
 // *****************************************************************************
 CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  const CeedScalar(*q)[CEED_Q_VLA]   = (const CeedScalar(*)[CEED_Q_VLA])in[0];
-  const CeedScalar(*Grad_q)          = in[1];
-  const CeedScalar(*q_data)          = in[2];
-  const CeedScalar(*x)[CEED_Q_VLA]   = (const CeedScalar(*)[CEED_Q_VLA])in[3];
-  CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
-  CeedScalar(*Grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
+  NewtonianIdealGasContext context      = (NewtonianIdealGasContext)ctx;
+  const bool               use_divFdiff = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE;
 
-  NewtonianIdealGasContext context = (NewtonianIdealGasContext)ctx;
-  const CeedScalar        *g       = context->g;
-  const CeedScalar         dt      = context->dt;
-  const CeedScalar         P0      = context->idl_pressure;
+  const CeedScalar(*q)[CEED_Q_VLA]        = (const CeedScalar(*)[CEED_Q_VLA])in[0];
+  const CeedScalar(*Grad_q)               = in[1];
+  const CeedScalar(*q_data)               = in[2];
+  const CeedScalar(*x)[CEED_Q_VLA]        = (const CeedScalar(*)[CEED_Q_VLA])in[3];
+  const CeedScalar(*divFdiff)[CEED_Q_VLA] = use_divFdiff ? (const CeedScalar(*)[CEED_Q_VLA])in[4] : NULL;
+  CeedScalar(*v)[CEED_Q_VLA]              = (CeedScalar(*)[CEED_Q_VLA])out[0];
+  CeedScalar(*Grad_v)[5][CEED_Q_VLA]      = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
+
+  const CeedScalar *g            = context->g;
+  const CeedScalar  dt           = context->dt;
+  const CeedScalar  idl_pressure = context->idl_pressure;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar       U[5], wdetJ, dXdx[3][3];
@@ -182,15 +185,19 @@ CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *co
 
     if (context->idl_enable) {
       const CeedScalar sigma         = LinearRampCoefficient(context->idl_amplitude, context->idl_length, context->idl_start, x_i[0]);
-      CeedScalar       damp_state[5] = {s.Y.pressure - P0, 0, 0, 0, 0}, idl_residual[5] = {0.};
+      CeedScalar       damp_state[5] = {s.Y.pressure - idl_pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
       InternalDampingLayer(context, s, sigma, damp_state, idl_residual);
       for (int j = 0; j < 5; j++) v[j][i] -= wdetJ * idl_residual[j];
     }
 
+    CeedScalar divFdiff_i[5] = {0.};
+    if (use_divFdiff)
+      for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
+
     // -- Stabilization method: none (Galerkin), SU, or SUPG
-    CeedScalar Tau_d[3], stab[5][3], U_dot[5] = {0}, zeroFlux[5] = {0.};
+    CeedScalar Tau_d[3], stab[5][3], U_dot[5] = {0};
     Tau_diagPrim(context, s, dXdx, dt, Tau_d);
-    Stabilization(context, s, Tau_d, grad_s, U_dot, body_force, zeroFlux, stab);
+    Stabilization(context, s, Tau_d, grad_s, U_dot, body_force, divFdiff_i, stab);
 
     for (CeedInt j = 0; j < 5; j++) {
       for (CeedInt k = 0; k < 3; k++) Grad_v[k][j][i] -= wdetJ * (stab[j][0] * dXdx[k][0] + stab[j][1] * dXdx[k][1] + stab[j][2] * dXdx[k][2]);
@@ -207,21 +214,22 @@ CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *co
 //                                       (diffusive terms will be added later)
 // *****************************************************************************
 CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
-  NewtonianIdealGasContext context = (NewtonianIdealGasContext)ctx;
+  NewtonianIdealGasContext context      = (NewtonianIdealGasContext)ctx;
+  const bool               use_divFdiff = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE;
 
   const CeedScalar(*q)[CEED_Q_VLA]        = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*Grad_q)               = in[1];
   const CeedScalar(*q_dot)[CEED_Q_VLA]    = (const CeedScalar(*)[CEED_Q_VLA])in[2];
   const CeedScalar(*q_data)               = in[3];
   const CeedScalar(*x)[CEED_Q_VLA]        = (const CeedScalar(*)[CEED_Q_VLA])in[4];
-  const CeedScalar(*divFdiff)[CEED_Q_VLA] = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE ? (const CeedScalar(*)[CEED_Q_VLA])in[5] : NULL;
+  const CeedScalar(*divFdiff)[CEED_Q_VLA] = use_divFdiff ? (const CeedScalar(*)[CEED_Q_VLA])in[5] : NULL;
   CeedScalar(*v)[CEED_Q_VLA]              = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*Grad_v)[5][CEED_Q_VLA]      = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
   CeedScalar(*jac_data)                   = out[2];
 
-  const CeedScalar *g  = context->g;
-  const CeedScalar  dt = context->dt;
-  const CeedScalar  P0 = context->idl_pressure;
+  const CeedScalar *g            = context->g;
+  const CeedScalar  dt           = context->dt;
+  const CeedScalar  idl_pressure = context->idl_pressure;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5]  = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
@@ -264,13 +272,13 @@ CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedSc
     if (context->idl_enable) {
       const CeedScalar sigma = LinearRampCoefficient(context->idl_amplitude, context->idl_length, context->idl_start, x_i[0]);
       StoredValuesPack(Q, i, 14, 1, &sigma, jac_data);
-      CeedScalar damp_state[5] = {s.Y.pressure - P0, 0, 0, 0, 0}, idl_residual[5] = {0.};
+      CeedScalar damp_state[5] = {s.Y.pressure - idl_pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
       InternalDampingLayer(context, s, sigma, damp_state, idl_residual);
       for (int j = 0; j < 5; j++) v[j][i] += wdetJ * idl_residual[j];
     }
 
     CeedScalar divFdiff_i[5] = {0.};
-    if (context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE) {
+    if (use_divFdiff) {
       for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
     }
     Tau_diagPrim(context, s, dXdx, dt, Tau_d);

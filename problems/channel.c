@@ -11,6 +11,8 @@
 
 #include <navierstokes.h>
 
+static PetscErrorCode DivDiffFluxVerifyMesh(DM dm);
+
 PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   Honee                    honee = *(Honee *)ctx;
   MPI_Comm                 comm  = honee->comm;
@@ -18,10 +20,14 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   ChannelContext           channel_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
   CeedQFunctionContext     channel_qfctx;
+  PetscBool                use_divdiff_verify_mesh = PETSC_FALSE;
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
   PetscCall(PetscCalloc1(1, &channel_ctx));
+
+  PetscCall(PetscOptionsGetBool(NULL, NULL, "-mesh_transform_channel_div_diff_projection_verify", &use_divdiff_verify_mesh, NULL));
+  if (use_divdiff_verify_mesh) PetscCall(DivDiffFluxVerifyMesh(dm));
 
   // ------------------------------------------------------
   //               SET UP Channel
@@ -98,4 +104,45 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &problem->apply_inflow.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &problem->apply_outflow.qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+// This function transforms the mesh coordinates to mimic the mesh used in
+// *A better consistency for low-order stabilized finite element methods* Jansen et. al. 1999
+// which is used to verify the projection of divergence of diffusive flux. See !27 and !94 for more details.
+static PetscErrorCode DivDiffFluxVerifyMesh(DM dm) {
+  PetscInt     narr, ncoords, dim;
+  PetscReal    domain_min[3], domain_max[3], domain_size[3];
+  PetscScalar *arr_coords;
+  Vec          vec_coords;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetDimension(dm, &dim));
+  // Get domain boundary information
+  PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
+  for (PetscInt i = 0; i < 3; i++) domain_size[i] = domain_max[i] - domain_min[i];
+
+  // Get coords array from DM
+  PetscCall(DMGetCoordinatesLocal(dm, &vec_coords));
+  PetscCall(VecGetLocalSize(vec_coords, &narr));
+  PetscCall(VecGetArray(vec_coords, &arr_coords));
+
+  PetscScalar(*coords)[dim] = (PetscScalar(*)[dim])arr_coords;
+  ncoords                   = narr / dim;
+
+  // Get mesh information
+  PetscInt nmax = 3, faces[3];
+  PetscCall(PetscOptionsGetIntArray(NULL, NULL, "-dm_plex_box_faces", faces, &nmax, NULL));
+  // Get element size of the box mesh, for indexing each node
+  const PetscReal dxbox = domain_size[0] / (faces[0]);
+
+  for (PetscInt i = 0; i < ncoords; i++) {
+    PetscInt x_box_index = round(coords[i][0] / dxbox);
+    if (x_box_index % 2) {
+      coords[i][0] = (x_box_index - 1) * dxbox + 0.5 * dxbox;
+    }
+  }
+
+  PetscCall(VecRestoreArray(vec_coords, &arr_coords));
+  PetscCall(DMSetCoordinatesLocal(dm, vec_coords));
+  PetscFunctionReturn(0);
 }

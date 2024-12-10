@@ -22,6 +22,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `-ts_monitor_cfl` for CFL statistics monitoring
 - Add `HONEE_StrongBCInsert` and `HONEE_StrongBCCeed` log events
 - Add `-ksp_post_solve_residual` to print KSP residual summary information (can be done for `-mass` as well)
+- Enable projection of the divergence of diffusive flux for explicit Navier-Stokes
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic

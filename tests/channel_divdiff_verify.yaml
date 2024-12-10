@@ -1,0 +1,47 @@
+problem: 'channel'
+
+# implicit: true
+# ts:
+#   type: 'beuler'
+#   adapt_type: 'none'
+#   dt: 1e-1
+#   max_steps: 10
+
+implicit: false
+ts:
+  type: 'rk'
+  adapt_type: 'none'
+  dt: 1e-2
+  max_steps: 20
+mass:
+  ksp_type: gmres
+  pc_jacobi_type: diagonal
+  # ksp_converged_reason:
+
+state_var: conservative
+stab: supg
+
+dm_plex:
+  box_lower: 0,0,0
+  box_upper: 1,1,.01
+  box_faces: 20,10,1
+  shape: zbox
+  box_bd: 'periodic,none,none'
+  dim: 3
+
+degree: 1
+bc_symmetry_z: 1,2
+bc_wall: 3,4
+wall_comps: 1,2,3
+
+mu: 3.56e-2
+k: 5.07e-5
+theta0: 0.00124459
+umax: 0.141396
+P0: 18
+
+# ts_monitor:
+# ts_monitor:
+#   total_kinetic_energy:
+
+mesh_transform_channel_div_diff_projection_verify: true
