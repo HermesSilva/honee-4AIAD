@@ -165,7 +165,7 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   TS          ts;
   PetscScalar final_time;
-  PetscCall(TSSolve_NS(dm, honee, app_ctx, phys_ctx, problem, &Q, &final_time, &ts));
+  PetscCall(TSSolve_NS(dm, honee, app_ctx, phys_ctx, problem, Q, &final_time, &ts));
 
   // ---------------------------------------------------------------------------
   // Post-processing
