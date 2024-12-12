@@ -433,6 +433,8 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   if (app_ctx->sgs_train_enable) PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
 
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(PrintRunInfo(honee, honee->phys, problem, *ts));
+  if (honee->mass_ksp) PetscCall(KSPViewFromOptions(honee->mass_ksp, NULL, "-ksp_view_pre_ts_solve"));
+
   // Solve
   PetscReal start_time;
   PetscInt  start_step;

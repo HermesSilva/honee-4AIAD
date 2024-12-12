@@ -36,6 +36,7 @@ static PetscErrorCode CreateKSPMassOperator_Unstabilized(Honee honee, CeedOperat
 
   PetscCall(HoneeMassQFunctionCreate(ceed, num_comp_q, q_data_size, &qf_mass));
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, op_mass));
+  PetscCallCeed(ceed, CeedOperatorSetName(*op_mass, "RHS Mass Operator"));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "u", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -70,6 +71,7 @@ static PetscErrorCode CreateKSPMass(Honee honee, ProblemData problem) {
 
     PetscCall(KSPCreate(comm, &honee->mass_ksp));
     PetscCall(KSPSetOptionsPrefix(honee->mass_ksp, "mass_"));
+    PetscCall(PetscObjectSetName((PetscObject)honee->mass_ksp, "Explicit Mass"));
     {  // lumped by default
       PC pc;
       PetscCall(KSPGetPC(honee->mass_ksp, &pc));

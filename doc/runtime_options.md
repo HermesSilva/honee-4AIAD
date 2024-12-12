@@ -115,6 +115,10 @@ The following options are common among all problem types:
   - Print KSP residual summary information after each
   -
 
+* - `-mass_ksp_view_pre_ts_solve`
+  - View mass KSP once before `TSSolve()` is called
+  -
+
 :::
 
 ### File I/O Options
