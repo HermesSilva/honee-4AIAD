@@ -354,7 +354,7 @@ PetscErrorCode TSPostStep_Honee(TS ts) {
 }
 
 // TS: Create, setup, and solve
-PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec *Q, PetscScalar *f_time, TS *ts) {
+PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec Q, PetscScalar *f_time, TS *ts) {
   MPI_Comm    comm = honee->comm;
   TSAdapt     adapt;
   PetscScalar final_time;
@@ -433,6 +433,8 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   if (app_ctx->sgs_train_enable) PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
 
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(PrintRunInfo(honee, honee->phys, problem, *ts));
+  if (honee->mass_ksp) PetscCall(KSPViewFromOptions(honee->mass_ksp, NULL, "-ksp_view_pre_ts_solve"));
+
   // Solve
   PetscReal start_time;
   PetscInt  start_step;
@@ -449,8 +451,8 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     KSP       ksp;
     Vec       Q_preload;
     PetscReal rtol_snes, rtol_ksp;
-    PetscCall(VecDuplicate(*Q, &Q_preload));
-    PetscCall(VecCopy(*Q, Q_preload));
+    PetscCall(VecDuplicate(Q, &Q_preload));
+    PetscCall(VecCopy(Q, Q_preload));
     PetscCall(TSGetSNES(*ts, &snes));
     PetscCall(SNESGetTolerances(snes, NULL, &rtol_snes, NULL, NULL, NULL));
     PetscCall(SNESSetTolerances(snes, PETSC_CURRENT, .99, PETSC_CURRENT, PETSC_CURRENT, PETSC_CURRENT));
@@ -465,7 +467,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     // LCOV_EXCL_STOP
   } else {
     PetscCall(PetscBarrier((PetscObject)*ts));
-    PetscCall(TSSolve(*ts, *Q));
+    PetscCall(TSSolve(*ts, Q));
   }
   PetscPreLoadEnd();
 
@@ -476,7 +478,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     PetscInt step_no;
     PetscCall(TSGetStepNumber(*ts, &step_no));
     if (honee->app_ctx->checkpoint_interval > 0 || honee->app_ctx->checkpoint_interval == -1) {
-      PetscCall(WriteOutput(honee, *Q, step_no, final_time));
+      PetscCall(WriteOutput(honee, Q, step_no, final_time));
     }
 
     PetscLogStage      stage_id;

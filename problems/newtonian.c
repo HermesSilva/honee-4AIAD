@@ -55,6 +55,7 @@ PetscErrorCode CreateKSPMassOperator_NewtonianStabilized(Honee honee, CeedOperat
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_mass, "Grad_v", 5 * dim, CEED_EVAL_GRAD));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, op_mass));
+  PetscCallCeed(ceed, CeedOperatorSetName(*op_mass, "RHS Mass Operator, Newtonian Stabilized"));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q_dot", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "q", elem_restr_q, basis_q, honee->q_ceed));
   PetscCallCeed(ceed, CeedOperatorSetField(*op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
