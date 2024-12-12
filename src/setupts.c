@@ -47,7 +47,18 @@ PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
 
   // Inverse of the mass matrix
   PetscCall(VecReadPetscToCeed(Q_loc, &q_mem_type, honee->q_ceed));
-  PetscCall(KSPSolve(honee->mass_ksp, R, G));
+  {
+    // Run PCApply manually if using ksp_type preonly -pc_type jacobi
+    // This is to avoid an AllReduce call in KSPSolve_Preonly, which causes significant slowdowns for lumped mass matrix solves.
+    // See https://gitlab.com/petsc/petsc/-/merge_requests/8048 for more details and a possible fix
+    PC        pc;
+    PetscBool ispreonly, isjacobi;
+    PetscCall(KSPGetPC(honee->mass_ksp, &pc));
+    PetscCall(PetscObjectTypeCompare((PetscObject)honee->mass_ksp, KSPPREONLY, &ispreonly));
+    PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCJACOBI, &isjacobi));
+    if (ispreonly && isjacobi) PetscCall(PCApply(pc, R, G));
+    else PetscCall(KSPSolve(honee->mass_ksp, R, G));
+  }
   PetscCall(VecReadCeedToPetsc(honee->q_ceed, q_mem_type, Q_loc));
 
   PetscCall(DMRestoreNamedGlobalVector(honee->dm, "RHS Residual", &R));
