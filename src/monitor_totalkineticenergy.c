@@ -74,11 +74,11 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
                      &q_data_size));
 
   {  // Get restriction and basis from the RHS function
-    CeedOperator     *sub_ops;
+    CeedOperator     *sub_ops, main_op = honee->op_ifunction ? honee->op_ifunction : honee->op_rhs_ctx->op;
     CeedOperatorField op_field;
     PetscInt          sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(main_op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &op_field));
 
     PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_q, &basis_q, NULL));
