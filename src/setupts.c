@@ -439,10 +439,10 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
     PetscCall(TSGetTime(*ts, &start_time));
     PetscCall(TSGetStepNumber(*ts, &start_step));
     CeedScalar initial_solution_time = start_time;  // done for type conversion
-    PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(honee->spanstats.op_stats_collect_ctx->op, honee->spanstats.previous_time_label,
+    PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(honee->spanstats->op_stats_collect_ctx->op, honee->spanstats->previous_time_label,
                                                             &initial_solution_time));
-    honee->spanstats.initial_solution_time = start_time;
-    honee->spanstats.initial_solution_step = start_step;
+    honee->spanstats->initial_solution_time = start_time;
+    honee->spanstats->initial_solution_step = start_step;
   }
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));

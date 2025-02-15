@@ -23,7 +23,7 @@ typedef struct {
 } *SpanStatsSetupData;
 
 PetscErrorCode CreateStatsDM(Honee honee, ProblemData problem, PetscInt degree) {
-  honee->spanstats.num_comp_stats = TURB_NUM_COMPONENTS;
+  SpanStatsData spanstats = honee->spanstats;
   PetscReal     domain_min[3], domain_max[3];
   PetscSection  section;
   PetscLogStage stage_stats_setup;
@@ -34,9 +34,11 @@ PetscErrorCode CreateStatsDM(Honee honee, ProblemData problem, PetscInt degree) 
   if (stage_stats_setup == -1) PetscCall(PetscLogStageRegister("Stats Setup", &stage_stats_setup));
   PetscCall(PetscLogStagePush(stage_stats_setup));
 
+  spanstats->num_comp_stats = TURB_NUM_COMPONENTS;
+
   // Get spanwise length
   PetscCall(DMGetBoundingBox(honee->dm, domain_min, domain_max));
-  honee->spanstats.span_width = domain_max[2] - domain_min[2];
+  spanstats->span_width = domain_max[2] - domain_min[2];
 
   {  // Get DM from surface
     DM             parent_distributed_dm;
@@ -67,35 +69,35 @@ PetscErrorCode CreateStatsDM(Honee honee, ProblemData problem, PetscInt degree) 
     }
 
     PetscCall(DMPlexLabelComplete(honee->dm, label));
-    PetscCall(DMPlexFilter(honee->dm, label, 1, PETSC_FALSE, PETSC_FALSE, NULL, &honee->spanstats.dm));
-    PetscCall(DMSetCoordinateDisc(honee->spanstats.dm, NULL, PETSC_TRUE));  // Ensure that a coordinate FE exists
+    PetscCall(DMPlexFilter(honee->dm, label, 1, PETSC_FALSE, PETSC_FALSE, NULL, &spanstats->dm));
+    PetscCall(DMSetCoordinateDisc(spanstats->dm, NULL, PETSC_TRUE));  // Ensure that a coordinate FE exists
 
-    PetscCall(DMPlexDistribute(honee->spanstats.dm, 0, NULL, &parent_distributed_dm));
+    PetscCall(DMPlexDistribute(spanstats->dm, 0, NULL, &parent_distributed_dm));
     PetscCallMPI(MPI_Comm_size(comm, &size));
     if (parent_distributed_dm) {
-      PetscCall(DMDestroy(&honee->spanstats.dm));
-      honee->spanstats.dm = parent_distributed_dm;
+      PetscCall(DMDestroy(&spanstats->dm));
+      spanstats->dm = parent_distributed_dm;
     } else if (size > 1) {
       PetscCall(PetscPrintf(comm, "WARNING: Turbulent spanwise statistics: parent DM could not be distributed accross %d ranks.\n", size));
     }
   }
   {
     PetscBool is_simplex = PETSC_FALSE;
-    PetscCall(DMPlexIsSimplex(honee->spanstats.dm, &is_simplex));
+    PetscCall(DMPlexIsSimplex(spanstats->dm, &is_simplex));
     PetscCheck(is_simplex != PETSC_TRUE, comm, PETSC_ERR_ARG_WRONGSTATE, "Spanwise Statistics is not implemented for non-tensor product grids");
   }
 
-  PetscCall(PetscObjectSetName((PetscObject)honee->spanstats.dm, "Spanwise_Stats"));
-  PetscCall(DMSetOptionsPrefix(honee->spanstats.dm, "turbulence_spanstats_"));
-  PetscCall(DMSetFromOptions(honee->spanstats.dm));
-  PetscCall(DMViewFromOptions(honee->spanstats.dm, NULL, "-dm_view"));
+  PetscCall(PetscObjectSetName((PetscObject)spanstats->dm, "Spanwise_Stats"));
+  PetscCall(DMSetOptionsPrefix(spanstats->dm, "turbulence_spanstats_"));
+  PetscCall(DMSetFromOptions(spanstats->dm));
+  PetscCall(DMViewFromOptions(spanstats->dm, NULL, "-dm_view"));
 
   // Create FE space for parent DM
-  PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, 1, &honee->spanstats.num_comp_stats,
-                               honee->spanstats.dm));
+  PetscCall(
+      DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, 1, &spanstats->num_comp_stats, spanstats->dm));
 
   // Create Section for data
-  PetscCall(DMGetLocalSection(honee->spanstats.dm, &section));
+  PetscCall(DMGetLocalSection(spanstats->dm, &section));
   PetscCall(PetscSectionSetFieldName(section, 0, ""));
   PetscCall(PetscSectionSetComponentName(section, 0, TURB_MEAN_DENSITY, "MeanDensity"));
   PetscCall(PetscSectionSetComponentName(section, 0, TURB_MEAN_PRESSURE, "MeanPressure"));
@@ -179,8 +181,8 @@ PetscErrorCode GetQuadratureCoords(Ceed ceed, DM dm, CeedElemRestriction elem_re
 }
 
 PetscErrorCode SpanStatsSetupDataCreate(Ceed ceed, Honee honee, ProblemData problem, SpanStatsSetupData *stats_data) {
-  DM       dm = honee->spanstats.dm;
-  CeedInt  num_comp_x, num_comp_stats = honee->spanstats.num_comp_stats;
+  DM       dm = honee->spanstats->dm;
+  CeedInt  num_comp_x, num_comp_stats = honee->spanstats->num_comp_stats;
   Vec      X_loc;
   DMLabel  domain_label = NULL;
   PetscInt label_value = 0, height = 0, dm_field = 0;
@@ -288,9 +290,10 @@ PetscErrorCode CreateStatsSF(Ceed ceed, Honee honee, SpanStatsSetupData stats_da
 
 // @brief Setup RHS and LHS for L^2 projection of statistics
 PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, SpanStatsSetupData stats_data) {
+  SpanStatsData       spanstats = honee->spanstats;
   CeedOperator        op_mass, op_proj_rhs;
   CeedQFunction       qf_mass, qf_stats_proj;
-  CeedInt             q_data_size, num_comp_stats = honee->spanstats.num_comp_stats;
+  CeedInt             q_data_size, num_comp_stats = spanstats->num_comp_stats;
   CeedElemRestriction elem_restr_qd;
   CeedVector          q_data;
   DMLabel             domain_label = NULL;
@@ -306,10 +309,9 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, SpanStatsSetupData
   PetscCallCeed(ceed, CeedOperatorSetField(op_proj_rhs, "input", stats_data->elem_restr_parent_colloc, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_proj_rhs, "output", stats_data->elem_restr_parent_stats, stats_data->basis_stats, CEED_VECTOR_ACTIVE));
 
-  PetscCall(OperatorApplyContextCreate(NULL, honee->spanstats.dm, ceed, op_proj_rhs, NULL, NULL, NULL, NULL, &honee->spanstats.op_proj_rhs_ctx));
-  PetscCall(
-      CeedOperatorCreateLocalVecs(op_proj_rhs, DMReturnVecType(honee->spanstats.dm), PETSC_COMM_SELF, &honee->spanstats.Parent_Stats_loc, NULL));
-  PetscCall(QDataGet(ceed, honee->spanstats.dm, domain_label, label_value, stats_data->elem_restr_parent_x, stats_data->basis_x, stats_data->x_coord,
+  PetscCall(OperatorApplyContextCreate(NULL, spanstats->dm, ceed, op_proj_rhs, NULL, NULL, NULL, NULL, &spanstats->op_proj_rhs_ctx));
+  PetscCall(CeedOperatorCreateLocalVecs(op_proj_rhs, DMReturnVecType(spanstats->dm), PETSC_COMM_SELF, &spanstats->Parent_Stats_loc, NULL));
+  PetscCall(QDataGet(ceed, spanstats->dm, domain_label, label_value, stats_data->elem_restr_parent_x, stats_data->basis_x, stats_data->x_coord,
                      &elem_restr_qd, &q_data, &q_data_size));
 
   // Create Mass CeedOperator
@@ -323,9 +325,9 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, SpanStatsSetupData
     Mat mat_mass;
     KSP ksp;
 
-    PetscCall(MatCreateCeed(honee->spanstats.dm, honee->spanstats.dm, op_mass, NULL, &mat_mass));
+    PetscCall(MatCreateCeed(spanstats->dm, spanstats->dm, op_mass, NULL, &mat_mass));
 
-    PetscCall(KSPCreate(PetscObjectComm((PetscObject)honee->spanstats.dm), &ksp));
+    PetscCall(KSPCreate(PetscObjectComm((PetscObject)spanstats->dm), &ksp));
     PetscCall(KSPSetOptionsPrefix(ksp, "turbulence_spanstats_"));
     {
       PC pc;
@@ -337,7 +339,7 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, SpanStatsSetupData
       PetscCall(KSPSetTolerances(ksp, 1e-10, PETSC_DEFAULT, PETSC_DEFAULT, PETSC_DEFAULT));
     }
     PetscCall(KSPSetFromOptions_WithMatCeed(ksp, mat_mass));
-    honee->spanstats.ksp = ksp;
+    spanstats->ksp = ksp;
     PetscCall(MatDestroy(&mat_mass));
   }
 
@@ -353,7 +355,8 @@ PetscErrorCode SetupL2ProjectionStats(Ceed ceed, Honee honee, SpanStatsSetupData
 
 // Create CeedOperator for statistics collection
 PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, SpanStatsSetupData stats_data, ProblemData problem) {
-  CeedInt                     num_comp_stats = honee->spanstats.num_comp_stats, num_comp_x, num_comp_q, q_data_size;
+  SpanStatsData               spanstats      = honee->spanstats;
+  CeedInt                     num_comp_stats = spanstats->num_comp_stats, num_comp_x, num_comp_q, q_data_size;
   PetscInt                    dim, label_value = 0;
   Turbulence_SpanStatsContext collect_ctx;
   NewtonianIdealGasContext    newtonian_ig_ctx;
@@ -382,7 +385,7 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, SpanSta
       break;
   }
 
-  if (honee->spanstats.do_mms_test) {
+  if (spanstats->do_mms_test) {
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_stats_collect));
     PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollectionMMSTest, ChildStatsCollectionMMSTest_loc, &qf_stats_collect));
   }
@@ -421,15 +424,14 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, SpanSta
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "x", honee->elem_restr_x, honee->basis_x, honee->x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "v", stats_data->elem_restr_child_colloc, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
-  PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_stats_collect, "solution time", &honee->spanstats.solution_time_label));
-  PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_stats_collect, "previous time", &honee->spanstats.previous_time_label));
+  PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_stats_collect, "solution time", &spanstats->solution_time_label));
+  PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_stats_collect, "previous time", &spanstats->previous_time_label));
 
-  PetscCall(OperatorApplyContextCreate(honee->dm, honee->spanstats.dm, honee->ceed, op_stats_collect, honee->q_ceed, NULL, NULL, NULL,
-                                       &honee->spanstats.op_stats_collect_ctx));
+  PetscCall(OperatorApplyContextCreate(honee->dm, spanstats->dm, honee->ceed, op_stats_collect, honee->q_ceed, NULL, NULL, NULL,
+                                       &spanstats->op_stats_collect_ctx));
 
-  PetscCall(
-      CeedOperatorCreateLocalVecs(op_stats_collect, DMReturnVecType(honee->spanstats.dm), PETSC_COMM_SELF, NULL, &honee->spanstats.Child_Stats_loc));
-  PetscCall(VecZeroEntries(honee->spanstats.Child_Stats_loc));
+  PetscCall(CeedOperatorCreateLocalVecs(op_stats_collect, DMReturnVecType(spanstats->dm), PETSC_COMM_SELF, NULL, &spanstats->Child_Stats_loc));
+  PetscCall(VecZeroEntries(spanstats->Child_Stats_loc));
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
@@ -440,7 +442,8 @@ PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, SpanSta
 
 // Creates operator for calculating error of method of manufactured solution (MMS) test
 PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, SpanStatsSetupData stats_data) {
-  CeedInt             num_comp_stats = honee->spanstats.num_comp_stats, num_comp_x, q_data_size;
+  SpanStatsData       spanstats      = honee->spanstats;
+  CeedInt             num_comp_stats = spanstats->num_comp_stats, num_comp_x, q_data_size;
   CeedQFunction       qf_error;
   CeedOperator        op_error;
   CeedVector          x_ceed, y_ceed;
@@ -450,7 +453,7 @@ PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, SpanStatsSetupData 
   CeedElemRestriction elem_restr_parent_qd;
 
   PetscFunctionBeginUser;
-  PetscCall(QDataGet(ceed, honee->spanstats.dm, domain_label, label_value, stats_data->elem_restr_parent_x, stats_data->basis_x, stats_data->x_coord,
+  PetscCall(QDataGet(ceed, spanstats->dm, domain_label, label_value, stats_data->elem_restr_parent_x, stats_data->basis_x, stats_data->x_coord,
                      &elem_restr_parent_qd, &q_data, &q_data_size));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(stats_data->basis_x, &num_comp_x));
 
@@ -468,8 +471,7 @@ PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, SpanStatsSetupData 
 
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(stats_data->elem_restr_parent_stats, &x_ceed, NULL));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(stats_data->elem_restr_parent_stats, &y_ceed, NULL));
-  PetscCall(OperatorApplyContextCreate(honee->spanstats.dm, honee->spanstats.dm, honee->ceed, op_error, x_ceed, y_ceed, NULL, NULL,
-                                       &honee->spanstats.mms_error_ctx));
+  PetscCall(OperatorApplyContextCreate(spanstats->dm, spanstats->dm, honee->ceed, op_error, x_ceed, y_ceed, NULL, NULL, &spanstats->mms_error_ctx));
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedVectorDestroy(&x_ceed));
@@ -489,6 +491,7 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData pro
   PetscCall(PetscLogStageGetId("Stats Setup", &stage_stats_setup));
   if (stage_stats_setup == -1) PetscCall(PetscLogStageRegister("Stats Setup", &stage_stats_setup));
   PetscCall(PetscLogStagePush(stage_stats_setup));
+  PetscCall(PetscNew(&honee->spanstats));
 
   // Create parent DM
   PetscCall(CreateStatsDM(honee, problem, honee->app_ctx->degree));
@@ -497,7 +500,7 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData pro
   PetscCall(SpanStatsSetupDataCreate(ceed, honee, problem, &stats_data));
 
   // Create SF for communicating child data back their respective parents
-  PetscCall(CreateStatsSF(ceed, honee, stats_data, honee->dm, honee->spanstats.dm, &honee->spanstats.sf));
+  PetscCall(CreateStatsSF(ceed, honee, stats_data, honee->dm, honee->spanstats->dm, &honee->spanstats->sf));
 
   // Create CeedOperators for statistics collection
   PetscCall(CreateStatisticCollectionOperator(ceed, honee, stats_data, problem));
@@ -505,8 +508,8 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData pro
   // Setup KSP and Mat for L^2 projection of statistics
   PetscCall(SetupL2ProjectionStats(ceed, honee, stats_data));
 
-  PetscCall(PetscOptionsGetBool(NULL, NULL, "-ts_monitor_turbulence_spanstats_mms", &honee->spanstats.do_mms_test, NULL));
-  if (honee->spanstats.do_mms_test) {
+  PetscCall(PetscOptionsGetBool(NULL, NULL, "-ts_monitor_turbulence_spanstats_mms", &honee->spanstats->do_mms_test, NULL));
+  if (honee->spanstats->do_mms_test) {
     PetscCall(SetupMMSErrorChecking(ceed, honee, stats_data));
   }
 
@@ -520,7 +523,7 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData pro
 
 // Collect statistics based on the solution Q
 PetscErrorCode CollectStatistics(Honee honee, PetscScalar solution_time, Vec Q) {
-  SpanStatsData user_stats = honee->spanstats;
+  SpanStatsData spanstats = honee->spanstats;
 
   PetscFunctionBeginUser;
   PetscLogStage stage_stats_collect;
@@ -529,11 +532,11 @@ PetscErrorCode CollectStatistics(Honee honee, PetscScalar solution_time, Vec Q) 
   PetscCall(PetscLogStagePush(stage_stats_collect));
 
   PetscCall(UpdateBoundaryValues(honee, honee->Q_loc, solution_time));
-  PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(user_stats.op_stats_collect_ctx->op, user_stats.solution_time_label, &solution_time));
+  PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(spanstats->op_stats_collect_ctx->op, spanstats->solution_time_label, &solution_time));
   PetscCall(DMGlobalToLocal(honee->dm, Q, INSERT_VALUES, honee->Q_loc));
-  PetscCall(ApplyAddCeedOperatorLocalToLocal(honee->Q_loc, user_stats.Child_Stats_loc, user_stats.op_stats_collect_ctx));
+  PetscCall(ApplyAddCeedOperatorLocalToLocal(honee->Q_loc, spanstats->Child_Stats_loc, spanstats->op_stats_collect_ctx));
 
-  PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(user_stats.op_stats_collect_ctx->op, user_stats.previous_time_label, &solution_time));
+  PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(spanstats->op_stats_collect_ctx->op, spanstats->previous_time_label, &solution_time));
 
   PetscCall(PetscLogStagePop());
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -541,7 +544,7 @@ PetscErrorCode CollectStatistics(Honee honee, PetscScalar solution_time, Vec Q) 
 
 // Process the child statistics into parent statistics and project them onto stats
 PetscErrorCode ProcessStatistics(Honee honee, Vec stats) {
-  SpanStatsData      user_stats = honee->spanstats;
+  SpanStatsData      spanstats = honee->spanstats;
   const PetscScalar *child_stats;
   PetscScalar       *parent_stats;
   MPI_Datatype       unit;
@@ -553,36 +556,36 @@ PetscErrorCode ProcessStatistics(Honee honee, Vec stats) {
   if (stage_stats_process == -1) PetscCall(PetscLogStageRegister("Stats Process", &stage_stats_process));
   PetscCall(PetscLogStagePush(stage_stats_process));
 
-  PetscCall(VecZeroEntries(user_stats.Parent_Stats_loc));
+  PetscCall(VecZeroEntries(spanstats->Parent_Stats_loc));
 
-  PetscCall(VecGetArrayRead(user_stats.Child_Stats_loc, &child_stats));
-  PetscCall(VecGetArray(user_stats.Parent_Stats_loc, &parent_stats));
+  PetscCall(VecGetArrayRead(spanstats->Child_Stats_loc, &child_stats));
+  PetscCall(VecGetArray(spanstats->Parent_Stats_loc, &parent_stats));
 
-  if (user_stats.num_comp_stats == 1) unit = MPIU_REAL;
+  if (spanstats->num_comp_stats == 1) unit = MPIU_REAL;
   else {
-    PetscCallMPI(MPI_Type_contiguous(user_stats.num_comp_stats, MPIU_REAL, &unit));
+    PetscCallMPI(MPI_Type_contiguous(spanstats->num_comp_stats, MPIU_REAL, &unit));
     PetscCallMPI(MPI_Type_commit(&unit));
   }
 
-  PetscCall(PetscSFReduceBegin(user_stats.sf, unit, child_stats, parent_stats, MPI_SUM));
-  PetscCall(PetscSFReduceEnd(user_stats.sf, unit, child_stats, parent_stats, MPI_SUM));
+  PetscCall(PetscSFReduceBegin(spanstats->sf, unit, child_stats, parent_stats, MPI_SUM));
+  PetscCall(PetscSFReduceEnd(spanstats->sf, unit, child_stats, parent_stats, MPI_SUM));
 
-  PetscCall(VecRestoreArrayRead(user_stats.Child_Stats_loc, &child_stats));
-  PetscCall(VecRestoreArray(user_stats.Parent_Stats_loc, &parent_stats));
+  PetscCall(VecRestoreArrayRead(spanstats->Child_Stats_loc, &child_stats));
+  PetscCall(VecRestoreArray(spanstats->Parent_Stats_loc, &parent_stats));
   PetscCallMPI(MPI_Type_free(&unit));
 
   PetscReal solution_time;
-  PetscCall(DMGetOutputSequenceNumber(user_stats.dm, NULL, &solution_time));
+  PetscCall(DMGetOutputSequenceNumber(spanstats->dm, NULL, &solution_time));
   PetscReal summing_duration = solution_time - honee->app_ctx->cont_time;
-  PetscCall(VecScale(user_stats.Parent_Stats_loc, 1 / (summing_duration * user_stats.span_width)));
+  PetscCall(VecScale(spanstats->Parent_Stats_loc, 1 / (summing_duration * spanstats->span_width)));
 
   // L^2 projection with the parent_data
-  PetscCall(DMGetGlobalVector(user_stats.dm, &RHS));
-  PetscCall(ApplyCeedOperatorLocalToGlobal(user_stats.Parent_Stats_loc, RHS, user_stats.op_proj_rhs_ctx));
+  PetscCall(DMGetGlobalVector(spanstats->dm, &RHS));
+  PetscCall(ApplyCeedOperatorLocalToGlobal(spanstats->Parent_Stats_loc, RHS, spanstats->op_proj_rhs_ctx));
 
-  PetscCall(KSPSolve(user_stats.ksp, RHS, stats));
+  PetscCall(KSPSolve(spanstats->ksp, RHS, stats));
 
-  PetscCall(DMRestoreGlobalVector(user_stats.dm, &RHS));
+  PetscCall(DMRestoreGlobalVector(spanstats->dm, &RHS));
   PetscCall(PetscLogStagePop());
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -606,8 +609,8 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
     PetscCall(CollectStatistics(honee, solution_time, Q));
 
     if (run_processing_and_viewer) {
-      PetscCall(DMSetOutputSequenceNumber(spanstats.dm, steps, solution_time));
-      PetscCall(DMGetGlobalVector(spanstats.dm, &stats));
+      PetscCall(DMSetOutputSequenceNumber(spanstats->dm, steps, solution_time));
+      PetscCall(DMGetGlobalVector(spanstats->dm, &stats));
       PetscCall(ProcessStatistics(honee, stats));
       if (honee->app_ctx->test_type == TESTTYPE_NONE) {
         PetscCall(PetscViewerPushFormat(honee->app_ctx->turb_spanstats_viewer, honee->app_ctx->turb_spanstats_viewer_format));
@@ -625,11 +628,11 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
           if (filename) {
             PetscCall(PetscViewerASCIIPrintf(
                 viewer, "Spanwise statistics written to %s for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
-                filename, spanstats.initial_solution_time / second, solution_time / second, spanstats.initial_solution_step, steps));
+                filename, spanstats->initial_solution_time / second, solution_time / second, spanstats->initial_solution_step, steps));
           } else {
             PetscCall(PetscViewerASCIIPrintf(
                 viewer, "Spanwise statistics file written for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
-                spanstats.initial_solution_time / second, solution_time / second, spanstats.initial_solution_step, steps));
+                spanstats->initial_solution_time / second, solution_time / second, spanstats->initial_solution_step, steps));
           }
           PetscCall(PetscViewerASCIISubtractTab(viewer, tab_level + 1));
         }
@@ -637,32 +640,34 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
       if (honee->app_ctx->test_type == TESTTYPE_TURB_SPANSTATS && reason != TS_CONVERGED_ITERATING) {
         PetscCall(RegressionTest(honee->app_ctx, stats));
       }
-      if (spanstats.do_mms_test && reason != TS_CONVERGED_ITERATING) {
+      if (spanstats->do_mms_test && reason != TS_CONVERGED_ITERATING) {
         Vec error;
         PetscCall(VecDuplicate(stats, &error));
-        PetscCall(ApplyCeedOperatorGlobalToGlobal(stats, error, spanstats.mms_error_ctx));
+        PetscCall(ApplyCeedOperatorGlobalToGlobal(stats, error, spanstats->mms_error_ctx));
         PetscScalar error_sq = 0;
         PetscCall(VecSum(error, &error_sq));
         PetscScalar l2_error = sqrt(error_sq);
         PetscCall(PetscPrintf(PETSC_COMM_WORLD, "l2 error: %.5e\n", l2_error));
       }
-      PetscCall(DMRestoreGlobalVector(spanstats.dm, &stats));
+      PetscCall(DMRestoreGlobalVector(spanstats->dm, &stats));
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode TurbulenceStatisticsDestroy(Honee honee) {
+PetscErrorCode TurbulenceStatisticsDestroy(SpanStatsData spanstats) {
   PetscFunctionBeginUser;
-  PetscCall(VecDestroy(&honee->spanstats.Child_Stats_loc));
-  PetscCall(VecDestroy(&honee->spanstats.Parent_Stats_loc));
+  if (spanstats == NULL) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(VecDestroy(&spanstats->Child_Stats_loc));
+  PetscCall(VecDestroy(&spanstats->Parent_Stats_loc));
 
-  PetscCall(OperatorApplyContextDestroy(honee->spanstats.op_stats_collect_ctx));
-  PetscCall(OperatorApplyContextDestroy(honee->spanstats.op_proj_rhs_ctx));
-  PetscCall(OperatorApplyContextDestroy(honee->spanstats.mms_error_ctx));
+  PetscCall(OperatorApplyContextDestroy(spanstats->op_stats_collect_ctx));
+  PetscCall(OperatorApplyContextDestroy(spanstats->op_proj_rhs_ctx));
+  PetscCall(OperatorApplyContextDestroy(spanstats->mms_error_ctx));
 
-  PetscCall(KSPDestroy(&honee->spanstats.ksp));
-  PetscCall(PetscSFDestroy(&honee->spanstats.sf));
-  PetscCall(DMDestroy(&honee->spanstats.dm));
+  PetscCall(KSPDestroy(&spanstats->ksp));
+  PetscCall(PetscSFDestroy(&spanstats->sf));
+  PetscCall(DMDestroy(&spanstats->dm));
+  PetscCall(PetscFree(spanstats));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

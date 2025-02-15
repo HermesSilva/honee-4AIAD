@@ -168,7 +168,7 @@ typedef struct {
   CeedContextFieldLabel solution_time_label, previous_time_label;
   PetscReal             initial_solution_time;
   PetscInt              initial_solution_step;
-} SpanStatsData;
+} *SpanStatsData;
 
 typedef struct {
   DM                   dm;
@@ -444,7 +444,7 @@ PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
 // -----------------------------------------------------------------------------
 PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData problem);
 PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx);
-PetscErrorCode TurbulenceStatisticsDestroy(Honee honee);
+PetscErrorCode TurbulenceStatisticsDestroy(SpanStatsData spanstats);
 
 // -----------------------------------------------------------------------------
 // Data-Driven Subgrid Stress (DD-SGS) Modeling Functions
