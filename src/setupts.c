@@ -432,10 +432,17 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(TSMonitorSet(*ts, TSMonitor_NS, honee, NULL));
   if (app_ctx->wall_forces.viewer) PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, honee, NULL));
   if (app_ctx->turb_spanstats_enable) {
+    PetscReal start_time;
+    PetscInt  start_step;
+
     PetscCall(TSMonitorSet(*ts, TSMonitor_TurbulenceStatistics, honee, NULL));
-    CeedScalar previous_time = app_ctx->cont_time * honee->units->second;
-    PetscCallCeed(honee->ceed,
-                  CeedOperatorSetContextDouble(honee->spanstats.op_stats_collect_ctx->op, honee->spanstats.previous_time_label, &previous_time));
+    PetscCall(TSGetTime(*ts, &start_time));
+    PetscCall(TSGetStepNumber(*ts, &start_step));
+    CeedScalar initial_solution_time = start_time;  // done for type conversion
+    PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(honee->spanstats.op_stats_collect_ctx->op, honee->spanstats.previous_time_label,
+                                                            &initial_solution_time));
+    honee->spanstats.initial_solution_time = start_time;
+    honee->spanstats.initial_solution_step = start_step;
   }
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
