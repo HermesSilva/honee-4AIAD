@@ -176,7 +176,7 @@ int main(int argc, char **argv) {
   // Destroy libCEED objects
   // ---------------------------------------------------------------------------
 
-  PetscCall(TurbulenceStatisticsDestroy(honee));
+  PetscCall(TurbulenceStatisticsDestroy(honee->spanstats));
   PetscCall(NodalProjectionDataDestroy(honee->grad_velo_proj));
   PetscCall(SgsDDDataDestroy(honee->sgs_dd_data));
   PetscCall(DifferentialFilterDataDestroy(honee->diff_filter));
