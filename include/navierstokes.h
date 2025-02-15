@@ -166,6 +166,8 @@ typedef struct {
   PetscBool             do_mms_test;
   OperatorApplyContext  mms_error_ctx;
   CeedContextFieldLabel solution_time_label, previous_time_label;
+  PetscReal             initial_solution_time;
+  PetscInt              initial_solution_step;
 } SpanStatsData;
 
 typedef struct {

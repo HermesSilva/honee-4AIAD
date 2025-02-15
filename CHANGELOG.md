@@ -24,6 +24,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `-ksp_post_solve_residual` to print KSP residual summary information (can be done for `-mass` as well)
 - Enable projection of the divergence of diffusive flux for explicit Navier-Stokes
 - Add `-mass_ksp_view_pre_ts_solve` to view the mass KSP once before `TSSolve()` is run
+- Spanwise statistics writes a logging message when a file is written, which includes post-processing information (e.g. time span for the statistics)
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic

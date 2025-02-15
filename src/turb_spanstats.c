@@ -592,6 +592,7 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
   Honee             honee = (Honee)ctx;
   Vec               stats;
   TSConvergedReason reason;
+  SpanStatsData     spanstats = honee->spanstats;
   PetscInt collect_interval = honee->app_ctx->turb_spanstats_collect_interval, viewer_interval = honee->app_ctx->turb_spanstats_viewer_interval;
 
   PetscFunctionBeginUser;
@@ -605,27 +606,47 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
     PetscCall(CollectStatistics(honee, solution_time, Q));
 
     if (run_processing_and_viewer) {
-      PetscCall(DMSetOutputSequenceNumber(honee->spanstats.dm, steps, solution_time));
-      PetscCall(DMGetGlobalVector(honee->spanstats.dm, &stats));
+      PetscCall(DMSetOutputSequenceNumber(spanstats.dm, steps, solution_time));
+      PetscCall(DMGetGlobalVector(spanstats.dm, &stats));
       PetscCall(ProcessStatistics(honee, stats));
       if (honee->app_ctx->test_type == TESTTYPE_NONE) {
         PetscCall(PetscViewerPushFormat(honee->app_ctx->turb_spanstats_viewer, honee->app_ctx->turb_spanstats_viewer_format));
         PetscCall(VecView(stats, honee->app_ctx->turb_spanstats_viewer));
         PetscCall(PetscViewerPopFormat(honee->app_ctx->turb_spanstats_viewer));
+        {
+          PetscInt    tab_level;
+          PetscViewer viewer = PETSC_VIEWER_STDOUT_(PetscObjectComm((PetscObject)ts));
+          CeedScalar  second = honee->units->second;
+          const char *filename;
+
+          PetscCall(PetscViewerFileGetName(honee->app_ctx->turb_spanstats_viewer, &filename););
+          PetscCall(PetscObjectGetTabLevel((PetscObject)ts, &tab_level));
+          PetscCall(PetscViewerASCIIAddTab(viewer, tab_level + 1));
+          if (filename) {
+            PetscCall(PetscViewerASCIIPrintf(
+                viewer, "Spanwise statistics written to %s for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
+                filename, spanstats.initial_solution_time / second, solution_time / second, spanstats.initial_solution_step, steps));
+          } else {
+            PetscCall(PetscViewerASCIIPrintf(
+                viewer, "Spanwise statistics file written for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
+                spanstats.initial_solution_time / second, solution_time / second, spanstats.initial_solution_step, steps));
+          }
+          PetscCall(PetscViewerASCIISubtractTab(viewer, tab_level + 1));
+        }
       }
       if (honee->app_ctx->test_type == TESTTYPE_TURB_SPANSTATS && reason != TS_CONVERGED_ITERATING) {
         PetscCall(RegressionTest(honee->app_ctx, stats));
       }
-      if (honee->spanstats.do_mms_test && reason != TS_CONVERGED_ITERATING) {
+      if (spanstats.do_mms_test && reason != TS_CONVERGED_ITERATING) {
         Vec error;
         PetscCall(VecDuplicate(stats, &error));
-        PetscCall(ApplyCeedOperatorGlobalToGlobal(stats, error, honee->spanstats.mms_error_ctx));
+        PetscCall(ApplyCeedOperatorGlobalToGlobal(stats, error, spanstats.mms_error_ctx));
         PetscScalar error_sq = 0;
         PetscCall(VecSum(error, &error_sq));
         PetscScalar l2_error = sqrt(error_sq);
         PetscCall(PetscPrintf(PETSC_COMM_WORLD, "l2 error: %.5e\n", l2_error));
       }
-      PetscCall(DMRestoreGlobalVector(honee->spanstats.dm, &stats));
+      PetscCall(DMRestoreGlobalVector(spanstats.dm, &stats));
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
