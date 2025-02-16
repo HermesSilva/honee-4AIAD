@@ -9,6 +9,8 @@
 /**
   @brief Check if a filename has a file extension
 
+  Developer's note: Could instead use PetscStrendswith
+
   @param[in]  comm         `MPI_Comm` used for error handling
   @param[in]  filename     Filename to check
   @param[in]  extension    Extension to check for
