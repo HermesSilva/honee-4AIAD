@@ -364,6 +364,45 @@ PetscErrorCode TSPostStep_Honee(TS ts) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+  @brief Save `TSEvaluationSolutions()` to file defined by `-ts_eval_solutions_view`
+
+  Intended to be used with `TSSetEvaluationTimes()`/`-ts_eval_times`
+
+  @param[in] ts TS object that has the evaluation solutions
+**/
+static PetscErrorCode HoneeTSEvaluationSolutions(TS ts) {
+  MPI_Comm          comm = PetscObjectComm((PetscObject)ts);
+  const PetscReal  *sol_times;
+  PetscReal         orig_time;
+  PetscInt          num_sols, orig_step;
+  Vec              *sol_vecs;
+  DM                dm;
+  PetscBool         is_viewer_set;
+  PetscViewer       viewer;
+  PetscViewerFormat format;
+
+  PetscFunctionBeginUser;
+  PetscCall(TSGetEvaluationSolutions(ts, &num_sols, &sol_times, &sol_vecs));
+  if (num_sols == 0) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(TSGetDM(ts, &dm));
+  PetscCall(DMGetOutputSequenceNumber(dm, &orig_step, &orig_time));
+
+  const char *option = "-ts_eval_solutions_view";
+  PetscCall(PetscOptionsCreateViewer(comm, NULL, NULL, option, &viewer, &format, &is_viewer_set));
+  if (!is_viewer_set) {
+    PetscCall(PetscPrintf(comm, "\n\nWARNING: Viewer not set for TSEvaluationSolutions. Set %s to save this data. Now throwing it away!\n", option));
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+  for (PetscInt i = 0; i < num_sols; i++) {
+    PetscCall(DMSetOutputSequenceNumber(dm, i, sol_times[i]));
+    PetscCall(VecView(sol_vecs[i], viewer));
+  }
+  PetscCall(PetscViewerPopFormat(viewer));
+  PetscCall(PetscViewerDestroy(&viewer));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // TS: Create, setup, and solve
 PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec Q, PetscScalar *f_time, TS *ts) {
   MPI_Comm    comm = honee->comm;
@@ -493,14 +532,15 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   *f_time = final_time;
 
   if (app_ctx->test_type == TESTTYPE_NONE) {
-    PetscInt step_no;
+    PetscInt           step_no;
+    PetscLogStage      stage_id;
+    PetscEventPerfInfo stage_perf;
+
     PetscCall(TSGetStepNumber(*ts, &step_no));
     if (honee->app_ctx->checkpoint_interval > 0 || honee->app_ctx->checkpoint_interval == -1) {
       PetscCall(WriteOutput(honee, Q, step_no, final_time));
     }
-
-    PetscLogStage      stage_id;
-    PetscEventPerfInfo stage_perf;
+    PetscCall(HoneeTSEvaluationSolutions(*ts));
 
     PetscCall(PetscLogStageGetId("HONEE Solve", &stage_id));
     PetscCall(PetscLogStageGetPerfInfo(stage_id, &stage_perf));
