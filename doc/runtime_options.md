@@ -170,6 +170,14 @@ The following options are common among all problem types:
   - Path to file from which to continue from. Either binary file or CGNS
   -
 
+* - `-ts_eval_times`
+  - Sets intermediate time points to evaluate the solution at. See [PETSc documentation](https://petsc.org/main/manualpages/TS/TSSetEvaluationTimes/) for more details.
+  -
+
+* - `-ts_eval_solutions_view`
+  - PETSc output format for `-ts_eval_times` solutions to be written to
+  -
+
 :::
 
 Note that to use `-continue_filename` with CGNS files, the same file must be used with `-dm_plex_filename` and `-dm_plex_cgns_parallel`.
