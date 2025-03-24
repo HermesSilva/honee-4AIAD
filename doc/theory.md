@@ -3,7 +3,7 @@
 HONEE solves the time-dependent Navier-Stokes equations of compressible gas dynamics in a static Eulerian three-dimensional frame using unstructured high-order finite/spectral element spatial discretizations and explicit or implicit high-order time-stepping (available in PETSc).
 Moreover, the Navier-Stokes example has been developed using PETSc, so that the pointwise physics (defined at quadrature points) is separated from the parallelization and meshing concerns.
 
-## The Navier-Stokes equations
+## The Navier-Stokes Equations
 
 The mathematical formulation (from {cite}`shakib1991femcfd`) is given in what follows.
 The compressible Navier-Stokes equations in conservative form are
@@ -108,60 +108,62 @@ The notation $\nabla \bm v \!:\! \bm F$ represents contraction over both fields 
 :::
 
 ### Time Discretization
+<!-- TODO: This should be reframed in terms of PETSc TS's F(t, u, \dot u) = G(t, u) rather than specifically about Explicit RK -->
 For the time discretization, we use two types of time stepping schemes through PETSc.
 
-#### Explicit time-stepping method
 
-  The following explicit formulation is solved with the adaptive Runge-Kutta-Fehlberg (RKF4-5) method by default (any explicit time-stepping scheme available in PETSc can be chosen at runtime)
+#### Explicit Time-Stepping Method
+<!-- TODO:  This should talk about the mass operator and the options associated with it (i.e. lumped mass matrix )-->
+The following explicit formulation is solved with the adaptive Runge-Kutta-Fehlberg (RKF4-5) method by default (any explicit time-stepping scheme available in PETSc can be chosen at runtime)
 
-  $$
-  \bm{q}_N^{n+1} = \bm{q}_N^n + \Delta t \sum_{i=1}^{s} b_i k_i \, ,
-  $$
+$$
+\bm{q}_N^{n+1} = \bm{q}_N^n + \Delta t \sum_{i=1}^{s} b_i k_i \, ,
+$$
 
-  where
+where
 
-  $$
-  \begin{aligned}
-     k_1 &= f(t^n, \bm{q}_N^n)\\
-     k_2 &= f(t^n + c_2 \Delta t, \bm{q}_N^n + \Delta t (a_{21} k_1))\\
-     k_3 &= f(t^n + c_3 \Delta t, \bm{q}_N^n + \Delta t (a_{31} k_1 + a_{32} k_2))\\
-     \vdots&\\
-     k_i &= f\left(t^n + c_i \Delta t, \bm{q}_N^n + \Delta t \sum_{j=1}^s a_{ij} k_j \right)\\
-  \end{aligned}
-  $$
+$$
+\begin{aligned}
+    k_1 &= f(t^n, \bm{q}_N^n)\\
+    k_2 &= f(t^n + c_2 \Delta t, \bm{q}_N^n + \Delta t (a_{21} k_1))\\
+    k_3 &= f(t^n + c_3 \Delta t, \bm{q}_N^n + \Delta t (a_{31} k_1 + a_{32} k_2))\\
+    \vdots&\\
+    k_i &= f\left(t^n + c_i \Delta t, \bm{q}_N^n + \Delta t \sum_{j=1}^s a_{ij} k_j \right)\\
+\end{aligned}
+$$
 
-  and with
+and with
 
-  $$
-  f(t^n, \bm{q}_N^n) = - [\nabla \cdot \bm{F}(\bm{q}_N)]^n + [S(\bm{q}_N)]^n \, .
-  $$
+$$
+f(t^n, \bm{q}_N^n) = - [\nabla \cdot \bm{F}(\bm{q}_N)]^n + [S(\bm{q}_N)]^n \, .
+$$
 
-#### Implicit time-stepping method
+#### Implicit Time-Stepping Method
 
-  This time stepping method which can be selected using the option `-implicit` is solved with Backward Differentiation Formula (BDF) method by default (similarly, any implicit time-stepping scheme available in PETSc can be chosen at runtime).
-  The implicit formulation solves nonlinear systems for $\bm q_N$:
+This time stepping method which can be selected using the option `-implicit` is solved with Backward Differentiation Formula (BDF) method by default (similarly, any implicit time-stepping scheme available in PETSc can be chosen at runtime).
+The implicit formulation solves nonlinear systems for $\bm q_N$:
 
-  $$
-  \bm f(\bm q_N) \equiv \bm g(t^{n+1}, \bm{q}_N, \bm{\dot{q}}_N) = 0 \, ,
-  $$ (eq-ts-implicit-ns)
+$$
+\bm f(\bm q_N) \equiv \bm g(t^{n+1}, \bm{q}_N, \bm{\dot{q}}_N) = 0 \, ,
+$$ (eq-ts-implicit-ns)
 
-  where the time derivative $\bm{\dot q}_N$ is defined by
+where the time derivative $\bm{\dot q}_N$ is defined by
 
-  $$
-  \bm{\dot{q}}_N(\bm q_N) = \alpha \bm q_N + \bm z_N
-  $$
+$$
+\bm{\dot{q}}_N(\bm q_N) = \alpha \bm q_N + \bm z_N
+$$
 
-  in terms of $\bm z_N$ from prior state and $\alpha > 0$, both of which depend on the specific time integration scheme (backward difference formulas, generalized alpha, implicit Runge-Kutta, etc.).
-  Each nonlinear system {eq}`eq-ts-implicit-ns` will correspond to a weak form, as explained below.
-  In determining how difficult a given problem is to solve, we consider the Jacobian of {eq}`eq-ts-implicit-ns`,
+in terms of $\bm z_N$ from prior state and $\alpha > 0$, both of which depend on the specific time integration scheme (backward difference formulas, generalized alpha, implicit Runge-Kutta, etc.).
+Each nonlinear system {eq}`eq-ts-implicit-ns` will correspond to a weak form, as explained below.
+In determining how difficult a given problem is to solve, we consider the Jacobian of {eq}`eq-ts-implicit-ns`,
 
-  $$
-  \frac{\partial \bm f}{\partial \bm q_N} = \frac{\partial \bm g}{\partial \bm q_N} + \alpha \frac{\partial \bm g}{\partial \bm{\dot q}_N}.
-  $$
+$$
+\frac{\partial \bm f}{\partial \bm q_N} = \frac{\partial \bm g}{\partial \bm q_N} + \alpha \frac{\partial \bm g}{\partial \bm{\dot q}_N}.
+$$
 
-  The scalar "shift" $\alpha$ scales inversely with the time step $\Delta t$, so small time steps result in the Jacobian being dominated by the second term, which is a sort of "mass matrix", and typically well-conditioned independent of grid resolution with a simple preconditioner (such as Jacobi).
-  In contrast, the first term dominates for large time steps, with a condition number that grows with the diameter of the domain and polynomial degree of the approximation space.
-  Both terms are significant for time-accurate simulation and the setup costs of strong preconditioners must be balanced with the convergence rate of Krylov methods using weak preconditioners.
+The scalar "shift" $\alpha$ scales inversely with the time step $\Delta t$, so small time steps result in the Jacobian being dominated by the second term, which is a sort of "mass matrix", and typically well-conditioned independent of grid resolution with a simple preconditioner (such as Jacobi).
+In contrast, the first term dominates for large time steps, with a condition number that grows with the diameter of the domain and polynomial degree of the approximation space.
+Both terms are significant for time-accurate simulation and the setup costs of strong preconditioners must be balanced with the convergence rate of Krylov methods using weak preconditioners.
 
 More details of PETSc's time stepping solvers can be found in the [TS User Guide](https://petsc.org/release/docs/manual/ts/).
 
@@ -332,7 +334,7 @@ Note that this wave speed is specific to ideal gases as $\gamma$ is an ideal gas
 :::
 
 Currently, this demo provides three types of problems/physical models that can be selected at run time via the option `-problem`.
-{ref}`problem-advection`, the problem of the transport of energy in a uniform vector velocity field, {ref}`problem-euler-vortex`, the exact solution to the Euler equations, and the so called {ref}`problem-density-current` problem.
+{ref}`problem-advection`, the problem of the transport of energy in a uniform vector velocity field, {ref}`problem-euler-vortex`, the exact solution to the Euler equations, and the so called {ref}`example-density-current` problem.
 
 ### Divergence of Diffusive Flux Projection
 
@@ -381,112 +383,6 @@ The projection can be enabled using `-div_diff_flux_projection_method direct`.
 The $L^2$ projection in either method uses the standard mass matrix, which is rowsum lumped for performance by default.
 The linear solve for the projection can be controlled via `-div_diff_flux_projection_ksp*` flags.
 
-### Statistics Collection
-For scale-resolving simulations (such as LES and DNS), statistics for a simulation are more often useful than time-instantaneous snapshots of the simulation itself.
-To make this process more computationally efficient, averaging in the spanwise direction, if physically correct, can help reduce the amount of simulation time needed to get converged statistics.
-
-First, let's more precisely define what we mean by spanwise average.
-Denote $\langle \phi \rangle$ as the Reynolds average of $\phi$, which in this case would be a average over the spanwise direction and time:
-
-$$
-\langle \phi \rangle(x,y) = \frac{1}{L_z + (T_f - T_0)}\int_0^{L_z} \int_{T_0}^{T_f} \phi(x, y, z, t) \mathrm{d}t \mathrm{d}z
-$$
-
-where $z$ is the spanwise direction, the domain has size $[0, L_z]$ in the spanwise direction, and $[T_0, T_f]$ is the range of time being averaged over.
-Note that here and in the code, **we assume the spanwise direction to be in the $z$ direction**.
-
-To discuss the details of the implementation we'll first discuss the spanwise integral, then the temporal integral, and lastly the statistics themselves.
-
-#### Spanwise Integral
-The function $\langle \phi \rangle (x,y)$ is represented on a 2-D finite element grid, taken from the full domain mesh itself.
-If isoperiodicity is set, the periodic face is extracted as the spanwise statistics mesh.
-Otherwise the negative z face is used.
-We'll refer to this mesh as the *parent grid*, as for every "parent" point in the parent grid, there are many "child" points in the full domain.
-Define a function space on the parent grid as $\mathcal{V}_p^\mathrm{parent} = \{ \bm v(\bm x) \in H^{1}(\Omega_e^\mathrm{parent}) \,|\, \bm v(\bm x_e(\bm X)) \in P_p(\bm{I}), e=1,\ldots,N_e \}$.
-We enforce that the order of the parent FEM space is equal to the full domain's order.
-
-Many statistics are the product of 2 or more solution functions, which results in functions of degree higher than the parent FEM space, $\mathcal{V}_p^\mathrm{parent}$.
-To represent these higher-order functions on the parent FEM space, we perform an $L^2$ projection.
-Define the spanwise averaged function as:
-
-$$
-\langle \phi \rangle_z(x,y,t) = \frac{1}{L_z} \int_0^{L_z} \phi(x, y, z, t) \mathrm{d}z
-$$
-
-where the function $\phi$ may be the product of multiple solution functions and $\langle \phi \rangle_z$ denotes the spanwise average.
-The projection of a function $u$ onto the parent FEM space would look like:
-
-$$
-\bm M u_N = \int_0^{L_x} \int_0^{L_y} u \psi^\mathrm{parent}_N \mathrm{d}y \mathrm{d}x
-$$
-where $\bm M$ is the mass matrix for $\mathcal{V}_p^\mathrm{parent}$, $u_N$ the coefficients of the projected function, and $\psi^\mathrm{parent}_N$ the basis functions of the parent FEM space.
-Substituting the spanwise average of $\phi$ for $u$, we get:
-
-$$
-\bm M [\langle \phi \rangle_z]_N = \int_0^{L_x} \int_0^{L_y} \left [\frac{1}{L_z} \int_0^{L_z} \phi(x,y,z,t) \mathrm{d}z \right ] \psi^\mathrm{parent}_N(x,y) \mathrm{d}y \mathrm{d}x
-$$
-
-The triple integral in the right hand side is just an integral over the full domain
-
-$$
-\bm M [\langle \phi \rangle_z]_N = \frac{1}{L_z} \int_\Omega \phi(x,y,z,t) \psi^\mathrm{parent}_N(x,y) \mathrm{d}\Omega
-$$
-
-We need to evaluate $\psi^\mathrm{parent}_N$ at quadrature points in the full domain.
-To do this efficiently, **we assume and exploit the full domain grid to be a tensor product in the spanwise direction**.
-This assumption means quadrature points in the full domain have the same $(x,y)$ coordinate location as quadrature points in the parent domain.
-This also allows the use of the full domain quadrature weights for the triple integral.
-
-#### Temporal Integral/Averaging
-To calculate the temporal integral, we do a running average using left-rectangle rule.
-At the beginning of each simulation, the time integral of a statistic is set to 0, $\overline{\phi} = 0$.
-Periodically, the integral is updated using left-rectangle rule:
-
-$$\overline{\phi}_\mathrm{new} = \overline{\phi}_{\mathrm{old}} + \phi(t_\mathrm{new}) \Delta T$$
-where $\phi(t_\mathrm{new})$ is the statistic at the current time and $\Delta T$ is the time since the last update.
-When stats are written out to file, this running sum is then divided by $T_f - T_0$ to get the time average.
-
-With this method of calculating the running time average, we can plug this into the $L^2$ projection of the spanwise integral:
-
-$$
-\bm M [\langle \phi \rangle]_N = \frac{1}{L_z + (T_f - T_0)} \int_\Omega \int_{T_0}^{T_f} \phi(x,y,z,t) \psi^\mathrm{parent}_N \mathrm{d}t \mathrm{d}\Omega
-$$
-where the integral $\int_{T_0}^{T_f} \phi(x,y,z,t) \mathrm{d}t$ is calculated on a running basis.
-
-
-#### Running
-As the simulation runs, it takes a running time average of the statistics at the full domain quadrature points.
-This running average is only updated at the interval specified by `-ts_monitor_turbulence_spanstats_collect_interval` as number of timesteps.
-The $L^2$ projection problem is only solved when statistics are written to file, which is controlled by `-ts_monitor_turbulence_spanstats_viewer_interval`.
-Note that the averaging is not reset after each file write.
-The average is always over the bounds $[T_0, T_f]$, where $T_f$ in this case would be the time the file was written at and $T_0$ is the solution time at the beginning of the run.
-
-#### Turbulent Statistics
-
-The focus here are those statistics that are relevant to turbulent flow.
-The terms collected are listed below, with the mathematical definition on the left and the label (present in CGNS output files) is on the right.
-
-| Math                           | Label                           |
-| -----------------              | --------                        |
-| $\langle \rho \rangle$         | MeanDensity                     |
-| $\langle p \rangle$            | MeanPressure                    |
-| $\langle p^2 \rangle$          | MeanPressureSquared             |
-| $\langle p u_i \rangle$        | MeanPressureVelocity[$i$]       |
-| $\langle \rho T \rangle$       | MeanDensityTemperature          |
-| $\langle \rho T u_i \rangle$   | MeanDensityTemperatureFlux[$i$] |
-| $\langle \rho u_i \rangle$     | MeanMomentum[$i$]               |
-| $\langle \rho u_i u_j \rangle$ | MeanMomentumFlux[$ij$]          |
-| $\langle u_i \rangle$          | MeanVelocity[$i$]               |
-
-where [$i$] are suffixes to the labels. So $\langle \rho u_x u_y \rangle$ would correspond to MeanMomentumFluxXY.
-This naming convention attempts to mimic the CGNS standard.
-
-To get second-order statistics from these terms, simply use the identity:
-
-$$
-\langle \phi' \theta' \rangle = \langle \phi \theta \rangle - \langle \phi \rangle \langle \theta \rangle
-$$
-
 ### Subgrid Stress Modeling
 
 When a fluid simulation is under-resolved (the smallest length scale resolved by the grid is much larger than the smallest physical scale, the [Kolmogorov length scale](https://en.wikipedia.org/wiki/Kolmogorov_microscales)), this is mathematically interpreted as filtering the Navier-Stokes equations.
@@ -515,8 +411,22 @@ To close the problem, the subgrid stress must be defined.
 For implicit LES, the subgrid stress is set to zero and the numerical properties of the discretized system are assumed to account for the effect of subgrid scale structures on the filtered solution field.
 For explicit LES, it is defined by a subgrid stress model.
 
+:::{list-table} SGS Model Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+  - Unit
+
+* - `-sgs_model_type`
+  - Type of subgrid stress model to use. Currently only `data_driven` is available
+  - `none`
+  - string
+:::
+
 (sgs-dd-model)=
-#### Data-driven SGS Model
+#### Data-Driven SGS Model
 
 The data-driven SGS model implemented here uses a small neural network to compute the SGS term.
 The SGS tensor is calculated at nodes using an $L^2$ projection of the velocity gradient and grid anisotropy tensor, and then interpolated onto quadrature points.
@@ -532,10 +442,10 @@ Note that the weight coefficients are assumed to be in column-major order.
 This is done to keep consistent with legacy file compatibility.
 
 :::{note}
-The current data-driven model parameters are not accurate and are for regression testing only.
+The data-driven model parameters in the examples directory are not accurate and are for regression testing only.
 :::
 
-##### Data-driven Model Using External Libraries
+##### Data-Driven Model Using External Libraries
 
 There are two different modes for using the data-driven model: fused and sequential.
 
@@ -555,326 +465,51 @@ Note that if you chose to run the inference on host while using a GPU libCEED ba
 
 The sequential mode is available using a libCEED based inference evaluation via `-sgs_model_dd_implementation sequential_ceed`, but it is only for verification purposes.
 
-(differential-filtering)=
-### Differential Filtering
+:::{list-table} Data-driven SGS Model Options
+:header-rows: 1
 
-There is the option to filter the solution field using differential filtering.
-This was first proposed in {cite}`germanoDiffFilterLES1986`, using an inverse Hemholtz operator.
-The strong form of the differential equation is
+* - Option
+  - Description
+  - Default value
+  - Unit
 
-$$
-\overline{\phi} - \nabla \cdot (\beta (\bm{D}\bm{\Delta})^2 \nabla \overline{\phi} ) = \phi
-$$
+* - `-sgs_model_dd_leakyrelu_alpha`
+  - Slope parameter for Leaky ReLU activation function. `0` corresponds to normal ReLU
+  - 0
+  -
 
-for $\phi$ the scalar solution field we want to filter, $\overline \phi$ the filtered scalar solution field, $\bm{\Delta} \in \mathbb{R}^{3 \times 3}$ a symmetric positive-definite rank 2 tensor defining the width of the filter, $\bm{D}$ is the filter width scaling tensor (also a rank 2 SPD tensor), and $\beta$ is a kernel scaling factor on the filter tensor.
-This admits the weak form:
+* - `-sgs_model_dd_parameter_dir`
+  - Path to directory with data-driven model parameters (weights, biases, etc.)
+  - `./dd_sgs_parameters`
+  - string
 
-$$
-\int_\Omega \left( v \overline \phi + \beta \nabla v \cdot (\bm{D}\bm{\Delta})^2 \nabla \overline \phi \right) \,d\Omega
-- \cancel{\int_{\partial \Omega} \beta v \nabla \overline \phi \cdot (\bm{D}\bm{\Delta})^2 \bm{\hat{n}} \,d\partial\Omega} =
-\int_\Omega v \phi \, , \; \forall v \in \mathcal{V}_p
-$$
+* - `-sgs_model_dd_model_implementation`
+  - Which computational implementation to use for SGS DD model (`fused`, `sequential_ceed`, `sequential_torch`)
+  - `fused`
+  - string
 
-The boundary integral resulting from integration-by-parts is crossed out, as we assume that $(\bm{D}\bm{\Delta})^2 = \bm{0} \Leftrightarrow \overline \phi = \phi$ at boundaries (this is reasonable at walls, but for convenience elsewhere).
+* - `-sgs_model_dd_torch_model_path`
+  - Path to the PyTorch `*.pt` file containing the DD inference model
+  -
+  - string
 
-#### Filter width tensor, Δ
-For homogenous filtering, $\bm{\Delta}$ is defined as the identity matrix.
-
-:::{note}
-It is common to denote a filter width dimensioned relative to the radial distance of the filter kernel.
-Note here we use the filter *diameter* instead, as that feels more natural (albeit mathematically less convenient).
-For example, under this definition a box filter would be defined as:
-
-$$
-B(\Delta; \bm{r}) =
-\begin{cases}
-1 & \Vert \bm{r} \Vert \leq \Delta/2 \\
-0 & \Vert \bm{r} \Vert > \Delta/2
-\end{cases}
-$$
+* - `-sgs_model_dd_torch_model_device`
+  - What hardware to perform the model inference on (`cpu`, `cuda`, `hip`, `xpu`)
+  - Default matches the libCEED backend
+  - string
 :::
 
-For inhomogeneous anisotropic filtering, we use the finite element grid itself to define $\bm{\Delta}$.
-This is set via `-diff_filter_grid_based_width`.
-Specifically, we use the filter width tensor defined in {cite}`prakashDDSGSAnisotropic2022`.
-For finite element grids, the filter width tensor is most conveniently defined by $\bm{\Delta} = \bm{g}^{-1/2}$ where $\bm g = \nabla_{\bm x} \bm{X} \cdot \nabla_{\bm x} \bm{X}$ is the metric tensor.
 
-#### Filter width scaling tensor, $\bm{D}$
-The filter width tensor $\bm{\Delta}$, be it defined from grid based sources or just the homogenous filtering, can be scaled anisotropically.
-The coefficients for that anisotropic scaling are given by `-diff_filter_width_scaling`, denoted here by $c_1, c_2, c_3$.
-The definition for $\bm{D}$ then becomes
+## Boundary Conditions
 
-$$
-\bm{D} =
-\begin{bmatrix}
-    c_1 & 0        & 0        \\
-    0        & c_2 & 0        \\
-    0        & 0        & c_3 \\
-\end{bmatrix}
-$$
 
-In the case of $\bm{\Delta}$ being defined as homogenous, $\bm{D}\bm{\Delta}$ means that $\bm{D}$ effectively sets the filter width.
-
-The filtering at the wall may also be damped, to smoothly meet the $\overline \phi = \phi$ boundary condition at the wall.
-The selected damping function for this is the van Driest function {cite}`vandriestWallDamping1956`:
-
-$$
-\zeta = 1 - \exp\left(-\frac{y^+}{A^+}\right)
-$$
-
-where $y^+$ is the wall-friction scaled wall-distance ($y^+ = y u_\tau / \nu = y/\delta_\nu$), $A^+$ is some wall-friction scaled scale factor, and $\zeta$ is the damping coefficient.
-For this implementation, we assume that $\delta_\nu$ is constant across the wall and is defined by `-diff_filter_friction_length`.
-$A^+$ is defined by `-diff_filter_damping_constant`.
-
-To apply this scalar damping coefficient to the filter width tensor, we construct the wall-damping tensor from it.
-The construction implemented currently limits damping in the wall parallel directions to be no less than the original filter width defined by $\bm{\Delta}$.
-The wall-normal filter width is allowed to be damped to a zero filter width.
-It is currently assumed that the second component of the filter width tensor is in the wall-normal direction.
-Under these assumptions, $\bm{D}$ then becomes:
-
-$$
-\bm{D} =
-\begin{bmatrix}
-    \max(1, \zeta c_1) & 0         & 0                  \\
-    0                  & \zeta c_2 & 0                  \\
-    0                  & 0         & \max(1, \zeta c_3) \\
-\end{bmatrix}
-$$
-
-#### Filter kernel scaling, β
-While we define $\bm{D}\bm{\Delta}$ to be of a certain physical filter width, the actual width of the implied filter kernel is quite larger than "normal" kernels.
-To account for this, we use $\beta$ to scale the filter tensor to the appropriate size, as is done in {cite}`bullExplicitFilteringExact2016`.
-To match the "size" of a normal kernel to our differential kernel, we attempt to have them match second order moments with respect to the prescribed filter width.
-To match the box and Gaussian filters "sizes", we use $\beta = 1/10$ and $\beta = 1/6$, respectively.
-$\beta$ can be set via `-diff_filter_kernel_scaling`.
-
-### *In Situ* Machine-Learning Model Training
-Training machine-learning models normally uses *a priori* (already gathered) data stored on disk.
-This is computationally inefficient, particularly as the scale of the problem grows and the data that is saved to disk reduces to a small percentage of the total data generated by a simulation.
-One way of working around this to to train a model on data coming from an ongoing simulation, known as *in situ* (in place) learning.
-
-This is implemented in the code using [SmartSim](https://www.craylabs.org/docs/overview.html).
-Briefly, the fluid simulation will periodically place data for training purposes into a database that a separate process uses to train a model.
-The database used by SmartSim is [Redis](https://redis.com/modules/redis-ai/) and the library to connect to the database is called [SmartRedis](https://www.craylabs.org/docs/smartredis.html).
-More information about how to utilize this code in a SmartSim configuration can be found on [SmartSim's website](https://www.craylabs.org/docs/overview.html).
-
-To use this code in a SmartSim *in situ* setup, first the code must be built with SmartRedis enabled.
-This is done by specifying the installation directory of SmartRedis using the `SMARTREDIS_DIR` environment variable when building:
-
-```
-make SMARTREDIS_DIR=~/software/smartredis/install
-```
-
-#### SGS Data-Driven Model *In Situ* Training
-Currently the code is only setup to do *in situ* training for the SGS data-driven model.
-Training data is split into the model inputs and outputs.
-The model inputs are calculated as the same model inputs in the SGS Data-Driven model described {ref}`earlier<sgs-dd-model>`.
-The model outputs (or targets in the case of training) are the subgrid stresses.
-Both the inputs and outputs are computed from a filtered velocity field, which is calculated via {ref}`differential-filtering`.
-The settings for the differential filtering used during training are described in {ref}`differential-filtering`.
-The training will create multiple sets of data per each filter width defined in `-sgs_train_filter_widths`.
-Those scalar filter widths correspond to the scaling correspond to $\bm{D} = c \bm{I}$, where $c$ is the scalar filter width.
-
-The SGS *in situ* training can be enabled using the `-sgs_train_enable` flag.
-Data can be processed and placed into the database periodically.
-The interval between is controlled by `-sgs_train_write_data_interval`.
-There's also the choice of whether to add new training data on each database write or to overwrite the old data with new data.
-This is controlled by `-sgs_train_overwrite_data`.
-
-The database may also be located on the same node as a MPI rank (collocated) or located on a separate node (distributed).
-It's necessary to know how many ranks are associated with each collocated database, which is set by `-smartsim_collocated_database_num_ranks`.
-
-(problem-advection)=
-## Advection-Diffusion
-
-A simplified version of system {eq}`eq-ns`, only accounting for the transport of total energy, is given by
-
-$$
-\frac{\partial E}{\partial t} + \nabla \cdot (\bm{u} E ) - \kappa \nabla E = 0 \, ,
-$$ (eq-advection)
-
-with $\bm{u}$ the vector velocity field and $\kappa$ the diffusion coefficient.
-In this particular test case, a blob of total energy (defined by a characteristic radius $r_c$) is transported by two different wind types.
-
-- **Rotation**
-
-  In this case, a uniform circular velocity field transports the blob of total energy.
-  We have solved {eq}`eq-advection` applying zero energy density $E$, and no-flux for $\bm{u}$ on the boundaries.
-
-- **Translation**
-
-  In this case, a background wind with a constant rectilinear velocity field, enters the domain and transports the blob of total energy out of the domain.
-
-  For the inflow boundary conditions, a prescribed $E_{wind}$ is applied weakly on the inflow boundaries such that the weak form boundary integral in {eq}`eq-weak-vector-ns` is defined as
-
-  $$
-  \int_{\partial \Omega_{inflow}} \bm v \cdot \bm{F}(\bm q_N) \cdot \widehat{\bm{n}} \,dS = \int_{\partial \Omega_{inflow}} \bm v \, E_{wind} \, \bm u \cdot \widehat{\bm{n}} \,dS  \, ,
-  $$
-
-  For the outflow boundary conditions, we have used the current values of $E$, following {cite}`papanastasiou1992outflow` which extends the validity of the weak form of the governing equations to the outflow instead of replacing them with unknown essential or natural boundary conditions.
-  The weak form boundary integral in {eq}`eq-weak-vector-ns` for outflow boundary conditions is defined as
-
-  $$
-  \int_{\partial \Omega_{outflow}} \bm v \cdot \bm{F}(\bm q_N) \cdot \widehat{\bm{n}} \,dS = \int_{\partial \Omega_{outflow}} \bm v \, E \, \bm u \cdot \widehat{\bm{n}} \,dS  \, ,
-  $$
-
-(problem-euler-vortex)=
-
-## Isentropic Vortex
-
-Three-dimensional Euler equations, which are simplified and nondimensionalized version of system {eq}`eq-ns` and account only for the convective fluxes, are given by
-
-$$
-\begin{aligned}
-\frac{\partial \rho}{\partial t} + \nabla \cdot \bm{U} &= 0 \\
-\frac{\partial \bm{U}}{\partial t} + \nabla \cdot \left( \frac{\bm{U} \otimes \bm{U}}{\rho} + P \bm{I}_3 \right) &= 0 \\
-\frac{\partial E}{\partial t} + \nabla \cdot \left( \frac{(E + P)\bm{U}}{\rho} \right) &= 0 \, , \\
-\end{aligned}
-$$ (eq-euler)
-
-Following the setup given in {cite}`zhang2011verification`, the mean flow for this problem is $\rho=1$, $P=1$, $T=P/\rho= 1$ (Specific Gas Constant, $R$, is 1), and $\bm{u}=(u_1,u_2,0)$ while the perturbation $\delta \bm{u}$, and $\delta T$ are defined as
-
-$$
-\begin{aligned} (\delta u_1, \, \delta u_2) &= \frac{\epsilon}{2 \pi} \, e^{0.5(1-r^2)} \, (-\bar{y}, \, \bar{x}) \, , \\ \delta T &= - \frac{(\gamma-1) \, \epsilon^2}{8 \, \gamma \, \pi^2} \, e^{1-r^2} \, , \\ \end{aligned}
-$$
-
-where $(\bar{x}, \, \bar{y}) = (x-x_c, \, y-y_c)$, $(x_c, \, y_c)$ represents the center of the domain, $r^2=\bar{x}^2 + \bar{y}^2$, and $\epsilon$ is the vortex strength ($\epsilon$ < 10).
-There is no perturbation in the entropy $S=P/\rho^\gamma$ ($\delta S=0)$.
-
-(problem-shock-tube)=
-
-## Shock Tube
-
-This test problem is based on Sod's Shock Tube (from{cite}`sodshocktubewiki`), a canonical test case for discontinuity capturing in one dimension. For this problem, the three-dimensional Euler equations are formulated exactly as in the Isentropic Vortex problem. The default initial conditions are $P=1$, $\rho=1$ for the driver section and $P=0.1$, $\rho=0.125$ for the driven section. The initial velocity is zero in both sections. Symmetry boundary conditions are applied to the side walls and wall boundary conditions are applied at the end walls.
-
-SU upwinding and discontinuity capturing have been implemented into the explicit timestepping operator for this problem. Discontinuity capturing is accomplished using a modified version of the $YZ\beta$ operator described in {cite}`tezduyar2007yzb`. This discontinuity capturing scheme involves the introduction of a dissipation term of the form
-
-$$
-\int_{\Omega} \nu_{SHOCK} \nabla \bm v \!:\! \nabla \bm q dV
-$$
-
-The shock capturing viscosity is implemented following the first formulation described in {cite}`tezduyar2007yzb`. The characteristic velocity $u_{cha}$ is taken to be the acoustic speed while the reference density $\rho_{ref}$ is just the local density. Shock capturing viscosity is defined by the following
-
-$$
-\nu_{SHOCK} = \tau_{SHOCK} u_{cha}^2
-$$
-
-where,
-
-$$
-\tau_{SHOCK} = \frac{h_{SHOCK}}{2u_{cha}} \left( \frac{ \,|\, \nabla \rho \,|\, h_{SHOCK}}{\rho_{ref}} \right)^{\beta}
-$$
-
-$\beta$ is a tuning parameter set between 1 (smoother shocks) and 2 (sharper shocks. The parameter $h_{SHOCK}$ is a length scale that is proportional to the element length in the direction of the density gradient unit vector. This density gradient unit vector is defined as $\hat{\bm j} = \frac{\nabla \rho}{|\nabla \rho|}$. The original formulation of Tezduyar and Senga relies on the shape function gradient to define the element length scale, but this gradient is not available to qFunctions in libCEED. To avoid this problem, $h_{SHOCK}$ is defined in the current implementation as
-
-$$
-h_{SHOCK} = 2 \left( C_{YZB} \,|\, \bm p \,|\, \right)^{-1}
-$$
-
-where
-
-$$
-p_k = \hat{j}_i \frac{\partial \xi_i}{x_k}
-$$
-
-The constant $C_{YZB}$ is set to 0.1 for piecewise linear elements in the current implementation. Larger values approaching unity are expected with more robust stabilization and implicit timestepping.
-
-(problem-density-current)=
-
-## Gaussian Wave
-This test case is taken/inspired by that presented in {cite}`mengaldoCompressibleBC2014`. It is intended to test non-reflecting/Riemann boundary conditions. It's primarily intended for Euler equations, but has been implemented for the Navier-Stokes equations here for flexibility.
-
-The problem has a perturbed initial condition and lets it evolve in time. The initial condition contains a Gaussian perturbation in the pressure field:
-
-$$
-\begin{aligned}
-\rho &= \rho_\infty\left(1+A\exp\left(\frac{-(\bar{x}^2 + \bar{y}^2)}{2\sigma^2}\right)\right) \\
-\bm{U} &= \bm U_\infty \\
-E &= \frac{p_\infty}{\gamma -1}\left(1+A\exp\left(\frac{-(\bar{x}^2 + \bar{y}^2)}{2\sigma^2}\right)\right) + \frac{\bm U_\infty \cdot \bm U_\infty}{2\rho_\infty},
-\end{aligned}
-$$
-
-where $A$ and $\sigma$ are the amplitude and width of the perturbation, respectively, and $(\bar{x}, \bar{y}) = (x-x_e, y-y_e)$ is the distance to the epicenter of the perturbation, $(x_e, y_e)$.
-The simulation produces a strong acoustic wave and leaves behind a cold thermal bubble that advects at the fluid velocity.
-
-The boundary conditions are freestream in the x and y directions. When using an HLL (Harten, Lax, van Leer) Riemann solver {cite}`toro2009` (option `-freestream_riemann hll`), the acoustic waves exit the domain cleanly, but when the thermal bubble reaches the boundary, it produces strong thermal oscillations that become acoustic waves reflecting into the domain.
-This problem can be fixed using a more sophisticated Riemann solver such as HLLC {cite}`toro2009` (option `-freestream_riemann hllc`, which is default), which is a linear constant-pressure wave that transports temperature and transverse momentum at the fluid velocity.
-
-## Vortex Shedding - Flow past Cylinder
-This test case, based on {cite}`shakib1991femcfd`, is an example of using an externally provided mesh from Gmsh.
-A cylinder with diameter $D=1$ is centered at $(0,0)$ in a computational domain $-4.5 \leq x \leq 15.5$, $-4.5 \leq y \leq 4.5$.
-We solve this as a 3D problem with (default) one element in the $z$ direction.
-The domain is filled with an ideal gas at rest (zero velocity) with temperature 24.92 and pressure 7143.
-The viscosity is 0.01 and thermal conductivity is 14.34 to maintain a Prandtl number of 0.71, which is typical for air.
-At time $t=0$, this domain is subjected to freestream boundary conditions at the inflow (left) and Riemann-type outflow on the right, with exterior reference state at velocity $(1, 0, 0)$ giving Reynolds number $100$ and Mach number $0.01$.
-A symmetry (adiabatic free slip) condition is imposed at the top and bottom boundaries $(y = \pm 4.5)$ (zero normal velocity component, zero heat-flux).
-The cylinder wall is an adiabatic (no heat flux) no-slip boundary condition.
-As we evolve in time, eddies appear past the cylinder leading to a vortex shedding known as the vortex street, with shedding period of about 6.
-
-The Gmsh input file, `examples/meshes/cylinder.geo` is parametrized to facilitate experimenting with similar configurations.
-The Strouhal number (nondimensional shedding frequency) is sensitive to the size of the computational domain and boundary conditions.
-
-Forces on the cylinder walls are computed using the "reaction force" method, which is variationally consistent with the volume operator.
-Given the force components $\bm F = (F_x, F_y, F_z)$ and surface area $S = \pi D L_z$ where $L_z$ is the spanwise extent of the domain, we define the coefficients of lift and drag as
-
-$$
-\begin{aligned}
-C_L &= \frac{2 F_y}{\rho_\infty u_\infty^2 S} \\
-C_D &= \frac{2 F_x}{\rho_\infty u_\infty^2 S} \\
-\end{aligned}
-$$
-
-where $\rho_\infty, u_\infty$ are the freestream (inflow) density and velocity respectively.
-
-## Density Current
-
-For this test problem (from {cite}`straka1993numerical`), we solve the full Navier-Stokes equations {eq}`eq-ns`, for which a cold air bubble (of radius $r_c$) drops by convection in a neutrally stratified atmosphere.
-Its initial condition is defined in terms of the Exner pressure, $\pi(\bm{x},t)$, and potential temperature, $\theta(\bm{x},t)$, that relate to the state variables via
-
-$$
-\begin{aligned} \rho &= \frac{P_0}{( c_p - c_v)\theta(\bm{x},t)} \pi(\bm{x},t)^{\frac{c_v}{ c_p - c_v}} \, , \\ e &= c_v \theta(\bm{x},t) \pi(\bm{x},t) + \bm{u}\cdot \bm{u} /2 + g z \, , \end{aligned}
-$$
-
-where $P_0$ is the atmospheric pressure.
-For this problem, we have used no-slip and non-penetration boundary conditions for $\bm{u}$, and no-flux for mass and energy densities.
-
-## Channel
-
-A compressible channel flow. Analytical solution given in
-{cite}`whitingStabilizedFEM1999`:
-
-$$ u_1 = u_{\max} \left [ 1 - \left ( \frac{x_2}{H}\right)^2 \right] \quad \quad u_2 = u_3 = 0$$
-$$T = T_w \left [ 1 + \frac{Pr \hat{E}c}{3} \left \{1 - \left(\frac{x_2}{H}\right)^4  \right \} \right]$$
-$$p = p_0 - \frac{2\rho_0 u_{\max}^2 x_1}{Re_H H}$$
-
-where $H$ is the channel half-height, $u_{\max}$ is the center velocity, $T_w$ is the temperature at the wall, $Pr=\frac{\mu}{c_p \kappa}$ is the Prandlt number, $\hat E_c = \frac{u_{\max}^2}{c_p T_w}$ is the modified Eckert number, and $Re_h = \frac{u_{\max}H}{\nu}$ is the Reynolds number.
-
-Boundary conditions are periodic in the streamwise direction, and no-slip and non-penetration boundary conditions at the walls.
-The flow is driven by a body force determined analytically from the fluid properties and setup parameters $H$ and $u_{\max}$.
-
-## Flat Plate Boundary Layer
-
-### Laminar Boundary Layer - Blasius
-
-Simulation of a laminar boundary layer flow, with the inflow being prescribed by a [Blasius similarity solution](https://en.wikipedia.org/wiki/Blasius_boundary_layer).
-At the inflow, the velocity is prescribed by the Blasius soution profile, density is set constant, and temperature is allowed to float.
-Using `weakT: true`, density is allowed to float and temperature is set constant.
-At the outlet, a user-set pressure is used for pressure in the inviscid flux terms (all other inviscid flux terms use interior solution values).
-The wall is a no-slip, no-penetration, no-heat flux condition.
-The top of the domain is treated as an outflow and is tilted at a downward angle to ensure that flow is always exiting it.
-
-### Turbulent Boundary Layer
-
-Simulating a turbulent boundary layer without modeling the turbulence requires resolving the turbulent flow structures.
-These structures may be introduced into the simulations either by allowing a laminar boundary layer naturally transition to turbulence, or imposing turbulent structures at the inflow.
-The latter approach has been taken here, specifically using a *synthetic turbulence generation* (STG) method.
-
-#### Synthetic Turbulence Generation (STG) Boundary Condition
+(bc-stg)=
+### Synthetic Turbulence Generation (STG)
 
 We use the STG method described in {cite}`shurSTG2014`.
 Below follows a re-description of the formulation to match the present notation, and then a description of the implementation and usage.
 
-##### Equation Formulation
+#### Equation Formulation
 
 $$
 \bm{u}(\bm{x}, t) = \bm{\overline{u}}(\bm{x}) + \bm{C}(\bm{x}) \cdot \bm{v}'
@@ -922,9 +557,9 @@ $$
 \kappa_\mathrm{cut} = \frac{2\pi}{ 2\min\{ [\max(h_y, h_z, 0.3h_{\max}) + 0.1 d_w], h_{\max} \} }
 $$
 
-The enforcement of the boundary condition is identical to the blasius inflow; it weakly enforces velocity, with the option of weakly enforcing either density or temperature using the the `-weakT` flag.
+The enforcement of the boundary condition is identical to the blasius inflow; it weakly enforces velocity, with the option of weakly enforcing either density or temperature using the `-weakT` flag.
 
-##### Initialization Data Flow
+#### Initialization Data Flow
 
 Data flow for initializing function (which creates the context data struct) is given below:
 ```{mermaid}
@@ -1007,7 +642,74 @@ The following table is presented to help clarify the dimensionality of the numer
 | $h_i$                                          | h_i      | Yes            | No        |
 | $d_w$                                          | d_w      | Yes            | No        |
 
-#### Internal Damping Layer (IDL)
+#### Runtime Options
+
+To use the STG boundary condition, the `-bc_inflow` option should be set to the boundary faces that need the inflow (see {ref}`bc-flags`).
+The `-stg_use` flag is then used to enable/disable applying STG to those faces.
+
+:::{list-table} STG Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+  - Unit
+
+* - `-stg_use`
+  - Enable STG for `bc_inflow` faces
+  - `false`
+  -
+
+* - `-stg_inflow_path`
+  - Path to the STGInflow file
+  - `./STGInflow.dat`
+  -
+
+* - `-stg_rand_path`
+  - Path to the STGRand file
+  - `./STGRand.dat`
+  -
+
+* - `-stg_alpha`
+  - Growth rate of the wavemodes
+  - `1.01`
+  -
+
+* - `-stg_u0`
+  - Convective velocity, $U_0$
+  - `0.0`
+  - `m/s`
+
+* - `-stg_mean_only`
+  - Only impose the mean velocity (no fluctutations)
+  - `false`
+  -
+
+* - `-stg_strong`
+  - Strongly enforce the STG inflow boundary condition
+  - `false`
+  -
+
+* - `-stg_fluctuating_IC`
+  - "Extrude" the fluctuations through the domain as an initial condition
+  - `false`
+  -
+
+* - `-stg_dx`
+  - Set the element size in the x direction. Default is calculated for box meshes, assuming equispaced elements.
+  -
+  - `m`
+
+* - `-stg_h_scale_factor`
+  - Scale element size for cutoff frequency calculation
+  - $1/p$
+  -
+:::
+
+### Internal Damping Layer (IDL)
+:::{note}
+IDL is not a boundary condition, but it's primary application is for use with STG.
+:::
 The STG inflow boundary condition creates large amplitude acoustic waves.
 We use an internal damping layer (IDL) to damp them out without disrupting the synthetic structures developing into natural turbulent structures.
 This implementation was inspired by {cite}`shurSTG2014`, but is implemented here as a ramped volumetric forcing term, similar to a sponge layer (see 8.4.2.4 in {cite}`colonius2023turbBC` for example).
@@ -1021,42 +723,34 @@ where $\bm{Y}' = [P - P_\mathrm{ref}, \bm{0}, 0]^T$, and $\sigma(\bm{x})$ is a l
 The damping is defined in terms of a pressure-primitive anomaly $\bm Y'$ converted to conservative source using $\partial \bm{q}/\partial \bm{Y}\rvert_{\bm{q}}$, which is linearized about the current flow state.
 $P_\mathrm{ref}$ has a default value equal to `-reference_pressure` flag, with an optional flag `-idl_pressure` to set it to a different value.
 
-### Meshing
+:::{list-table} IDL Runtime Options
+:header-rows: 1
 
-The flat plate boundary layer example has custom meshing features to better resolve the flow when using a generated box mesh.
-These meshing features modify the nodal layout of the default, equispaced box mesh and are enabled via `-mesh_transform platemesh`.
-One of those is tilting the top of the domain, allowing for it to be a outflow boundary condition.
-The angle of this tilt is controlled by `-platemesh_top_angle`.
+* - Option
+  - Description
+  - Default value
+  - Unit
 
-The primary meshing feature is the ability to grade the mesh, providing better resolution near the wall.
-There are two methods to do this; algorithmically, or specifying the node locations via a file.
-Algorithmically, a base node distribution is defined at the inlet (assumed to be $\min(x)$) and then linearly stretched/squeezed to match the slanted top boundary condition.
-Nodes are placed such that `-platemesh_Ndelta` elements are within `-platemesh_refine_height` of the wall.
-They are placed such that the element height matches a geometric growth ratio defined by `-platemesh_growth`.
-The remaining elements are then distributed from `-platemesh_refine_height` to the top of the domain linearly in logarithmic space.
+* - `-idl_decay_time`
+  - Characteristic timescale of the pressure deviance decay. The timestep is good starting point
+  - `-1` (disabled)
+  - `s`
 
-Alternatively, a file may be specified containing the locations of each node.
-The file should be newline delimited, with the first line specifying the number of points and the rest being the locations of the nodes.
-The node locations used exactly at the inlet (assumed to be $\min(x)$) and linearly stretched/squeezed to match the slanted top boundary condition.
-The file is specified via `-platemesh_y_node_locs_path`.
-If this flag is given an empty string, then the algorithmic approach will be performed.
+* - `-idl_start`
+  - Start of IDL in the x direction
+  - `0`
+  - `m`
 
-## Taylor-Green Vortex
+* - `-idl_length`
+  - Length of IDL in the positive x direction
+  - `0`
+  - `m`
 
-This problem is really just an initial condition, the [Taylor-Green Vortex](https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex):
+* - `-idl_pressure`
+  - Pressure used for IDL reference pressure
+  -  `-reference_pressure`
+  - `Pa`
+:::
 
-$$
-\begin{aligned}
-u &= V_0 \sin(\hat x) \cos(\hat y) \sin(\hat z) \\
-v &= -V_0 \cos(\hat x) \sin(\hat y) \sin(\hat z) \\
-w &= 0 \\
-p &= p_0 + \frac{\rho_0 V_0^2}{16} \left ( \cos(2 \hat x) + \cos(2 \hat y)\right) \left( \cos(2 \hat z) + 2 \right) \\
-\rho &= \frac{p}{R T_0} \\
-\end{aligned}
-$$
 
-where $\hat x = 2 \pi x / L$ for $L$ the length of the domain in that specific direction.
-This coordinate modification is done to transform a given grid onto a domain of $x,y,z \in [0, 2\pi)$.
-
-This initial condition is traditionally given for the incompressible Navier-Stokes equations.
-The reference state is selected using the `-reference_{velocity,pressure,temperature}` flags (Euclidean norm of `-reference_velocity` is used for $V_0$).
+<!-- TODO:  Move the Riemann/freestream description here-->

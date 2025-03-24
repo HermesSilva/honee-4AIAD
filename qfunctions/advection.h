@@ -100,7 +100,6 @@ CEED_QFUNCTION_HELPER int Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, c
     case ADVDIF_IC_BUBBLE_SPHERE:
     case ADVDIF_IC_BUBBLE_CYLINDER: {
       CeedScalar r = sqrt(Square(x - x0[0]) + Square(y - x0[1]) + Square(z - x0[2]));
-
       switch (context->bubble_continuity_type) {
         // original continuous, smooth shape
         case ADVDIF_BUBBLE_CONTINUITY_SMOOTH:
@@ -155,6 +154,7 @@ CEED_QFUNCTION_HELPER int Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, c
           break;
       }
     } break;
+
     case ADVDIF_IC_BOUNDARY_LAYER: {
       const CeedScalar boundary_threshold = 20 * CEED_EPSILON;
 
