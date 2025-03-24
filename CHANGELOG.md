@@ -33,3 +33,4 @@ On this page we provide a summary of the main API changes, new features and exam
 ### Breaking changes
 - Deprecate `-continue` and `-continue_time_filename`. Continuing from file controlled by `-continue_filename`
 - Change `-checkpoint_interval` default value from `10` to `0` (CGNS is the standard restart file format now)
+- Update definition of `PetscOptionsItems` to reflect new status as pointer-to-struct rather than just struct. Requires latest PETSc.
