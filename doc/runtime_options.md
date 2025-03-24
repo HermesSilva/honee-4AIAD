@@ -148,7 +148,7 @@ The following options are common among all problem types:
 
 * - `-checkpoint_interval`
   - Number of steps between writing binary checkpoints. `0` has no output, `-1` outputs final state only
-  - `10`
+  - `0`
 
 * - `-checkpoint_vtk`
   - Checkpoints include VTK (`*.vtu`) files for visualization. Consider `-ts_monitor_solution`instead.
