@@ -856,32 +856,23 @@ The flow is driven by a body force determined analytically from the fluid proper
 
 ### Laminar Boundary Layer - Blasius
 
-Simulation of a laminar boundary layer flow, with the inflow being prescribed
-by a [Blasius similarity
-solution](https://en.wikipedia.org/wiki/Blasius_boundary_layer). At the inflow,
-the velocity is prescribed by the Blasius soution profile, density is set
-constant, and temperature is allowed to float. Using `weakT: true`, density is
-allowed to float and temperature is set constant. At the outlet, a user-set
-pressure is used for pressure in the inviscid flux terms (all other inviscid
-flux terms use interior solution values). The wall is a no-slip,
-no-penetration, no-heat flux condition. The top of the domain is treated as an
-outflow and is tilted at a downward angle to ensure that flow is always exiting
-it.
+Simulation of a laminar boundary layer flow, with the inflow being prescribed by a [Blasius similarity solution](https://en.wikipedia.org/wiki/Blasius_boundary_layer).
+At the inflow, the velocity is prescribed by the Blasius soution profile, density is set constant, and temperature is allowed to float.
+Using `weakT: true`, density is allowed to float and temperature is set constant.
+At the outlet, a user-set pressure is used for pressure in the inviscid flux terms (all other inviscid flux terms use interior solution values).
+The wall is a no-slip, no-penetration, no-heat flux condition.
+The top of the domain is treated as an outflow and is tilted at a downward angle to ensure that flow is always exiting it.
 
 ### Turbulent Boundary Layer
 
-Simulating a turbulent boundary layer without modeling the turbulence requires
-resolving the turbulent flow structures. These structures may be introduced
-into the simulations either by allowing a laminar boundary layer naturally
-transition to turbulence, or imposing turbulent structures at the inflow. The
-latter approach has been taken here, specifically using a *synthetic turbulence
-generation* (STG) method.
+Simulating a turbulent boundary layer without modeling the turbulence requires resolving the turbulent flow structures.
+These structures may be introduced into the simulations either by allowing a laminar boundary layer naturally transition to turbulence, or imposing turbulent structures at the inflow.
+The latter approach has been taken here, specifically using a *synthetic turbulence generation* (STG) method.
 
 #### Synthetic Turbulence Generation (STG) Boundary Condition
 
-We use the STG method described in
-{cite}`shurSTG2014`. Below follows a re-description of the formulation to match
-the present notation, and then a description of the implementation and usage.
+We use the STG method described in {cite}`shurSTG2014`.
+Below follows a re-description of the formulation to match the present notation, and then a description of the implementation and usage.
 
 ##### Equation Formulation
 
@@ -896,18 +887,13 @@ $$
 \end{aligned}
 $$
 
-Here, we define the number of wavemodes $N$, set of random numbers $ \{\bm{\sigma}^n,
-\bm{d}^n, \phi^n\}_{n=1}^N$, the Cholesky decomposition of the Reynolds stress
-tensor $\bm{C}$ (such that $\bm{R} = \bm{CC}^T$ ), bulk velocity $U_0$,
-wavemode amplitude $q^n$, wavemode frequency $\kappa^n$, and $\kappa_{\min} =
-0.5 \min_{\bm{x}} (\kappa_e)$.
+Here, we define the number of wavemodes $N$, set of random numbers $ \{\bm{\sigma}^n, \bm{d}^n, \phi^n\}_{n=1}^N$, the Cholesky decomposition of the Reynolds stress tensor $\bm{C}$ (such that $\bm{R} = \bm{CC}^T$ ), bulk velocity $U_0$, wavemode amplitude $q^n$, wavemode frequency $\kappa^n$, and $\kappa_{\min} = 0.5 \min_{\bm{x}} (\kappa_e)$.
 
 $$
 \kappa_e = \frac{2\pi}{\min(2d_w, 3.0 l_t)}
 $$
 
-where $l_t$ is the turbulence length scale, and $d_w$ is the distance to the
-nearest wall.
+where $l_t$ is the turbulence length scale, and $d_w$ is the distance to the nearest wall.
 
 
 The set of wavemode frequencies is defined by a geometric distribution:
@@ -929,24 +915,18 @@ f_\eta = \exp \left[-(12\kappa /\kappa_\eta)^2 \right], \quad
 f_\mathrm{cut} = \exp \left( - \left [ \frac{4\max(\kappa-0.9\kappa_\mathrm{cut}, 0)}{\kappa_\mathrm{cut}} \right]^3 \right)
 $$
 
-$\kappa_\eta$ represents turbulent dissipation frequency, and is given as $2\pi
-(\nu^3/\varepsilon)^{-1/4}$ with $\nu$ the kinematic viscosity and
-$\varepsilon$ the turbulent dissipation. $\kappa_\mathrm{cut}$ approximates the
-effective cutoff frequency of the mesh (viewing the mesh as a filter on
-solution over $\Omega$) and is given by:
+$\kappa_\eta$ represents turbulent dissipation frequency, and is given as $2\pi (\nu^3/\varepsilon)^{-1/4}$ with $\nu$ the kinematic viscosity and $\varepsilon$ the turbulent dissipation.
+$\kappa_\mathrm{cut}$ approximates the effective cutoff frequency of the mesh (viewing the mesh as a filter on solution over $\Omega$) and is given by:
 
 $$
 \kappa_\mathrm{cut} = \frac{2\pi}{ 2\min\{ [\max(h_y, h_z, 0.3h_{\max}) + 0.1 d_w], h_{\max} \} }
 $$
 
-The enforcement of the boundary condition is identical to the blasius inflow;
-it weakly enforces velocity, with the option of weakly enforcing either density
-or temperature using the the `-weakT` flag.
+The enforcement of the boundary condition is identical to the blasius inflow; it weakly enforces velocity, with the option of weakly enforcing either density or temperature using the the `-weakT` flag.
 
 ##### Initialization Data Flow
 
-Data flow for initializing function (which creates the context data struct) is
-given below:
+Data flow for initializing function (which creates the context data struct) is given below:
 ```{mermaid}
 flowchart LR
     subgraph STGInflow.dat
@@ -992,30 +972,26 @@ flowchart LR
     Rij --Calc--> Cij[C_ij]
 ```
 
-This is done once at runtime. The spatially-varying terms are then evaluated at
-each quadrature point on-the-fly, either by interpolation (for $l_t$,
-$\varepsilon$, $C_{ij}$, and $\overline{\bm u}$) or by calculation (for $q^n$).
+This is done once at runtime.
+The spatially-varying terms are then evaluated at each quadrature point on-the-fly, either by interpolation (for $l_t$, $\varepsilon$, $C_{ij}$, and $\overline{\bm u}$) or by calculation (for $q^n$).
 
 The `STGInflow.dat` file is a table of values at given distances from the wall.
-These values are then interpolated to a physical location (node or quadrature
-point). It has the following format:
+These values are then interpolated to a physical location (node or quadrature point). It has the following format:
 ```
 [Total number of locations] 14
 [d_w] [u_1] [u_2] [u_3] [R_11] [R_22] [R_33] [R_12] [R_13] [R_23] [sclr_1] [sclr_2] [l_t] [eps]
 ```
-where each `[  ]` item is a number in scientific notation (ie. `3.1415E0`), and `sclr_1` and
-`sclr_2` are reserved for turbulence modeling variables. They are not used in
-this example.
+where each `[  ]` item is a number in scientific notation (ie. `3.1415E0`), and `sclr_1` and `sclr_2` are reserved for turbulence modeling variables.
+They are not used in this example.
 
-The `STGRand.dat` file is the table of the random number set, $\{\bm{\sigma}^n,
-\bm{d}^n, \phi^n\}_{n=1}^N$. It has the format:
+The `STGRand.dat` file is the table of the random number set, $\{\bm{\sigma}^n, \bm{d}^n, \phi^n\}_{n=1}^N$.
+It has the format:
 ```
 [Number of wavemodes] 7
 [d_1] [d_2] [d_3] [phi] [sigma_1] [sigma_2] [sigma_3]
 ```
 
-The following table is presented to help clarify the dimensionality of the
-numerous terms in the STG formulation.
+The following table is presented to help clarify the dimensionality of the numerous terms in the STG formulation.
 
 | Math                                           | Label    | $f(\bm{x})$?   | $f(n)$?   |
 | -----------------                              | -------- | -------------- | --------- |
@@ -1052,24 +1028,18 @@ These meshing features modify the nodal layout of the default, equispaced box me
 One of those is tilting the top of the domain, allowing for it to be a outflow boundary condition.
 The angle of this tilt is controlled by `-platemesh_top_angle`.
 
-The primary meshing feature is the ability to grade the mesh, providing better
-resolution near the wall. There are two methods to do this; algorithmically, or
-specifying the node locations via a file. Algorithmically, a base node
-distribution is defined at the inlet (assumed to be $\min(x)$) and then
-linearly stretched/squeezed to match the slanted top boundary condition. Nodes
-are placed such that `-platemesh_Ndelta` elements are within
-`-platemesh_refine_height` of the wall. They are placed such that the element
-height matches a geometric growth ratio defined by `-platemesh_growth`. The
-remaining elements are then distributed from `-platemesh_refine_height` to the
-top of the domain linearly in logarithmic space.
+The primary meshing feature is the ability to grade the mesh, providing better resolution near the wall.
+There are two methods to do this; algorithmically, or specifying the node locations via a file.
+Algorithmically, a base node distribution is defined at the inlet (assumed to be $\min(x)$) and then linearly stretched/squeezed to match the slanted top boundary condition.
+Nodes are placed such that `-platemesh_Ndelta` elements are within `-platemesh_refine_height` of the wall.
+They are placed such that the element height matches a geometric growth ratio defined by `-platemesh_growth`.
+The remaining elements are then distributed from `-platemesh_refine_height` to the top of the domain linearly in logarithmic space.
 
 Alternatively, a file may be specified containing the locations of each node.
-The file should be newline delimited, with the first line specifying the number
-of points and the rest being the locations of the nodes. The node locations
-used exactly at the inlet (assumed to be $\min(x)$) and linearly
-stretched/squeezed to match the slanted top boundary condition. The file is
-specified via `-platemesh_y_node_locs_path`. If this flag is given an empty
-string, then the algorithmic approach will be performed.
+The file should be newline delimited, with the first line specifying the number of points and the rest being the locations of the nodes.
+The node locations used exactly at the inlet (assumed to be $\min(x)$) and linearly stretched/squeezed to match the slanted top boundary condition.
+The file is specified via `-platemesh_y_node_locs_path`.
+If this flag is given an empty string, then the algorithmic approach will be performed.
 
 ## Taylor-Green Vortex
 
