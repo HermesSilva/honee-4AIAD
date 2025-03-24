@@ -77,13 +77,19 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
 
   PetscFunctionBeginUser;
   {
-    PetscInt num_options;
+    PetscInt  num_options;
+    PetscBool help_set;
 
-    PetscCall(PetscOptionsLeftGet(NULL, &num_options, NULL, NULL));
-    PetscCheck(num_options > 0, comm, PETSC_ERR_USER_INPUT,
-               "Command line options required."
-               " Please consult the documentation to see which options are required.");
-    PetscCall(PetscOptionsLeftRestore(NULL, &num_options, NULL, NULL));
+    PetscCall(PetscOptionsHasHelp(NULL, &help_set));
+    if (help_set) {
+      PetscCall(PetscOptionsSetValue(NULL, "-ts_max_steps", "0"));
+    } else {
+      PetscCall(PetscOptionsLeftGet(NULL, &num_options, NULL, NULL));
+      PetscCheck(num_options > 0, comm, PETSC_ERR_USER_INPUT,
+                 "Command line options required."
+                 " Please consult the documentation to see which options are required.");
+      PetscCall(PetscOptionsLeftRestore(NULL, &num_options, NULL, NULL));
+    }
   }
 
   PetscCall(RegisterProblems_NS(app_ctx));
