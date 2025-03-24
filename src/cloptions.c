@@ -108,7 +108,7 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
   app_ctx->viz_refine = 0;
   PetscCall(PetscOptionsInt("-viz_refine", "Regular refinement levels for visualization", NULL, app_ctx->viz_refine, &app_ctx->viz_refine, NULL));
 
-  app_ctx->checkpoint_interval = 10;
+  app_ctx->checkpoint_interval = 0;
   app_ctx->checkpoint_vtk      = PETSC_FALSE;
   PetscCall(PetscOptionsDeprecated("-output_freq", "-checkpoint_interval", "libCEED 0.11.1", "Use -checkpoint_vtk true to include VTK output"));
   PetscCall(PetscOptionsInt("-output_freq", "Frequency of output, in number of steps", NULL, app_ctx->checkpoint_interval,
