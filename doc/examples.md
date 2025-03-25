@@ -382,19 +382,33 @@ This problem is really just an initial condition, the [Taylor-Green Vortex](http
 
 $$
 \begin{aligned}
-u &= V_0 \sin(\hat x) \cos(\hat y) \sin(\hat z) \\
-v &= -V_0 \cos(\hat x) \sin(\hat y) \sin(\hat z) \\
-w &= 0 \\
+u &= V'_x + V \sin(\hat x) \cos(\hat y) \sin(\hat z) \\
+v &= V'_y - V \cos(\hat x) \sin(\hat y) \sin(\hat z) \\
+w &= V'_z\\
 p &= p_0 + \frac{\rho_0 V_0^2}{16} \left ( \cos(2 \hat x) + \cos(2 \hat y)\right) \left( \cos(2 \hat z) + 2 \right) \\
 \rho &= \frac{p}{R T_0} \\
 \end{aligned}
 $$
 
-where $\hat x = 2 \pi x / L$ for $L$ the length of the domain in that specific direction.
-This coordinate modification is done to transform a given grid onto a domain of $x,y,z \in [0, 2\pi)$.
+where $\hat x = 2 \pi x / L$ for $L$ the length of the domain in that specific direction, $V$ is the magnitude of the vortex velocity, and $V'_i$ is the background velocity that (optionally) advects the initial condition.
+The coordinate modification is done to transform a given grid onto a domain of $x,y,z \in [0, 2\pi)$.
 
 This initial condition is traditionally given for the incompressible Navier-Stokes equations.
-The reference state is selected using the `-reference_{velocity,pressure,temperature}` flags (Euclidean norm of `-reference_velocity` is used for $V_0$).
+The reference state is selected using the `-reference_{velocity,pressure,temperature}` flags (Euclidean norm of `-reference_velocity` is used for $V$).
+
+:::{list-table} Taylor-Green Vortex Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+  - Unit
+
+* - `-taylorgreen_background_velocity`
+  - Background velocity added to Taylor-Green initial condition
+  - `0,0,0`
+  - `m/s`
+:::
 
 ## Compressible Euler Equations
 

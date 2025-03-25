@@ -26,6 +26,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `-mass_ksp_view_pre_ts_solve` to view the mass KSP once before `TSSolve()` is run
 - Spanwise statistics writes a logging message when a file is written, which includes post-processing information (e.g. time span for the statistics)
 - Add `-ts_eval_solutions_view` to output solutions gathered via `-ts_eval_times`
+- Add `-taylorgreen_background_velocity` to add a background velocity to the initial condition
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
