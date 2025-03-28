@@ -40,7 +40,24 @@ workflow:
 
 
 # ----------------------------------------------------------------------------------------
-# Test formatting and static analysis
+# Test formatting
+# ----------------------------------------------------------------------------------------
+noether-format:
+  stage: test:stage-lint
+  extends: 
+    - .test-basic
+  tags:
+    - noether
+    - shell
+  script:
+    - rm -f .SUCCESS
+    - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-15 && $CLANG_FORMAT --version
+    - make -j$NPROC_CPU format && git diff --color=always --exit-code
+    - touch .SUCCESS
+
+
+# ----------------------------------------------------------------------------------------
+# Test static analysis
 # ----------------------------------------------------------------------------------------
 noether-lint:
   stage: test:stage-lint
@@ -68,9 +85,6 @@ noether-lint:
     # make with Werror, Wall, supress loop vectorization warnings
     - echo "-------------- make Werror ---------"
     - PEDANTIC=1 PEDANTICFLAGS="-Werror -Wall -Wno-pass-failed" make -j$NPROC_CPU
-    # make format
-    - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-15 && $CLANG_FORMAT --version
-    - make -j$NPROC_CPU format && git diff --color=always --exit-code
     # Clang-tidy
     - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-15 && $CLANG_TIDY --version
     - PETSC_ARCH=arch-serial-hip make -j$NPROC_CPU tidy
