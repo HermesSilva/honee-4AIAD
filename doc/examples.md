@@ -546,7 +546,7 @@ There are three different definitions for $\bm{u}$:
 
 - **Boundary Layer**
 
-  This case has a linear velocity profile with only the y component set: $u_y = y / L_y$. 
+  This case has a linear velocity profile with only the y component set: $u_y = y / L_y$.
   It starts at 0 for $y=0$ and then increases to 1 at the top of the domain.
 
 ### Initial Condition options
