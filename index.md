@@ -10,8 +10,10 @@
 :maxdepth: 2
 
 doc/intro
-doc/runtime_options
 doc/theory
+doc/auxiliary
+doc/runtime_options
+doc/examples
 Contributing <CONTRIBUTING>
 Release Notes <CHANGELOG>
 ```
