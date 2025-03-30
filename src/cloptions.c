@@ -178,18 +178,6 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
     strncpy(app_ctx->problem_name, problem_name, 16);
   }
 
-  // Statistics Options
-  app_ctx->turb_spanstats_collect_interval = 1;
-  PetscCall(PetscOptionsInt("-ts_monitor_turbulence_spanstats_collect_interval", "Number of timesteps between statistics collection", NULL,
-                            app_ctx->turb_spanstats_collect_interval, &app_ctx->turb_spanstats_collect_interval, NULL));
-
-  app_ctx->turb_spanstats_viewer_interval = -1;
-  PetscCall(PetscOptionsInt("-ts_monitor_turbulence_spanstats_viewer_interval", "Number of timesteps between statistics viewer writing", NULL,
-                            app_ctx->turb_spanstats_viewer_interval, &app_ctx->turb_spanstats_viewer_interval, NULL));
-
-  PetscCall(PetscOptionsViewer("-ts_monitor_turbulence_spanstats_viewer", "Viewer for the statistics", NULL, &app_ctx->turb_spanstats_viewer,
-                               &app_ctx->turb_spanstats_viewer_format, &app_ctx->turb_spanstats_enable));
-
   PetscCall(PetscOptionsViewer("-ts_monitor_wall_force", "Viewer for force on each (no-slip) wall", NULL, &app_ctx->wall_forces.viewer,
                                &app_ctx->wall_forces.viewer_format, NULL));
 

@@ -42,8 +42,8 @@ gravity: 0,0,0
 #   inflow_path: "./STGInflow_blasius.dat"
 #   mean_only: true
 
-# ts_monitor_turbulence_spanstats:
+# ts_monitor_spanstats_turbulence: cgns:stats-%d.cgns
+# ts_monitor_spanstats_turbulence:
 #   collect_interval: 1
-#   viewer_interval: 5
-#   viewer: cgns:stats-%d.cgns
-#   viewer_cgns_batch_size: 1
+#   interval: 5
+#   cgns_batch_size: 1

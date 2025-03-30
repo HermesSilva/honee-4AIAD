@@ -37,6 +37,7 @@ int main(int argc, char **argv) {
   honee->app_ctx           = app_ctx;
   honee->units             = units;
   honee->phys              = phys_ctx;
+  honee->problem_data      = problem;
   problem->set_bc_from_ics = PETSC_TRUE;
   honee->comm = comm = PETSC_COMM_WORLD;
   honee->start_time  = time(NULL);
@@ -176,7 +177,6 @@ int main(int argc, char **argv) {
   // Destroy libCEED objects
   // ---------------------------------------------------------------------------
 
-  PetscCall(TurbulenceStatisticsDestroy(honee->spanstats));
   PetscCall(NodalProjectionDataDestroy(honee->grad_velo_proj));
   PetscCall(SgsDDDataDestroy(honee->sgs_dd_data));
   PetscCall(DifferentialFilterDataDestroy(honee->diff_filter));
@@ -263,7 +263,6 @@ int main(int argc, char **argv) {
   PetscCall(PetscFree(app_ctx->amat_type));
   PetscCall(PetscFree(app_ctx->wall_forces.walls));
   PetscCall(PetscViewerDestroy(&app_ctx->wall_forces.viewer));
-  PetscCall(PetscViewerDestroy(&app_ctx->turb_spanstats_viewer));
 
   // -- Structs
   for (PetscInt i = 0; i < problem->num_bc_defs; i++) {

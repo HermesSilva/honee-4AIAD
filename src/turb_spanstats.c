@@ -18,8 +18,8 @@
 #include <petsc_ops.h>
 
 // Create CeedOperator for statistics collection
-static PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, SpanStatsSetupData stats_data, ProblemData problem) {
-  SpanStatsData               spanstats      = honee->spanstats;
+static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data, ProblemData problem) {
+  Ceed                        ceed           = honee->ceed;
   CeedInt                     num_comp_stats = spanstats->num_comp_stats, num_comp_x, num_comp_q, q_data_size;
   PetscInt                    dim, label_value = 0;
   Turbulence_SpanStatsContext collect_ctx;
@@ -105,8 +105,8 @@ static PetscErrorCode CreateStatisticCollectionOperator(Ceed ceed, Honee honee, 
 }
 
 // Creates operator for calculating error of method of manufactured solution (MMS) test
-PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, SpanStatsSetupData stats_data) {
-  SpanStatsData       spanstats      = honee->spanstats;
+static PetscErrorCode SetupMMSErrorChecking(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data) {
+  Ceed                ceed           = honee->ceed;
   CeedInt             num_comp_stats = spanstats->num_comp_stats, num_comp_x, q_data_size;
   CeedQFunction       qf_error;
   CeedOperator        op_error;
@@ -147,24 +147,25 @@ PetscErrorCode SetupMMSErrorChecking(Ceed ceed, Honee honee, SpanStatsSetupData 
 }
 
 // Setup for statistics collection
-PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData problem) {
-  SpanStatsSetupData stats_data;
-  PetscLogStage      stage_stats_setup;
-  const char        *prefix = "ts_monitor_turbulence_spanstats";
+PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *ctx) {
+  Honee              honee;
+  SpanStatsSetupData stats_setup_data;
+  SpanStatsCtx       spanstats;
+  const char        *prefix = "ts_monitor_spanstats_turbulence_";
+  PetscBool          is_ascii;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscLogStageGetId("Stats Setup", &stage_stats_setup));
-  if (stage_stats_setup == -1) PetscCall(PetscLogStageRegister("Stats Setup", &stage_stats_setup));
-  PetscCall(PetscLogStagePush(stage_stats_setup));
-  PetscCall(PetscNew(&honee->spanstats));
+  PetscCall(TSGetApplicationContext(ts, &honee));
+  PetscCall(PetscObjectTypeCompare((PetscObject)ctx->viewer, PETSCVIEWERASCII, &is_ascii));
+  PetscCheck(!is_ascii || honee->app_ctx->test_type != TESTTYPE_NONE, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP,
+             "Turbulence spanwise statistics does not support ASCII viewers");
 
-  // Create parent DM
-  PetscCall(CreateSpanwiseStatsDM(honee, honee->spanstats, honee->app_ctx->degree, TURB_NUM_COMPONENTS, prefix));
+  PetscCall(SpanwiseStatisticsSetupInitialize(honee, honee->app_ctx->degree, TURB_NUM_COMPONENTS, prefix, &stats_setup_data, &spanstats));
 
   {  // Create Section for data
     PetscSection section;
 
-    PetscCall(DMGetLocalSection(honee->spanstats->dm, &section));
+    PetscCall(DMGetLocalSection(spanstats->dm, &section));
     PetscCall(PetscSectionSetFieldName(section, 0, ""));
     PetscCall(PetscSectionSetComponentName(section, 0, TURB_MEAN_DENSITY, "MeanDensity"));
     PetscCall(PetscSectionSetComponentName(section, 0, TURB_MEAN_PRESSURE, "MeanPressure"));
@@ -190,40 +191,31 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData pro
     PetscCall(PetscSectionSetComponentName(section, 0, TURB_MEAN_VELOCITY_Z, "MeanVelocityZ"));
   }
 
-  // Create necessary CeedObjects for setting up statistics
-  PetscCall(SpanwiseStatsSetupDataCreate(honee, &stats_data));
-
-  // Create SF for communicating child data back their respective parents
-  PetscCall(CreateSpanwiseStatsSF(honee, stats_data, honee->dm, honee->spanstats->dm, &honee->spanstats->sf));
-
   // Create CeedOperators for statistics collection
-  PetscCall(CreateStatisticCollectionOperator(ceed, honee, stats_data, problem));
+  PetscCall(CreateStatisticCollectionOperator(honee, spanstats, stats_setup_data, honee->problem_data));
 
-  // Setup KSP and Mat for L^2 projection of statistics
-  PetscCall(SetupL2ProjectionSpanwiseStats(honee, honee->spanstats, stats_data, prefix));
-
-  PetscCall(PetscOptionsGetBool(NULL, NULL, "-ts_monitor_turbulence_spanstats_mms", &honee->spanstats->do_mms_test, NULL));
-  if (honee->spanstats->do_mms_test) {
-    PetscCall(SetupMMSErrorChecking(ceed, honee, stats_data));
+  PetscCall(PetscOptionsGetBool(NULL, NULL, "-ts_monitor_spanstats_turbulence_mms", &spanstats->do_mms_test, NULL));
+  if (spanstats->do_mms_test) {
+    PetscCall(SetupMMSErrorChecking(honee, spanstats, stats_setup_data));
   }
 
-  PetscCall(PetscViewerSetOptionsPrefix(honee->app_ctx->turb_spanstats_viewer, prefix));
-  PetscCall(PetscViewerSetFromOptions(honee->app_ctx->turb_spanstats_viewer));
+  ctx->data         = spanstats;
+  ctx->data_destroy = SpanStatsCtxDestroy;
 
-  PetscCall(SpanwiseStatsSetupDataDestroy(stats_data));
-  PetscCall(PetscLogStagePop());
+  PetscCall(SpanwiseStatisticsSetupFinalize(ts, honee, spanstats, ctx, &stats_setup_data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // TSMonitor for the statistics collection and processing
-PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx) {
-  Honee             honee = (Honee)ctx;
+PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx) {
+  Honee             honee;
   Vec               stats;
   TSConvergedReason reason;
-  SpanStatsData     spanstats = honee->spanstats;
-  PetscInt collect_interval = honee->app_ctx->turb_spanstats_collect_interval, viewer_interval = honee->app_ctx->turb_spanstats_viewer_interval;
+  SpanStatsCtx      spanstats        = ctx->data;
+  PetscInt          collect_interval = spanstats->collect_interval, viewer_interval = ctx->view_interval;
 
   PetscFunctionBeginUser;
+  PetscCall(TSGetApplicationContext(ts, &honee));
   PetscCall(TSGetConvergedReason(ts, &reason));
   // Do not collect or process on the first step of the run (ie. on the initial condition)
   if (steps == honee->app_ctx->cont_steps) PetscFunctionReturn(PETSC_SUCCESS);
@@ -231,23 +223,23 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
   PetscBool run_processing_and_viewer = (steps % viewer_interval == 0 && viewer_interval != -1) || reason != TS_CONVERGED_ITERATING;
 
   if (steps % collect_interval == 0 || run_processing_and_viewer) {
-    PetscCall(CollectSpanwiseStatistics(honee, spanstats, solution_time, Q));
+    PetscCall(SpanwiseStatisticsCollect(honee, spanstats, solution_time, Q));
 
     if (run_processing_and_viewer) {
       PetscCall(DMSetOutputSequenceNumber(spanstats->dm, steps, solution_time));
       PetscCall(DMGetGlobalVector(spanstats->dm, &stats));
-      PetscCall(ProcessSpanwiseStatistics(honee, spanstats, stats));
+      PetscCall(SpanwiseStatisticsProcess(honee, spanstats, stats));
       if (honee->app_ctx->test_type == TESTTYPE_NONE) {
-        PetscCall(PetscViewerPushFormat(honee->app_ctx->turb_spanstats_viewer, honee->app_ctx->turb_spanstats_viewer_format));
-        PetscCall(VecView(stats, honee->app_ctx->turb_spanstats_viewer));
-        PetscCall(PetscViewerPopFormat(honee->app_ctx->turb_spanstats_viewer));
+        PetscCall(PetscViewerPushFormat(ctx->viewer, ctx->format));
+        PetscCall(VecView(stats, ctx->viewer));
+        PetscCall(PetscViewerPopFormat(ctx->viewer));
         {
           PetscInt    tab_level;
           PetscViewer viewer = PETSC_VIEWER_STDOUT_(PetscObjectComm((PetscObject)ts));
           CeedScalar  second = honee->units->second;
           const char *filename;
 
-          PetscCall(PetscViewerFileGetName(honee->app_ctx->turb_spanstats_viewer, &filename););
+          PetscCall(PetscViewerFileGetName(ctx->viewer, &filename););
           PetscCall(PetscObjectGetTabLevel((PetscObject)ts, &tab_level));
           PetscCall(PetscViewerASCIIAddTab(viewer, tab_level + 1));
           if (filename) {
@@ -256,8 +248,8 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
                 filename, spanstats->initial_solution_time / second, solution_time / second, spanstats->initial_solution_step, steps));
           } else {
             PetscCall(PetscViewerASCIIPrintf(
-                viewer, "Spanwise statistics file written for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
-                spanstats->initial_solution_time / second, solution_time / second, spanstats->initial_solution_step, steps));
+                viewer, "Spanwise statistics (%s) file written for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
+                spanstats->prefix, spanstats->initial_solution_time / second, solution_time / second, spanstats->initial_solution_step, steps));
           }
           PetscCall(PetscViewerASCIISubtractTab(viewer, tab_level + 1));
         }
@@ -277,22 +269,5 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
       PetscCall(DMRestoreGlobalVector(spanstats->dm, &stats));
     }
   }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-PetscErrorCode TurbulenceStatisticsDestroy(SpanStatsData spanstats) {
-  PetscFunctionBeginUser;
-  if (spanstats == NULL) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(VecDestroy(&spanstats->Child_Stats_loc));
-  PetscCall(VecDestroy(&spanstats->Parent_Stats_loc));
-
-  PetscCall(OperatorApplyContextDestroy(spanstats->op_stats_collect_ctx));
-  PetscCall(OperatorApplyContextDestroy(spanstats->op_proj_rhs_ctx));
-  PetscCall(OperatorApplyContextDestroy(spanstats->mms_error_ctx));
-
-  PetscCall(KSPDestroy(&spanstats->ksp));
-  PetscCall(PetscSFDestroy(&spanstats->sf));
-  PetscCall(DMDestroy(&spanstats->dm));
-  PetscCall(PetscFree(spanstats));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
