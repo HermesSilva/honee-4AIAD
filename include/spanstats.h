@@ -17,11 +17,11 @@ typedef struct {
   CeedVector          x_coord;
 } *SpanStatsSetupData;
 
-PetscErrorCode CreateSpanwiseStatsDM(void *honee_ctx, PetscInt degree, PetscInt num_comps, const char *prefix);
+PetscErrorCode CreateSpanwiseStatsDM(void *honee_ctx, void *spanstats_ctx, PetscInt degree, PetscInt num_comps, const char *prefix);
 PetscErrorCode SpanwiseStatsSetupDataCreate(void *honee_ctx, SpanStatsSetupData *stats_data);
 PetscErrorCode SpanwiseStatsSetupDataDestroy(SpanStatsSetupData data);
 PetscErrorCode CreateSpanwiseStatsSF(void *honee_ctx, SpanStatsSetupData stats_data, DM parentdm, DM childdm, PetscSF *statssf);
-PetscErrorCode SetupL2ProjectionSpanwiseStats(void *honee_ctx, SpanStatsSetupData stats_data, const char *prefix);
+PetscErrorCode SetupL2ProjectionSpanwiseStats(void *honee_ctx, void *spanstats_ctx, SpanStatsSetupData stats_data, const char *prefix);
 
-PetscErrorCode CollectSpanwiseStatistics(void *honee_ctx, PetscScalar solution_time, Vec Q);
-PetscErrorCode ProcessSpanwiseStatistics(void *honee_ctx, Vec stats);
+PetscErrorCode CollectSpanwiseStatistics(void *honee_ctx, void *spanstats_ctx, PetscScalar solution_time, Vec Q);
+PetscErrorCode ProcessSpanwiseStatistics(void *honee_ctx, void *spanstats_ctx, Vec stats);

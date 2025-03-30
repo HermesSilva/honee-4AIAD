@@ -159,7 +159,7 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData pro
   PetscCall(PetscNew(&honee->spanstats));
 
   // Create parent DM
-  PetscCall(CreateSpanwiseStatsDM(honee, honee->app_ctx->degree, TURB_NUM_COMPONENTS, prefix));
+  PetscCall(CreateSpanwiseStatsDM(honee, honee->spanstats, honee->app_ctx->degree, TURB_NUM_COMPONENTS, prefix));
 
   {  // Create Section for data
     PetscSection section;
@@ -200,7 +200,7 @@ PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData pro
   PetscCall(CreateStatisticCollectionOperator(ceed, honee, stats_data, problem));
 
   // Setup KSP and Mat for L^2 projection of statistics
-  PetscCall(SetupL2ProjectionSpanwiseStats(honee, stats_data, prefix));
+  PetscCall(SetupL2ProjectionSpanwiseStats(honee, honee->spanstats, stats_data, prefix));
 
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-ts_monitor_turbulence_spanstats_mms", &honee->spanstats->do_mms_test, NULL));
   if (honee->spanstats->do_mms_test) {
@@ -231,12 +231,12 @@ PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal s
   PetscBool run_processing_and_viewer = (steps % viewer_interval == 0 && viewer_interval != -1) || reason != TS_CONVERGED_ITERATING;
 
   if (steps % collect_interval == 0 || run_processing_and_viewer) {
-    PetscCall(CollectSpanwiseStatistics(honee, solution_time, Q));
+    PetscCall(CollectSpanwiseStatistics(honee, spanstats, solution_time, Q));
 
     if (run_processing_and_viewer) {
       PetscCall(DMSetOutputSequenceNumber(spanstats->dm, steps, solution_time));
       PetscCall(DMGetGlobalVector(spanstats->dm, &stats));
-      PetscCall(ProcessSpanwiseStatistics(honee, stats));
+      PetscCall(ProcessSpanwiseStatistics(honee, spanstats, stats));
       if (honee->app_ctx->test_type == TESTTYPE_NONE) {
         PetscCall(PetscViewerPushFormat(honee->app_ctx->turb_spanstats_viewer, honee->app_ctx->turb_spanstats_viewer_format));
         PetscCall(VecView(stats, honee->app_ctx->turb_spanstats_viewer));

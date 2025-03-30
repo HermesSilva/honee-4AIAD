@@ -15,9 +15,9 @@
 #include <navierstokes.h>
 #include <petsc_ops.h>
 
-PetscErrorCode CreateSpanwiseStatsDM(void *honee_ctx, PetscInt degree, PetscInt num_comps, const char *prefix) {
+PetscErrorCode CreateSpanwiseStatsDM(void *honee_ctx, void *spanstats_ctx, PetscInt degree, PetscInt num_comps, const char *prefix) {
   Honee         honee     = honee_ctx;
-  SpanStatsData spanstats = honee->spanstats;
+  SpanStatsData spanstats = spanstats_ctx;
   PetscReal     domain_min[3], domain_max[3];
   PetscLogStage stage_stats_setup;
   MPI_Comm      comm = PetscObjectComm((PetscObject)honee->dm);
@@ -262,10 +262,10 @@ PetscErrorCode CreateSpanwiseStatsSF(void *honee_ctx, SpanStatsSetupData stats_d
 }
 
 // @brief Setup RHS and LHS for L^2 projection of statistics
-PetscErrorCode SetupL2ProjectionSpanwiseStats(void *honee_ctx, SpanStatsSetupData stats_data, const char *prefix) {
+PetscErrorCode SetupL2ProjectionSpanwiseStats(void *honee_ctx, void *spanstats_ctx, SpanStatsSetupData stats_data, const char *prefix) {
   Honee               honee     = honee_ctx;
   Ceed                ceed      = honee->ceed;
-  SpanStatsData       spanstats = honee->spanstats;
+  SpanStatsData       spanstats = spanstats_ctx;
   CeedOperator        op_mass, op_proj_rhs;
   CeedQFunction       qf_mass, qf_stats_proj;
   CeedInt             q_data_size, num_comp_stats = spanstats->num_comp_stats;
@@ -328,9 +328,9 @@ PetscErrorCode SetupL2ProjectionSpanwiseStats(void *honee_ctx, SpanStatsSetupDat
 }
 
 // Collect statistics based on the solution Q
-PetscErrorCode CollectSpanwiseStatistics(void *honee_ctx, PetscScalar solution_time, Vec Q) {
+PetscErrorCode CollectSpanwiseStatistics(void *honee_ctx, void *spanstats_ctx, PetscScalar solution_time, Vec Q) {
   Honee         honee     = honee_ctx;
-  SpanStatsData spanstats = honee->spanstats;
+  SpanStatsData spanstats = spanstats_ctx;
 
   PetscFunctionBeginUser;
   PetscLogStage stage_stats_collect;
@@ -350,9 +350,9 @@ PetscErrorCode CollectSpanwiseStatistics(void *honee_ctx, PetscScalar solution_t
 }
 
 // Process the child statistics into parent statistics and project them onto stats
-PetscErrorCode ProcessSpanwiseStatistics(void *honee_ctx, Vec stats) {
+PetscErrorCode ProcessSpanwiseStatistics(void *honee_ctx, void *spanstats_ctx, Vec stats) {
   Honee              honee     = honee_ctx;
-  SpanStatsData      spanstats = honee->spanstats;
+  SpanStatsData      spanstats = spanstats_ctx;
   const PetscScalar *child_stats;
   PetscScalar       *parent_stats;
   MPI_Datatype       unit;
