@@ -16,14 +16,6 @@
  * Change of coordinate matrix: dxdX_{i,j} = x_{i,j} (indicial notation)
  * Inverse of change of coordinate matrix: dXdx_{i,j} = (detJ^-1) * X_{i,j}
  *
- * Determinant of Jacobian:
- *   detJ = J11*A11 + J21*A12 + J31*A13
- *     Jij = Jacobian entry ij
- *     Aij = Adjugate ij
- *
- * Inverse of Jacobian:
- *   dXdx_i,j = Aij / detJ
- *
  * @param[in]  Q        Number of quadrature points
  * @param[in]  i        Current quadrature point
  * @param[in]  dxdX_q   Mapping Jacobian (gradient of the coordinate space)
@@ -35,20 +27,7 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_3D(CeedInt Q, CeedInt i, const 
   CeedScalar dxdX[3][3];
 
   GradUnpack3(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
-  // Compute Adjugate of dxdX
-  dXdx[0][0] = dxdX[1][1] * dxdX[2][2] - dxdX[1][2] * dxdX[2][1];
-  dXdx[0][1] = dxdX[0][2] * dxdX[2][1] - dxdX[0][1] * dxdX[2][2];
-  dXdx[0][2] = dxdX[0][1] * dxdX[1][2] - dxdX[0][2] * dxdX[1][1];
-  dXdx[1][0] = dxdX[1][2] * dxdX[2][0] - dxdX[1][0] * dxdX[2][2];
-  dXdx[1][1] = dxdX[0][0] * dxdX[2][2] - dxdX[0][2] * dxdX[2][0];
-  dXdx[1][2] = dxdX[0][2] * dxdX[1][0] - dxdX[0][0] * dxdX[1][2];
-  dXdx[2][0] = dxdX[1][0] * dxdX[2][1] - dxdX[1][1] * dxdX[2][0];
-  dXdx[2][1] = dxdX[0][1] * dxdX[2][0] - dxdX[0][0] * dxdX[2][1];
-  dXdx[2][2] = dxdX[0][0] * dxdX[1][1] - dxdX[0][1] * dxdX[1][0];
-
-  const CeedScalar detJ = dxdX[0][0] * dXdx[0][0] + dxdX[1][0] * dXdx[0][1] + dxdX[2][0] * dXdx[0][2];
-  ScaleN((CeedScalar *)dXdx, 1 / detJ, 9);
-  if (detJ_ptr) *detJ_ptr = detJ;
+  MatInv3(dxdX, dXdx, detJ_ptr);
 }
 
 /**
@@ -58,14 +37,6 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_3D(CeedInt Q, CeedInt i, const 
  * Physical (current) coordinates: x
  * Change of coordinate matrix: dxdX_{i,j} = x_{i,j} (indicial notation)
  * Inverse of change of coordinate matrix: dXdx_{i,j} = (detJ^-1) * X_{i,j}
- *
- * Determinant of Jacobian:
- *   detJ = J11*J22 - J21*J12
- *     Jij = Jacobian entry ij
- *     Aij = Adjugate ij
- *
- * Inverse of Jacobian:
- *   dXdx_i,j = Aij / detJ
  *
  * @param[in]  Q        Number of quadrature points
  * @param[in]  i        Current quadrature point
@@ -78,13 +49,7 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_2D(CeedInt Q, CeedInt i, const 
   CeedScalar dxdX[2][2];
 
   GradUnpack2(Q, i, 2, (CeedScalar *)dxdX_q, dxdX);
-  const CeedScalar detJ = dxdX[0][0] * dxdX[1][1] - dxdX[1][0] * dxdX[0][1];
-
-  dXdx[0][0] = dxdX[1][1] / detJ;
-  dXdx[0][1] = -dxdX[0][1] / detJ;
-  dXdx[1][0] = -dxdX[1][0] / detJ;
-  dXdx[1][1] = dxdX[0][0] / detJ;
-  if (detJ_ptr) *detJ_ptr = detJ;
+  MatInv2(dxdX, dXdx, detJ_ptr);
 }
 
 /**

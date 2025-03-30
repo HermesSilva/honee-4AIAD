@@ -156,6 +156,47 @@ CEED_QFUNCTION_HELPER void MatMat3(const CeedScalar A[3][3], const CeedScalar B[
 }
 
 /**
+ * @brief Calculate inverse of 2x2 matrix
+ *
+ * @param[in]  A        Input matrix
+ * @param[out] detJ_ptr Determinate of A, may be NULL is not desired
+ * @param[out] A_inv    Output matrix inverse
+ */
+CEED_QFUNCTION_HELPER void MatInv2(const CeedScalar A[2][2], CeedScalar A_inv[2][2], CeedScalar *detJ_ptr) {
+  const CeedScalar detJ = A[0][0] * A[1][1] - A[1][0] * A[0][1];
+
+  A_inv[0][0] = A[1][1] / detJ;
+  A_inv[0][1] = -A[0][1] / detJ;
+  A_inv[1][0] = -A[1][0] / detJ;
+  A_inv[1][1] = A[0][0] / detJ;
+  if (detJ_ptr) *detJ_ptr = detJ;
+}
+
+/**
+ * @brief Calculate inverse of 3x3 matrix
+ *
+ * @param[in]  A        Input matrix
+ * @param[out] detJ_ptr Determinate of A, may be NULL is not desired
+ * @param[out] A_inv    Output matrix inverse
+ */
+CEED_QFUNCTION_HELPER void MatInv3(const CeedScalar A[3][3], CeedScalar A_inv[3][3], CeedScalar *detJ_ptr) {
+  // Compute Adjugate of dxdX
+  A_inv[0][0] = A[1][1] * A[2][2] - A[1][2] * A[2][1];
+  A_inv[0][1] = A[0][2] * A[2][1] - A[0][1] * A[2][2];
+  A_inv[0][2] = A[0][1] * A[1][2] - A[0][2] * A[1][1];
+  A_inv[1][0] = A[1][2] * A[2][0] - A[1][0] * A[2][2];
+  A_inv[1][1] = A[0][0] * A[2][2] - A[0][2] * A[2][0];
+  A_inv[1][2] = A[0][2] * A[1][0] - A[0][0] * A[1][2];
+  A_inv[2][0] = A[1][0] * A[2][1] - A[1][1] * A[2][0];
+  A_inv[2][1] = A[0][1] * A[2][0] - A[0][0] * A[2][1];
+  A_inv[2][2] = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+
+  const CeedScalar detJ = A[0][0] * A_inv[0][0] + A[1][0] * A_inv[0][1] + A[2][0] * A_inv[0][2];
+  ScaleN((CeedScalar *)A_inv, 1 / detJ, 9);
+  if (detJ_ptr) *detJ_ptr = detJ;
+}
+
+/**
   @brief MxN Matrix-Matrix product, C = AB + C
 
   C is NxM, A is NxP, B is PxM
