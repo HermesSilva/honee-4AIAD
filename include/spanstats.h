@@ -15,7 +15,7 @@ typedef struct {
   CeedScalar            span_width;  // spanwise width of the child domain
   PetscBool             do_mms_test;
   OperatorApplyContext  mms_error_ctx;
-  CeedContextFieldLabel solution_time_label, previous_time_label;
+  CeedContextFieldLabel solution_time_label, previous_time_label, timestep_label;
   PetscReal             initial_solution_time;
   PetscInt              initial_solution_step;
   PetscInt              collect_interval;

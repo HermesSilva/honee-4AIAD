@@ -76,9 +76,12 @@ where the integral $\int_{T_0}^{T_f} \phi(x,y,z,t) \mathrm{d}t$ is calculated on
 
 
 ### Running
+The commandline options below are given for each `<statsname>` depending on the statistics being collected.
+For example, the turbulent statistics use `turbulence`.
+
 As the simulation runs, it takes a running time average of the statistics at the full domain quadrature points.
-This running average is only updated at the interval specified by `-ts_monitor_spanstats_turbulence_collect_interval` as number of timesteps.
-The $L^2$ projection problem is only solved when statistics are written to file, which is controlled by `-ts_monitor_spanstats_turbulence_interval`.
+This running average is only updated at the interval specified by `-ts_monitor_spanstats_<statsname>_collect_interval` as number of timesteps.
+The $L^2$ projection problem is only solved when statistics are written to file, which is controlled by `-ts_monitor_spanstats_<statsname>_interval`.
 Note that the averaging is not reset after each file write.
 The average is always over the bounds $[T_0, T_f]$, where $T_f$ in this case would be the time the file was written at and $T_0$ is the solution time at the beginning of the run.
 
@@ -89,48 +92,77 @@ The average is always over the bounds $[T_0, T_f]$, where $T_f$ in this case wou
   - Description
   - Default value
 
-* - `-ts_monitor_spanstats_turbulence_collect_interval`
-  - Number of timesteps between statistics collection
-  - `1`
-
-* - `-ts_monitor_spanstats_turbulence`
+* - `-ts_monitor_spanstats_<statsname>`
   - Sets the `PetscViewer` for the statistics file writing, such as `cgns:output-%d.cgns` (requires PETSc `--download-cgns`). Also turns the statistics collection on.
   -
 
-* - `-ts_monitor_spanstats_turbulence_interval`
+* - `-ts_monitor_spanstats_<statsname>_collect_interval`
+  - Number of timesteps between statistics collection
+  - `1`
+
+* - `-ts_monitor_spanstats_<statsname>_interval`
   - Number of timesteps between statistics file writing (`-1` means only at end of run)
   - `-1`
 
-* - `-ts_monitor_spanstats_turbulence_cgns_batch_size`
+* - `-ts_monitor_spanstats_<statsname>_cgns_batch_size`
   - Number of frames written per CGNS file if the CGNS file name includes a format specifier (`%d`).
   - `20`
 :::
 
 ### Turbulent Statistics
 
-The focus here are those statistics that are relevant to turbulent flow.
+The commandline prefix `turbulence` (e.g. `-ts_monitor_spanstats_turbulence`) obtains statistics that are relevant to turbulent flow.
 The terms collected are listed below, with the mathematical definition on the left and the label (present in CGNS output files) is on the right.
 
-| Math                           | Label                           |
-| -----------------              | --------                        |
-| $\langle \rho \rangle$         | MeanDensity                     |
-| $\langle p \rangle$            | MeanPressure                    |
-| $\langle p^2 \rangle$          | MeanPressureSquared             |
-| $\langle p u_i \rangle$        | MeanPressureVelocity[$i$]       |
-| $\langle \rho T \rangle$       | MeanDensityTemperature          |
-| $\langle \rho T u_i \rangle$   | MeanDensityTemperatureFlux[$i$] |
-| $\langle \rho u_i \rangle$     | MeanMomentum[$i$]               |
-| $\langle \rho u_i u_j \rangle$ | MeanMomentumFlux[$ij$]          |
-| $\langle u_i \rangle$          | MeanVelocity[$i$]               |
+| Math                  | Label                           |
+| -----------------     | --------                        |
+| $\mean{\rho}$         | MeanDensity                     |
+| $\mean{p}$            | MeanPressure                    |
+| $\mean{p^2}$          | MeanPressureSquared             |
+| $\mean{p u_i}$        | MeanPressureVelocity[$i$]       |
+| $\mean{\rho T}$       | MeanDensityTemperature          |
+| $\mean{\rho T u_i}$   | MeanDensityTemperatureFlux[$i$] |
+| $\mean{\rho u_i}$     | MeanMomentum[$i$]               |
+| $\mean{\rho u_i u_j}$ | MeanMomentumFlux[$ij$]          |
+| $\mean{u_i}$          | MeanVelocity[$i$]               |
 
-where [$i$] are suffixes to the labels. So $\langle \rho u_x u_y \rangle$ would correspond to MeanMomentumFluxXY.
+where [$i$] are suffixes to the labels. So $\mean{\rho u_x u_y}$ would correspond to MeanMomentumFluxXY.
 This naming convention is chosen to align with the CGNS standard naming style.
 
 To get second-order statistics from these terms, simply use the identity:
 
 $$
-\langle \phi' \theta' \rangle = \langle \phi \theta \rangle - \langle \phi \rangle \langle \theta \rangle
+\mean{\phi' \theta'} = \mean{\phi \theta \rangle - \langle \phi} \mean{\theta}
 $$
+
+### Numerics ($\mathrm{Pe}$, $\mathrm{CFL}$)
+
+The commandline prefix `cflpe` (e.g. `-ts_monitor_spanstats_cflpe`) obtains statistics for CFL and Péclet number.
+These quantities have agreed-upon definitions for 1D, but in multiple dimensions their definitions depend on the definition of the grid length.
+Here, we define them as
+
+$$
+\Pe = \frac{\sqrt{\gbar{jk}^{-1} u_j u_k}}{\kappa}
+$$
+
+and
+
+$$
+\CFL = \dt\sqrt{\gbar{jk} u_j u_k}
+$$
+
+where $u_j$ is the (advection) velocity, $\kappa$ is the diffusion coefficient, $\gbar{jk}$ is the scaled element metric tensor.
+Note that these quantities do *not* account for the polynomial order of an element.
+The following statistics are computed:
+
+| Math              | Label          |
+| ----------------- | --------       |
+| $\mean{\CFL}$     | MeanCFL        |
+| $\mean{\CFL^2}$   | MeanCFLSquared |
+| $\mean{\CFL^3}$   | MeanCFLCubed   |
+| $\mean{\Pe}$      | MeanPe         |
+| $\mean{\Pe^2}$    | MeanPeSquared  |
+| $\mean{\Pe^3}$    | MeanPeCubed    |
 
 (aux-differential-filtering)=
 ## Differential Filtering
