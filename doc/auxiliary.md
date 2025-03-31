@@ -77,8 +77,8 @@ where the integral $\int_{T_0}^{T_f} \phi(x,y,z,t) \mathrm{d}t$ is calculated on
 
 ### Running
 As the simulation runs, it takes a running time average of the statistics at the full domain quadrature points.
-This running average is only updated at the interval specified by `-ts_monitor_turbulence_spanstats_collect_interval` as number of timesteps.
-The $L^2$ projection problem is only solved when statistics are written to file, which is controlled by `-ts_monitor_turbulence_spanstats_viewer_interval`.
+This running average is only updated at the interval specified by `-ts_monitor_spanstats_turbulence_collect_interval` as number of timesteps.
+The $L^2$ projection problem is only solved when statistics are written to file, which is controlled by `-ts_monitor_spanstats_turbulence_interval`.
 Note that the averaging is not reset after each file write.
 The average is always over the bounds $[T_0, T_f]$, where $T_f$ in this case would be the time the file was written at and $T_0$ is the solution time at the beginning of the run.
 
@@ -89,19 +89,19 @@ The average is always over the bounds $[T_0, T_f]$, where $T_f$ in this case wou
   - Description
   - Default value
 
-* - `-ts_monitor_turbulence_spanstats_collect_interval`
+* - `-ts_monitor_spanstats_turbulence_collect_interval`
   - Number of timesteps between statistics collection
   - `1`
 
-* - `-ts_monitor_turbulence_spanstats_viewer`
-  - Sets the PetscViewer for the statistics file writing, such as `cgns:output-%d.cgns` (requires PETSc `--download-cgns`). Also turns the statistics collection on.
+* - `-ts_monitor_spanstats_turbulence`
+  - Sets the `PetscViewer` for the statistics file writing, such as `cgns:output-%d.cgns` (requires PETSc `--download-cgns`). Also turns the statistics collection on.
   -
 
-* - `-ts_monitor_turbulence_spanstats_viewer_interval`
+* - `-ts_monitor_spanstats_turbulence_interval`
   - Number of timesteps between statistics file writing (`-1` means only at end of run)
   - `-1`
 
-* - `-ts_monitor_turbulence_spanstats_viewer_cgns_batch_size`
+* - `-ts_monitor_spanstats_turbulence_cgns_batch_size`
   - Number of frames written per CGNS file if the CGNS file name includes a format specifier (`%d`).
   - `20`
 :::

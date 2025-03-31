@@ -470,22 +470,19 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   if (honee->set_poststep) PetscCall(TSSetPostStep(*ts, TSPostStep_Honee));
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(TSMonitorSet(*ts, TSMonitor_NS, honee, NULL));
   if (app_ctx->wall_forces.viewer) PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, honee, NULL));
-  if (app_ctx->turb_spanstats_enable) {
-    PetscReal start_time;
-    PetscInt  start_step;
 
-    PetscCall(TSMonitorSet(*ts, TSMonitor_TurbulenceStatistics, honee, NULL));
-    PetscCall(TSGetTime(*ts, &start_time));
-    PetscCall(TSGetStepNumber(*ts, &start_step));
-    CeedScalar initial_solution_time = start_time;  // done for type conversion
-    PetscCallCeed(honee->ceed, CeedOperatorSetContextDouble(honee->spanstats->op_stats_collect_ctx->op, honee->spanstats->previous_time_label,
-                                                            &initial_solution_time));
-    honee->spanstats->initial_solution_time = start_time;
-    honee->spanstats->initial_solution_step = start_step;
-  }
+  PetscOptionsBegin(comm, NULL, "HONEE TS Monitor Options", NULL);
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_cfl", "Monitor element CFL statistics", NULL, TSMonitor_Cfl, SetupMontiorCfl));
+
+  PetscCall(
+      PetscOptionsDeprecated("-ts_monitor_turbulence_spanstats_viewer_interval", "-ts_monitor_spanstats_turbulence_interval", "HONEE 0.0", NULL));
+  PetscCall(PetscOptionsDeprecated("-ts_monitor_turbulence_spanstats_viewer", "-ts_monitor_spanstats_turbulence", "HONEE 0.0", NULL));
+  PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_spanstats_turbulence", "Setup spanwise statistics collection", NULL,
+                                    TSMonitor_TurbulenceSpanwiseStatistics, SpanwiseStatisticsSetup_Turbulence));
+  PetscOptionsEnd();
+
   if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
   if (app_ctx->sgs_train_enable) PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
 

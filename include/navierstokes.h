@@ -5,6 +5,7 @@
 #include <ceed.h>
 #include <bc_definition.h>
 #include <honee-file.h>
+#include <honee.h>
 #include <log_events.h>
 #include <mat-ceed.h>
 #include <petsc-ceed-utils.h>
@@ -98,7 +99,6 @@ static const char *const StateVariables[] = {"CONSERVATIVE", "PRIMITIVE", "ENTRO
 // -----------------------------------------------------------------------------
 // Structs declarations
 typedef struct AppCtx_private      *AppCtx;
-typedef struct Honee_private       *Honee;
 typedef struct Units_private       *Units;
 typedef struct SimpleBC_private    *SimpleBC;
 typedef struct Physics_private     *Physics;
@@ -129,12 +129,6 @@ struct AppCtx_private {
   TestType    test_type;
   PetscScalar test_tol;
   char        test_file_path[PETSC_MAX_PATH_LEN];
-  // Turbulent spanwise statistics
-  PetscBool         turb_spanstats_enable;
-  PetscInt          turb_spanstats_collect_interval;
-  PetscInt          turb_spanstats_viewer_interval;
-  PetscViewer       turb_spanstats_viewer;
-  PetscViewerFormat turb_spanstats_viewer_format;
   // Wall forces
   struct {
     PetscInt          num_wall;
@@ -154,21 +148,6 @@ struct AppCtx_private {
 
   PetscInt check_step_interval;
 };
-
-typedef struct {
-  DM                    dm;
-  PetscSF               sf;  // For communicating child data to parents
-  OperatorApplyContext  op_stats_collect_ctx, op_proj_rhs_ctx;
-  PetscInt              num_comp_stats;
-  Vec                   Child_Stats_loc, Parent_Stats_loc;
-  KSP                   ksp;         // For the L^2 projection solve
-  CeedScalar            span_width;  // spanwise width of the child domain
-  PetscBool             do_mms_test;
-  OperatorApplyContext  mms_error_ctx;
-  CeedContextFieldLabel solution_time_label, previous_time_label;
-  PetscReal             initial_solution_time;
-  PetscInt              initial_solution_step;
-} *SpanStatsData;
 
 typedef struct {
   DM                   dm;
@@ -261,13 +240,14 @@ struct Honee_private {
   KSP                       mass_ksp;
   OperatorApplyContext      op_rhs_ctx, op_strong_bc_ctx;
   CeedScalar                time_bc_set;
-  SpanStatsData             spanstats;
   NodalProjectionData       grad_velo_proj;
   SgsDDData                 sgs_dd_data;
   DiffFilterData            diff_filter;
   SmartSimData              smartsim;
   SGS_DD_TrainingData       sgs_dd_train;
   DivDiffFluxProjectionData diff_flux_proj;
+
+  ProblemData problem_data;
 
   // old CeedData
   CeedVector           x_coord;
@@ -442,9 +422,8 @@ PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
 // -----------------------------------------------------------------------------
 // Turbulence Statistics Collection Functions
 // -----------------------------------------------------------------------------
-PetscErrorCode TurbulenceStatisticsSetup(Ceed ceed, Honee honee, ProblemData problem);
-PetscErrorCode TSMonitor_TurbulenceStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx);
-PetscErrorCode TurbulenceStatisticsDestroy(SpanStatsData spanstats);
+PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *ctx);
+PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
 
 // -----------------------------------------------------------------------------
 // Data-Driven Subgrid Stress (DD-SGS) Modeling Functions
