@@ -35,7 +35,7 @@ HONEE requires libCEED's `main` development branch, which can be [cloned from Gi
 
 ```console
 $ git clone https://github.com/CEED/libCEED
-$ make -C -j8 libCEED
+$ make -j8 -C libCEED
 ```
 
 The above will be enough for most simple CPU installations; see the [libCEED documentation](https://libceed.org/en/latest/gettingstarted/#) for details on using GPUs, tuning, and more complicated environments.
