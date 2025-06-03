@@ -94,15 +94,7 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size) {
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(dm, &dim));
-  {  // Get number of coordinate components
-    DM           dm_coord;
-    PetscSection section_coord;
-    PetscInt     field = 0;  // Default field has the coordinates
-
-    PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(DMGetLocalSection(dm_coord, &section_coord));
-    PetscCall(PetscSectionGetFieldComponents(section_coord, field, &num_comp_x));
-  }
+  PetscCall(DMGetCoordinateNumComps(dm, &num_comp_x));
   *q_data_size = 0;
   switch (dim) {
     case 2:
