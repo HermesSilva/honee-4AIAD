@@ -234,6 +234,24 @@ static PetscErrorCode ModifyMesh(MPI_Comm comm, DM dm, PetscReal growth, PetscIn
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode BlasiusInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  PetscCall(HoneeBCCreateIFunctionQF(bc_def, Blasius_Inflow, Blasius_Inflow_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode BlasiusInflowBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  PetscCall(HoneeBCCreateIJacobianQF(bc_def, Blasius_Inflow_Jacobian, Blasius_Inflow_Jacobian_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   Honee                    honee   = *(Honee *)ctx;
   MPI_Comm                 comm    = honee->comm;
@@ -358,12 +376,24 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   } else {
     PetscCheck((honee->phys->state_var == STATEVAR_CONSERVATIVE) || (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER), honee->comm,
                PETSC_ERR_ARG_INCOMP, "Can only use conservative variables with Blasius and weak inflow");
-    problem->apply_inflow.qf_func_ptr          = Blasius_Inflow;
-    problem->apply_inflow.qf_loc               = Blasius_Inflow_loc;
-    problem->apply_inflow_jacobian.qf_func_ptr = Blasius_Inflow_Jacobian;
-    problem->apply_inflow_jacobian.qf_loc      = Blasius_Inflow_Jacobian_loc;
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &problem->apply_inflow.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &problem->apply_inflow_jacobian.qfctx));
+    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+      BCDefinition bc_def = problem->bc_defs[b];
+      const char  *name;
+
+      PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+      if (!strcmp(name, "inflow")) {
+        HoneeBCStruct honee_bc;
+
+        PetscCall(PetscNew(&honee_bc));
+        PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &honee_bc->qfctx));
+        honee_bc->honee             = honee;
+        honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+        PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+        PetscCall(BCDefinitionSetIFunction(bc_def, BlasiusInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+        PetscCall(BCDefinitionSetIJacobian(bc_def, BlasiusInflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
+      }
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

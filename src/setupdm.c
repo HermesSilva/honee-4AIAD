@@ -66,6 +66,12 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
   PetscCall(DMSetLocalSection(dm, NULL));
   PetscCall(DMSetupByOrderBegin_FEM(PETSC_TRUE, PETSC_TRUE, degree, PETSC_DECIDE, q_extra, 1, &num_comp_q, dm));
 
+  {
+    PetscBool use_strongstg = PETSC_FALSE;
+    PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));
+    if (use_strongstg) PetscCall(SetupStrongStg(dm, problem, phys));
+  }
+
   {  // Add strong boundary conditions to DM
     DMLabel label;
     PetscCall(DMGetLabel(dm, "Face Sets", &label));
@@ -85,11 +91,6 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
         PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, name, label, num_label_values, label_values, 0, num_essential_comps, essential_comps, NULL, NULL,
                                 NULL, NULL));
       }
-    }
-    {
-      PetscBool use_strongstg = PETSC_FALSE;
-      PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));
-      if (use_strongstg) PetscCall(SetupStrongStg(dm, bc, problem, phys));
     }
   }
 

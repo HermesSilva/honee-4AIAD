@@ -72,9 +72,8 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     }
   }
 
-  // Inflow BCs
-  bc->num_inflow = 16;
-  PetscCall(PetscOptionsIntArray("-bc_inflow", "Face IDs to apply inflow BC", NULL, bc->inflows, &bc->num_inflow, NULL));
+  PetscCall(PetscOptionsBCDefinition("-bc_inflow", "Face IDs to apply inflow BC", NULL, "inflow", &bc_def, NULL));
+  PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
 
   PetscCall(PetscOptionsBCDefinition("-bc_outflow", "Face IDs to apply outflow BC", NULL, "outflow", &bc_def, NULL));
   PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));

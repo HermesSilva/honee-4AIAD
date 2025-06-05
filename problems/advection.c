@@ -295,6 +295,26 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(Honee honee
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode AdvectionInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+  DM            dm;
+  PetscInt      dim;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  PetscCall(BCDefinitionGetDM(bc_def, &dm));
+  PetscCall(DMGetDimension(dm, &dim));
+  switch (dim) {
+    case 2:
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, Advection2d_InOutFlow, Advection2d_InOutFlow_loc, honee_bc->qfctx, qf));
+      break;
+    case 3:
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, Advection_InOutFlow, Advection_InOutFlow_loc, honee_bc->qfctx, qf));
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   AdvDifWindType             wind_type;
   AdvDifICType               advectionic_type;
@@ -329,8 +349,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
       problem->apply_vol_rhs.qf_loc            = RHS_Advection2d_loc;
       problem->apply_vol_ifunction.qf_func_ptr = IFunction_Advection2d;
       problem->apply_vol_ifunction.qf_loc      = IFunction_Advection2d_loc;
-      problem->apply_inflow.qf_func_ptr        = Advection2d_InOutFlow;
-      problem->apply_inflow.qf_loc             = Advection2d_InOutFlow_loc;
       problem->compute_exact_solution_error    = PETSC_TRUE;
       break;
     case 3:
@@ -340,8 +358,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
       problem->apply_vol_rhs.qf_loc            = RHS_Advection_loc;
       problem->apply_vol_ifunction.qf_func_ptr = IFunction_Advection;
       problem->apply_vol_ifunction.qf_loc      = IFunction_Advection_loc;
-      problem->apply_inflow.qf_func_ptr        = Advection_InOutFlow;
-      problem->apply_inflow.qf_loc             = Advection_InOutFlow_loc;
       problem->compute_exact_solution_error    = PETSC_FALSE;
       break;
   }
@@ -548,7 +564,25 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) 
                                                          "Size of timestep, delta t"));
   problem->apply_vol_rhs.qfctx = advection_qfctx;
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &problem->apply_vol_ifunction.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &problem->apply_inflow.qfctx));
+
+  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+    BCDefinition bc_def = problem->bc_defs[b];
+    const char  *name;
+
+    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+    if (!strcmp(name, "inflow")) {
+      HoneeBCStruct honee_bc;
+
+      PetscCall(PetscNew(&honee_bc));
+      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &honee_bc->qfctx));
+      honee_bc->honee             = honee;
+      honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+      PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+      PetscCall(BCDefinitionSetIFunction(bc_def, AdvectionInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+      PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
+    }
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

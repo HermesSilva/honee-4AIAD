@@ -302,6 +302,48 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, Di
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode BoundaryIntegralBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  Honee honee = honee_bc->honee;
+
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, BoundaryIntegral_Conserv, BoundaryIntegral_Conserv_loc, honee_bc->qfctx, qf));
+      break;
+    case STATEVAR_PRIMITIVE:
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, BoundaryIntegral_Prim, BoundaryIntegral_Prim_loc, honee_bc->qfctx, qf));
+      break;
+    case STATEVAR_ENTROPY:
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, BoundaryIntegral_Entropy, BoundaryIntegral_Entropy_loc, honee_bc->qfctx, qf));
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode BoundaryIntegralBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  Honee honee = honee_bc->honee;
+
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      PetscCall(HoneeBCCreateIJacobianQF(bc_def, BoundaryIntegral_Jacobian_Conserv, BoundaryIntegral_Jacobian_Conserv_loc, honee_bc->qfctx, qf));
+      break;
+    case STATEVAR_PRIMITIVE:
+      PetscCall(HoneeBCCreateIJacobianQF(bc_def, BoundaryIntegral_Jacobian_Prim, BoundaryIntegral_Jacobian_Prim_loc, honee_bc->qfctx, qf));
+      break;
+    case STATEVAR_ENTROPY:
+      PetscCall(HoneeBCCreateIJacobianQF(bc_def, BoundaryIntegral_Jacobian_Entropy, BoundaryIntegral_Jacobian_Entropy_loc, honee_bc->qfctx, qf));
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   SetupContext             setup_context;
   Honee                    honee  = *(Honee *)ctx;
@@ -415,42 +457,30 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
 
   switch (state_var) {
     case STATEVAR_CONSERVATIVE:
-      problem->ics.qf_func_ptr                   = ICsNewtonianIG_Conserv;
-      problem->ics.qf_loc                        = ICsNewtonianIG_Conserv_loc;
-      problem->apply_vol_rhs.qf_func_ptr         = RHSFunction_Newtonian;
-      problem->apply_vol_rhs.qf_loc              = RHSFunction_Newtonian_loc;
-      problem->apply_vol_ifunction.qf_func_ptr   = IFunction_Newtonian_Conserv;
-      problem->apply_vol_ifunction.qf_loc        = IFunction_Newtonian_Conserv_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr   = IJacobian_Newtonian_Conserv;
-      problem->apply_vol_ijacobian.qf_loc        = IJacobian_Newtonian_Conserv_loc;
-      problem->apply_inflow.qf_func_ptr          = BoundaryIntegral_Conserv;
-      problem->apply_inflow.qf_loc               = BoundaryIntegral_Conserv_loc;
-      problem->apply_inflow_jacobian.qf_func_ptr = BoundaryIntegral_Jacobian_Conserv;
-      problem->apply_inflow_jacobian.qf_loc      = BoundaryIntegral_Jacobian_Conserv_loc;
+      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Conserv;
+      problem->ics.qf_loc                      = ICsNewtonianIG_Conserv_loc;
+      problem->apply_vol_rhs.qf_func_ptr       = RHSFunction_Newtonian;
+      problem->apply_vol_rhs.qf_loc            = RHSFunction_Newtonian_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Conserv;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Conserv_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Conserv;
+      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Conserv_loc;
       break;
     case STATEVAR_PRIMITIVE:
-      problem->ics.qf_func_ptr                   = ICsNewtonianIG_Prim;
-      problem->ics.qf_loc                        = ICsNewtonianIG_Prim_loc;
-      problem->apply_vol_ifunction.qf_func_ptr   = IFunction_Newtonian_Prim;
-      problem->apply_vol_ifunction.qf_loc        = IFunction_Newtonian_Prim_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr   = IJacobian_Newtonian_Prim;
-      problem->apply_vol_ijacobian.qf_loc        = IJacobian_Newtonian_Prim_loc;
-      problem->apply_inflow.qf_func_ptr          = BoundaryIntegral_Prim;
-      problem->apply_inflow.qf_loc               = BoundaryIntegral_Prim_loc;
-      problem->apply_inflow_jacobian.qf_func_ptr = BoundaryIntegral_Jacobian_Prim;
-      problem->apply_inflow_jacobian.qf_loc      = BoundaryIntegral_Jacobian_Prim_loc;
+      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Prim;
+      problem->ics.qf_loc                      = ICsNewtonianIG_Prim_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Prim;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Prim_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Prim;
+      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Prim_loc;
       break;
     case STATEVAR_ENTROPY:
-      problem->ics.qf_func_ptr                   = ICsNewtonianIG_Entropy;
-      problem->ics.qf_loc                        = ICsNewtonianIG_Entropy_loc;
-      problem->apply_vol_ifunction.qf_func_ptr   = IFunction_Newtonian_Entropy;
-      problem->apply_vol_ifunction.qf_loc        = IFunction_Newtonian_Entropy_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr   = IJacobian_Newtonian_Entropy;
-      problem->apply_vol_ijacobian.qf_loc        = IJacobian_Newtonian_Entropy_loc;
-      problem->apply_inflow.qf_func_ptr          = BoundaryIntegral_Entropy;
-      problem->apply_inflow.qf_loc               = BoundaryIntegral_Entropy_loc;
-      problem->apply_inflow_jacobian.qf_func_ptr = BoundaryIntegral_Jacobian_Entropy;
-      problem->apply_inflow_jacobian.qf_loc      = BoundaryIntegral_Jacobian_Entropy_loc;
+      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Entropy;
+      problem->ics.qf_loc                      = ICsNewtonianIG_Entropy_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Entropy;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Entropy_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Entropy;
+      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Entropy_loc;
       break;
   }
 
@@ -596,8 +626,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   problem->apply_vol_rhs.qfctx = newtonian_ig_qfctx;
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_vol_ifunction.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_vol_ijacobian.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_inflow.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_inflow_jacobian.qfctx));
 
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];
@@ -610,6 +638,17 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
       PetscCall(FreestreamBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
     } else if (!strcmp(name, "outflow")) {
       PetscCall(OutflowBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
+    } else if (!strcmp(name, "inflow")) {
+      HoneeBCStruct honee_bc;
+
+      PetscCall(PetscNew(&honee_bc));
+      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
+      honee_bc->honee             = honee;
+      honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+      PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+      PetscCall(BCDefinitionSetIFunction(bc_def, BoundaryIntegralBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+      PetscCall(BCDefinitionSetIJacobian(bc_def, BoundaryIntegralBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
     }
   }
 

@@ -213,6 +213,24 @@ PetscErrorCode GetStgContextData(const MPI_Comm comm, const DM dm, char stg_infl
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode STGWeakInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  PetscCall(HoneeBCCreateIFunctionQF(bc_def, StgShur14Inflow, StgShur14Inflow_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode STGWeakInflowBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  PetscCall(HoneeBCCreateIJacobianQF(bc_def, StgShur14Inflow_Jacobian, StgShur14Inflow_Jacobian_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, Honee honee, const bool prescribe_T, const CeedScalar theta0,
                         const CeedScalar P0) {
   Ceed                     ceed                                = honee->ceed;
@@ -286,19 +304,31 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
     problem->use_strong_bc_ceed = PETSC_TRUE;
     problem->set_bc_from_ics    = PETSC_FALSE;
   } else {
-    problem->apply_inflow.qf_func_ptr          = StgShur14Inflow;
-    problem->apply_inflow.qf_loc               = StgShur14Inflow_loc;
-    problem->apply_inflow_jacobian.qf_func_ptr = StgShur14Inflow_Jacobian;
-    problem->apply_inflow_jacobian.qf_loc      = StgShur14Inflow_Jacobian_loc;
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &problem->apply_inflow.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &problem->apply_inflow_jacobian.qfctx));
+    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+      BCDefinition bc_def = problem->bc_defs[b];
+      const char  *name;
+
+      PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+      if (!strcmp(name, "inflow")) {
+        HoneeBCStruct honee_bc;
+
+        PetscCall(PetscNew(&honee_bc));
+        PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &honee_bc->qfctx));
+        honee_bc->honee             = honee;
+        honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+        PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+        PetscCall(BCDefinitionSetIFunction(bc_def, STGWeakInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+        PetscCall(BCDefinitionSetIJacobian(bc_def, STGWeakInflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
+      }
+    }
     problem->set_bc_from_ics = PETSC_TRUE;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Set STG strongly enforce components using DMAddBoundary
-PetscErrorCode SetupStrongStg(DM dm, SimpleBC bc, ProblemData problem, Physics phys) {
+PetscErrorCode SetupStrongStg(DM dm, ProblemData problem, Physics phys) {
   DMLabel  label;
   PetscInt comps[5], num_comps = 4;
 
@@ -321,8 +351,12 @@ PetscErrorCode SetupStrongStg(DM dm, SimpleBC bc, ProblemData problem, Physics p
   }
 
   PetscCall(DMGetLabel(dm, "Face Sets", &label));
-  if (bc->num_inflow > 0) {
-    PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, "STG", label, bc->num_inflow, bc->inflows, 0, num_comps, comps, NULL, NULL, NULL, NULL));
+  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+    BCDefinition bc_def = problem->bc_defs[b];
+    const char  *name;
+
+    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+    if (!strcmp(name, "inflow")) PetscCall(BCDefinitionSetEssential(bc_def, num_comps, comps));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

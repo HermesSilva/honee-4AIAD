@@ -10,7 +10,7 @@
 extern PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, Honee honee, const bool prescribe_T, const CeedScalar theta0,
                                const CeedScalar P0);
 
-extern PetscErrorCode SetupStrongStg(DM dm, SimpleBC bc, ProblemData problem, Physics phys);
+extern PetscErrorCode SetupStrongStg(DM dm, ProblemData problem, Physics phys);
 
 extern PetscErrorCode SetupStrongStg_QF(Ceed ceed, ProblemData problem, CeedInt num_comp_x, CeedInt num_comp_q, CeedInt stg_data_size,
                                         CeedInt dXdx_size, CeedQFunction *qf_strongbc);

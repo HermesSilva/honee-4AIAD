@@ -202,8 +202,6 @@ int main(int argc, char **argv) {
   // Destroy QFunction contexts after using
   // ToDo: Simplify tracked libCEED objects, smaller struct
   {
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_inflow.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_inflow_jacobian.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_vol_rhs.qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_vol_ifunction.qfctx));

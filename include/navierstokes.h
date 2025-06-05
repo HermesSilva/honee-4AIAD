@@ -278,10 +278,7 @@ struct Units_private {
 };
 
 // Boundary conditions
-struct SimpleBC_private {
-  PetscInt num_inflow;
-  PetscInt inflows[16];
-};
+struct SimpleBC_private {};
 
 // Struct that contains all enums and structs used for the physics of all problems
 struct Physics_private {
@@ -321,7 +318,7 @@ typedef struct {
 // Problem specific data
 struct ProblemData_private {
   CeedInt              jac_data_size_vol, jac_data_size_sur;
-  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_inflow_jacobian;
+  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian;
   bool                 compute_exact_solution_error;
   PetscBool            set_bc_from_ics, use_strong_bc_ceed;
   PetscCount           num_bc_defs;
