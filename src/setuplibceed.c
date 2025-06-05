@@ -231,19 +231,6 @@ static PetscErrorCode AddBCSubOperators(Honee honee, Ceed ceed, DM dm, SimpleBC 
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_inflow_jacobian));
   }
 
-  {  // --- Create Sub-Operator for outflow boundaries
-    CeedQFunction qf_apply_outflow = NULL, qf_apply_outflow_jacobian = NULL;
-
-    PetscCall(SetupBCQFunctions(ceed, dim_sur, num_comp_x, num_comp_q, q_data_size_sur, jac_data_size_sur, problem->apply_outflow,
-                                problem->apply_outflow_jacobian, &qf_apply_outflow, &qf_apply_outflow_jacobian));
-    for (CeedInt i = 0; i < bc->num_outflow; i++) {
-      PetscCall(AddBCSubOperator(ceed, dm, honee, face_sets_label, bc->outflows[i], height, Q_sur, q_data_size_sur, jac_data_size_sur, basis_q_sur,
-                                 basis_x_sur, qf_apply_outflow, qf_apply_outflow_jacobian, op_apply, op_apply_ijacobian));
-    }
-    PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_outflow));
-    PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_apply_outflow_jacobian));
-  }
-
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], op_apply, op_apply_ijacobian));
 
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_q_sur));

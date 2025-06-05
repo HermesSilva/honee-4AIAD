@@ -13,6 +13,17 @@
 
 static PetscErrorCode DivDiffFluxVerifyMesh(DM dm);
 
+static PetscErrorCode ChannelOutflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  PetscCheck(honee_bc->honee->phys->state_var == STATEVAR_CONSERVATIVE, PETSC_COMM_WORLD, PETSC_ERR_SUP,
+             "Channel outflow only valid for Conservative variables, recieved %s", StateVariables[honee_bc->honee->phys->state_var]);
+  PetscCall(HoneeBCCreateIFunctionQF(bc_def, Channel_Outflow, Channel_Outflow_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   Honee                    honee = *(Honee *)ctx;
   MPI_Comm                 comm  = honee->comm;
@@ -36,10 +47,8 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   problem->ics.qf_func_ptr = ICsChannel;
   problem->ics.qf_loc      = ICsChannel_loc;
   if (honee->phys->state_var == STATEVAR_CONSERVATIVE) {
-    problem->apply_inflow.qf_func_ptr  = Channel_Inflow;
-    problem->apply_inflow.qf_loc       = Channel_Inflow_loc;
-    problem->apply_outflow.qf_func_ptr = Channel_Outflow;
-    problem->apply_outflow.qf_loc      = Channel_Outflow_loc;
+    problem->apply_inflow.qf_func_ptr = Channel_Inflow;
+    problem->apply_inflow.qf_loc      = Channel_Inflow_loc;
   }
 
   // -- Command Line Options
@@ -102,7 +111,26 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
 
   problem->ics.qfctx = channel_qfctx;
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &problem->apply_inflow.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &problem->apply_outflow.qfctx));
+
+  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+    BCDefinition bc_def = problem->bc_defs[b];
+    const char  *name;
+
+    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+    if (honee->phys->state_var == STATEVAR_CONSERVATIVE && !strcmp(name, "outflow")) {
+      HoneeBCStruct honee_bc;
+
+      PetscCall(PetscPrintf(comm, "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
+      PetscCall(PetscNew(&honee_bc));
+      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &honee_bc->qfctx));
+      honee_bc->honee             = honee;
+      honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+      PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+      PetscCall(BCDefinitionSetIFunction(bc_def, ChannelOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+      PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
+    }
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

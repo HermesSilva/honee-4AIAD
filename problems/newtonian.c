@@ -599,7 +599,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_inflow.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_inflow_jacobian.qfctx));
 
-  if (bc->num_outflow > 0) PetscCall(OutflowBCSetup(problem, dm, ctx, newtonian_ig_ctx, &reference));
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];
     const char  *name;
@@ -609,6 +608,8 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC b
       PetscCall(SlipBCSetup(bc_def, problem, dm, ctx, newtonian_ig_qfctx));
     } else if (!strcmp(name, "freestream")) {
       PetscCall(FreestreamBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
+    } else if (!strcmp(name, "outflow")) {
+      PetscCall(OutflowBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
     }
   }
 
