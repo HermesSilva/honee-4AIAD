@@ -78,9 +78,9 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
   // Outflow BCs
   bc->num_outflow = 16;
   PetscCall(PetscOptionsIntArray("-bc_outflow", "Face IDs to apply outflow BC", NULL, bc->outflows, &bc->num_outflow, NULL));
-  // Freestream BCs
-  bc->num_freestream = 16;
-  PetscCall(PetscOptionsIntArray("-bc_freestream", "Face IDs to apply freestream BC", NULL, bc->freestreams, &bc->num_freestream, NULL));
+
+  PetscCall(PetscOptionsBCDefinition("-bc_freestream", "Face IDs to apply freestream BC", NULL, "freestream", &bc_def, NULL));
+  PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
 
   PetscCall(PetscOptionsBCDefinition("-bc_slip", "Face IDs to apply slip BC", NULL, "slip", &bc_def, NULL));
   PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));

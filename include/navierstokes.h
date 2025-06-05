@@ -279,8 +279,8 @@ struct Units_private {
 
 // Boundary conditions
 struct SimpleBC_private {
-  PetscInt num_inflow, num_outflow, num_freestream;
-  PetscInt inflows[16], outflows[16], freestreams[16];
+  PetscInt num_inflow, num_outflow;
+  PetscInt inflows[16], outflows[16];
 };
 
 // Struct that contains all enums and structs used for the physics of all problems
@@ -321,8 +321,8 @@ typedef struct {
 // Problem specific data
 struct ProblemData_private {
   CeedInt              jac_data_size_vol, jac_data_size_sur;
-  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_outflow, apply_freestream,
-      apply_inflow_jacobian, apply_outflow_jacobian, apply_freestream_jacobian;
+  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_outflow, apply_inflow_jacobian,
+      apply_outflow_jacobian;
   bool          compute_exact_solution_error;
   PetscBool     set_bc_from_ics, use_strong_bc_ceed;
   PetscCount    num_bc_defs;
@@ -443,7 +443,8 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
 // Boundary Condition Related Functions
 // -----------------------------------------------------------------------------
 PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem, SimpleBC bc);
-PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
+PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
+                                 const StatePrimitive *reference);
 PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
 PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
 

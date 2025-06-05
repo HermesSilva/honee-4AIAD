@@ -17,7 +17,6 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC 
   MPI_Comm                 comm  = honee->comm;
   Ceed                     ceed  = honee->ceed;
   GaussianWaveContext      gausswave_ctx;
-  FreestreamContext        freestream_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
   CeedQFunctionContext     gausswave_qfctx;
 
@@ -58,16 +57,28 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC 
   // -- Set gausswave_ctx struct values
   PetscCall(PetscCalloc1(1, &gausswave_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_freestream.qfctx, CEED_MEM_HOST, &freestream_ctx));
+  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+    BCDefinition  bc_def = problem->bc_defs[b];
+    HoneeBCStruct honee_bc;
+    const char   *name;
+
+    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+    if (!strcmp(name, "freestream")) {
+      FreestreamContext freestream_ctx;
+      PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+      PetscCallCeed(ceed, CeedQFunctionContextGetData(honee_bc->qfctx, CEED_MEM_HOST, &freestream_ctx));
+      gausswave_ctx->S_infty = freestream_ctx->S_infty;
+      PetscCallCeed(ceed, CeedQFunctionContextRestoreData(honee_bc->qfctx, &freestream_ctx));
+      break;
+    }
+  }
 
   gausswave_ctx->amplitude = amplitude;
   gausswave_ctx->width     = width;
-  gausswave_ctx->S_infty   = freestream_ctx->S_infty;
   gausswave_ctx->newt_ctx  = *newtonian_ig_ctx;
   PetscCall(PetscArraycpy(gausswave_ctx->epicenter, epicenter, 3));
 
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_freestream.qfctx, &freestream_ctx));
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &gausswave_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(gausswave_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*gausswave_ctx), gausswave_ctx));

@@ -16,83 +16,126 @@ static const char *const RiemannSolverTypes[] = {"HLL", "HLLC", "RiemannSolverTy
 
 static PetscErrorCode RiemannSolverUnitTests(NewtonianIdealGasContext gas, CeedScalar rtol);
 
-PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference) {
+typedef struct {
+  RiemannFluxType flux_type;
+} *FreestreamHoneeBCCtx;
+
+static PetscErrorCode FreestreamBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  Honee         honee;
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  honee                                    = honee_bc->honee;
+  FreestreamHoneeBCCtx freestream_honee_bc = (FreestreamHoneeBCCtx)honee_bc->ctx;
+
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      switch (freestream_honee_bc->flux_type) {
+        case RIEMANN_HLL:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, Freestream_Conserv_HLL, Freestream_Conserv_HLL_loc, honee_bc->qfctx, qf));
+          break;
+        case RIEMANN_HLLC:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, Freestream_Conserv_HLLC, Freestream_Conserv_HLLC_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_PRIMITIVE:
+      switch (freestream_honee_bc->flux_type) {
+        case RIEMANN_HLL:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, Freestream_Prim_HLL, Freestream_Prim_HLL_loc, honee_bc->qfctx, qf));
+          break;
+        case RIEMANN_HLLC:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, Freestream_Prim_HLLC, Freestream_Prim_HLLC_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_ENTROPY:
+      switch (freestream_honee_bc->flux_type) {
+        case RIEMANN_HLL:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, Freestream_Entropy_HLL, Freestream_Entropy_HLL_loc, honee_bc->qfctx, qf));
+          break;
+        case RIEMANN_HLLC:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, Freestream_Entropy_HLLC, Freestream_Entropy_HLLC_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode FreestreamBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
+  Honee         honee;
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  honee                                    = honee_bc->honee;
+  FreestreamHoneeBCCtx freestream_honee_bc = (FreestreamHoneeBCCtx)honee_bc->ctx;
+
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      switch (freestream_honee_bc->flux_type) {
+        case RIEMANN_HLL:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, Freestream_Jacobian_Conserv_HLL, Freestream_Jacobian_Conserv_HLL_loc, honee_bc->qfctx, qf));
+          break;
+        case RIEMANN_HLLC:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, Freestream_Jacobian_Conserv_HLLC, Freestream_Jacobian_Conserv_HLLC_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_PRIMITIVE:
+      switch (freestream_honee_bc->flux_type) {
+        case RIEMANN_HLL:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, Freestream_Jacobian_Prim_HLL, Freestream_Jacobian_Prim_HLL_loc, honee_bc->qfctx, qf));
+          break;
+        case RIEMANN_HLLC:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, Freestream_Jacobian_Prim_HLLC, Freestream_Jacobian_Prim_HLLC_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_ENTROPY:
+      switch (freestream_honee_bc->flux_type) {
+        case RIEMANN_HLL:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, Freestream_Jacobian_Entropy_HLL, Freestream_Jacobian_Entropy_HLL_loc, honee_bc->qfctx, qf));
+          break;
+        case RIEMANN_HLLC:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, Freestream_Jacobian_Entropy_HLLC, Freestream_Jacobian_Entropy_HLLC_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
+                                 const StatePrimitive *reference) {
   Honee                honee = *(Honee *)ctx;
   MPI_Comm             comm  = honee->comm;
   Ceed                 ceed  = honee->ceed;
   FreestreamContext    freestream_ctx;
   CeedQFunctionContext freestream_qfctx;
-  RiemannFluxType      riemann = RIEMANN_HLLC;
-  PetscScalar          meter   = honee->units->meter;
-  PetscScalar          second  = honee->units->second;
-  PetscScalar          Kelvin  = honee->units->Kelvin;
-  PetscScalar          Pascal  = honee->units->Pascal;
+  RiemannFluxType      flux_type = RIEMANN_HLLC;
+  PetscScalar          meter     = honee->units->meter;
+  PetscScalar          second    = honee->units->second;
+  PetscScalar          Kelvin    = honee->units->Kelvin;
+  PetscScalar          Pascal    = honee->units->Pascal;
+  FreestreamHoneeBCCtx freestream_honee_bc;
+  HoneeBCStruct        honee_bc;
 
   PetscFunctionBeginUser;
-  // Freestream inherits reference state. We re-dimensionalize so the defaults
-  // in -help will be visible in SI units.
+  // Freestream inherits reference state. We re-dimensionalize so the defaults in -help will be visible in SI units.
   StatePrimitive Y_inf = {.pressure = reference->pressure / Pascal, .velocity = {0}, .temperature = reference->temperature / Kelvin};
   for (int i = 0; i < 3; i++) Y_inf.velocity[i] = reference->velocity[i] * second / meter;
 
   PetscOptionsBegin(comm, NULL, "Options for Freestream boundary condition", NULL);
   PetscCall(PetscOptionsEnum("-freestream_riemann", "Riemann solver to use in freestream boundary condition", NULL, RiemannSolverTypes,
-                             (PetscEnum)riemann, (PetscEnum *)&riemann, NULL));
+                             (PetscEnum)flux_type, (PetscEnum *)&flux_type, NULL));
   PetscCall(PetscOptionsScalar("-freestream_pressure", "Pressure at freestream condition", NULL, Y_inf.pressure, &Y_inf.pressure, NULL));
   PetscInt narray = 3;
   PetscCall(PetscOptionsScalarArray("-freestream_velocity", "Velocity at freestream condition", NULL, Y_inf.velocity, &narray, NULL));
   PetscCall(PetscOptionsScalar("-freestream_temperature", "Temperature at freestream condition", NULL, Y_inf.temperature, &Y_inf.temperature, NULL));
   PetscOptionsEnd();
-
-  switch (honee->phys->state_var) {
-    case STATEVAR_CONSERVATIVE:
-      switch (riemann) {
-        case RIEMANN_HLL:
-          problem->apply_freestream.qf_func_ptr          = Freestream_Conserv_HLL;
-          problem->apply_freestream.qf_loc               = Freestream_Conserv_HLL_loc;
-          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Conserv_HLL;
-          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Conserv_HLL_loc;
-          break;
-        case RIEMANN_HLLC:
-          problem->apply_freestream.qf_func_ptr          = Freestream_Conserv_HLLC;
-          problem->apply_freestream.qf_loc               = Freestream_Conserv_HLLC_loc;
-          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Conserv_HLLC;
-          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Conserv_HLLC_loc;
-          break;
-      }
-      break;
-    case STATEVAR_PRIMITIVE:
-      switch (riemann) {
-        case RIEMANN_HLL:
-          problem->apply_freestream.qf_func_ptr          = Freestream_Prim_HLL;
-          problem->apply_freestream.qf_loc               = Freestream_Prim_HLL_loc;
-          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Prim_HLL;
-          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Prim_HLL_loc;
-          break;
-        case RIEMANN_HLLC:
-          problem->apply_freestream.qf_func_ptr          = Freestream_Prim_HLLC;
-          problem->apply_freestream.qf_loc               = Freestream_Prim_HLLC_loc;
-          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Prim_HLLC;
-          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Prim_HLLC_loc;
-          break;
-      }
-      break;
-    case STATEVAR_ENTROPY:
-      switch (riemann) {
-        case RIEMANN_HLL:
-          problem->apply_freestream.qf_func_ptr          = Freestream_Entropy_HLL;
-          problem->apply_freestream.qf_loc               = Freestream_Entropy_HLL_loc;
-          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Entropy_HLL;
-          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Entropy_HLL_loc;
-          break;
-        case RIEMANN_HLLC:
-          problem->apply_freestream.qf_func_ptr          = Freestream_Entropy_HLLC;
-          problem->apply_freestream.qf_loc               = Freestream_Entropy_HLLC_loc;
-          problem->apply_freestream_jacobian.qf_func_ptr = Freestream_Jacobian_Entropy_HLLC;
-          problem->apply_freestream_jacobian.qf_loc      = Freestream_Jacobian_Entropy_HLLC_loc;
-          break;
-      }
-      break;
-  }
 
   Y_inf.pressure *= Pascal;
   for (int i = 0; i < 3; i++) Y_inf.velocity[i] *= meter / second;
@@ -108,8 +151,19 @@ PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, Newtonia
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &freestream_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(freestream_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*freestream_ctx), freestream_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(freestream_qfctx, CEED_MEM_HOST, FreeContextPetsc));
-  problem->apply_freestream.qfctx = freestream_qfctx;
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(freestream_qfctx, &problem->apply_freestream_jacobian.qfctx));
+
+  PetscCall(PetscNew(&honee_bc));
+  PetscCall(PetscNew(&freestream_honee_bc));
+  freestream_honee_bc->flux_type = flux_type;
+  honee_bc->ctx                  = freestream_honee_bc;
+  honee_bc->DestroyCtx           = PetscCtxDestroyDefault;
+  honee_bc->honee                = honee;
+  honee_bc->jac_data_size_sur    = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+  honee_bc->qfctx                = freestream_qfctx;
+  PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+  PetscCall(BCDefinitionSetIFunction(bc_def, FreestreamBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, FreestreamBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
 
   {
     PetscBool run_unit_tests = PETSC_FALSE;
