@@ -30,10 +30,12 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `HONEEGetGitVersion()` to access the Git commit and dirty state of the repository at build time.
 - Add `HONEEGetVersion()` to access the semantic version of HONEE at runtime.
 - Add `HoneeGetBuildConfiguration()` function for retrieving build configuration info.
+- Extend `BCDefinition` to handle boundary integral setup (`BCDefinition{Get,Set}DM()`, `BCDefinition{Get,Set}Context()`, `BCDefinitionSetIFunction()`, `BCDefinitionSetIJacobian()`, and `BCDefinitionAddOperators()`)
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
 - Move `Honee` typedef to `include/honee.h`
+- Remove `SimpleBC` struct
 
 ### Breaking changes
 - Deprecate `-continue` and `-continue_time_filename`. Continuing from file controlled by `-continue_filename`

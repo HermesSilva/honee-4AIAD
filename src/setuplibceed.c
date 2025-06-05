@@ -88,7 +88,7 @@ static PetscErrorCode CreateKSPMass(Honee honee, ProblemData problem) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem, SimpleBC bc) {
+PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem) {
   const PetscInt      num_comp_q = 5;
   PetscInt            dim;
   CeedInt             jac_data_size_vol = problem->jac_data_size_vol, num_comp_x, q_data_size_vol;
@@ -302,7 +302,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     if (app_ctx->sgs_model_type == SGS_MODEL_DATA_DRIVEN) PetscCall(SgsDDSetup(ceed, honee, problem));
   }
 
-  if (problem->use_strong_bc_ceed) PetscCall(SetupStrongBC_Ceed(ceed, dm, honee, problem, bc));
+  if (problem->use_strong_bc_ceed) PetscCall(SetupStrongBC_Ceed(ceed, dm, honee, problem));
   if (app_ctx->diff_filter_monitor && !honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, problem));
   if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, honee, problem));
   if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(honee, honee->diff_flux_proj));

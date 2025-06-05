@@ -252,7 +252,7 @@ static PetscErrorCode BlasiusInflowBCSetup_CreateIJacobianQF(BCDefinition bc_def
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   Honee                    honee   = *(Honee *)ctx;
   MPI_Comm                 comm    = honee->comm;
   Ceed                     ceed    = honee->ceed;
@@ -262,7 +262,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   CeedQFunctionContext     blasius_qfctx;
 
   PetscFunctionBeginUser;
-  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
+  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
   PetscCall(PetscCalloc1(1, &blasius_ctx));
 
   // ------------------------------------------------------

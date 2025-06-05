@@ -315,7 +315,7 @@ static PetscErrorCode AdvectionInflowBCSetup_CreateIFunctionQF(BCDefinition bc_d
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   AdvDifWindType             wind_type;
   AdvDifICType               advectionic_type;
   AdvDifBubbleContinuityType bubble_continuity_type = -1;

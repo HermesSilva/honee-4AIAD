@@ -58,7 +58,7 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
 }
 
 // Setup DM
-PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, SimpleBC bc, Physics phys) {
+PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, Physics phys) {
   PetscInt num_comp_q = 5;
 
   PetscFunctionBeginUser;
@@ -129,7 +129,7 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
 }
 
 // Refine DM for high-order viz
-PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, SimpleBC bc, Physics phys) {
+PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, Physics phys) {
   DM      dm_hierarchy[honee->app_ctx->viz_refine + 1];
   VecType vec_type;
 
@@ -148,7 +148,7 @@ PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, SimpleBC bc,
     if (i + 1 == honee->app_ctx->viz_refine) d = 1;
     PetscCall(DMGetVecType(dm, &vec_type));
     PetscCall(DMSetVecType(dm_hierarchy[i + 1], vec_type));
-    PetscCall(SetUpDM(dm_hierarchy[i + 1], problem, d, q_order, bc, phys));
+    PetscCall(SetUpDM(dm_hierarchy[i + 1], problem, d, q_order, phys));
     PetscCall(DMCreateInterpolation(dm_hierarchy[i], dm_hierarchy[i + 1], &interp_next, NULL));
     if (!i) honee->interp_viz = interp_next;
     else {

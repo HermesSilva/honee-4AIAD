@@ -29,7 +29,7 @@ static PetscErrorCode EulerVortexInflowBCSetup_CreateIFunctionQF(BCDefinition bc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   EulerTestType        euler_test;
   Honee                honee = *(Honee *)ctx;
   StabilizationType    stab;

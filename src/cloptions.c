@@ -68,7 +68,7 @@ PetscErrorCode ISO8601TimeDurationToSeconds(MPI_Comm comm, const char *string, t
 }
 
 // Process general command line options
-PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc) {
+PetscErrorCode ProcessCommandLineOptions(Honee honee) {
   MPI_Comm  comm         = honee->comm;
   AppCtx    app_ctx      = honee->app_ctx;
   PetscBool ceed_flag    = PETSC_FALSE;

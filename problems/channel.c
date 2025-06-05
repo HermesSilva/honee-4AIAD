@@ -35,7 +35,7 @@ static PetscErrorCode ChannelInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
   Honee                    honee = *(Honee *)ctx;
   MPI_Comm                 comm  = honee->comm;
   Ceed                     ceed  = honee->ceed;
@@ -45,7 +45,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
   PetscBool                use_divdiff_verify_mesh = PETSC_FALSE;
 
   PetscFunctionBeginUser;
-  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
+  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
   PetscCall(PetscCalloc1(1, &channel_ctx));
 
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-mesh_transform_channel_div_diff_projection_verify", &use_divdiff_verify_mesh, NULL));

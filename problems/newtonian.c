@@ -344,7 +344,7 @@ static PetscErrorCode BoundaryIntegralBCSetup_CreateIJacobianQF(BCDefinition bc_
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   SetupContext             setup_context;
   Honee                    honee  = *(Honee *)ctx;
   CeedInt                  degree = honee->app_ctx->degree;

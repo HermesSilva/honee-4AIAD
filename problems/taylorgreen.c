@@ -8,7 +8,7 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx) {
   Honee                honee = *(Honee *)ctx;
   Ceed                 ceed  = honee->ceed;
   MPI_Comm             comm  = honee->comm;
@@ -19,7 +19,7 @@ PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx, SimpleBC b
   PetscInt             background_velocity_size = PETSC_STATIC_ARRAY_LENGTH(background_velocity);
 
   PetscFunctionBeginUser;
-  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
+  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
 
   PetscOptionsBegin(comm, NULL, "Options for TAYLOR-GREEN problem", NULL);
   PetscCall(PetscOptionsScalarArray("-taylorgreen_background_velocity", "Background velocity to add to Taylor-Green initial condition", NULL,

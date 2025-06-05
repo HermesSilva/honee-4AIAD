@@ -21,7 +21,6 @@ int main(int argc, char **argv) {
   AppCtx      app_ctx;
   ProblemData problem;
   Honee       honee;
-  SimpleBC    bc;
   Physics     phys_ctx;
   Units       units;
   MPI_Comm    comm;
@@ -31,7 +30,6 @@ int main(int argc, char **argv) {
   PetscCall(PetscCalloc1(1, &honee));
   PetscCall(PetscCalloc1(1, &app_ctx));
   PetscCall(PetscCalloc1(1, &problem));
-  PetscCall(PetscCalloc1(1, &bc));
   PetscCall(PetscCalloc1(1, &phys_ctx));
   PetscCall(PetscCalloc1(1, &units));
   honee->app_ctx           = app_ctx;
@@ -48,8 +46,8 @@ int main(int argc, char **argv) {
   // Process command line options
   // ---------------------------------------------------------------------------
   // -- Process general command line options
-  PetscCall(ProcessCommandLineOptions(honee, bc));
-  PetscCall(BoundaryConditionSetUp(honee, problem, app_ctx, bc));
+  PetscCall(ProcessCommandLineOptions(honee));
+  PetscCall(BoundaryConditionSetUp(honee, problem, app_ctx));
 
   // ---------------------------------------------------------------------------
   // Initialize libCEED
@@ -104,17 +102,17 @@ int main(int argc, char **argv) {
   }
 
   {  // Run problem setup function
-    PetscErrorCode (*p)(ProblemData, DM, void *, SimpleBC);
+    PetscErrorCode (*p)(ProblemData, DM, void *);
     PetscCall(PetscFunctionListFind(app_ctx->problems, app_ctx->problem_name, &p));
     PetscCheck(p, PETSC_COMM_SELF, 1, "Problem '%s' not found", app_ctx->problem_name);
-    PetscCall((*p)(problem, dm, &honee, bc));
+    PetscCall((*p)(problem, dm, &honee));
   }
 
   // -- Set up DM
-  PetscCall(SetUpDM(dm, problem, app_ctx->degree, app_ctx->q_extra, bc, phys_ctx));
+  PetscCall(SetUpDM(dm, problem, app_ctx->degree, app_ctx->q_extra, phys_ctx));
 
   // -- Refine DM for high-order viz
-  if (app_ctx->viz_refine) PetscCall(VizRefineDM(dm, honee, problem, bc, phys_ctx));
+  if (app_ctx->viz_refine) PetscCall(VizRefineDM(dm, honee, problem, phys_ctx));
 
   // ---------------------------------------------------------------------------
   // Create solution vectors
@@ -131,7 +129,7 @@ int main(int argc, char **argv) {
   // Set up libCEED
   // ---------------------------------------------------------------------------
   // -- Set up libCEED objects
-  PetscCall(SetupLibceed(ceed, dm, honee, app_ctx, problem, bc));
+  PetscCall(SetupLibceed(ceed, dm, honee, app_ctx, problem));
 
   // ---------------------------------------------------------------------------
   // Set up ICs
@@ -264,7 +262,6 @@ int main(int argc, char **argv) {
   PetscCall(PetscFree(units));
   PetscCall(PetscFree(honee));
   PetscCall(PetscFree(problem));
-  PetscCall(PetscFree(bc));
   PetscCall(PetscFree(phys_ctx));
   PetscCall(PetscFree(app_ctx));
   PetscCall(PetscFree(honee));

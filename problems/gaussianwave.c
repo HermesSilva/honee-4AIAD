@@ -12,7 +12,7 @@
 #include <navierstokes.h>
 #include "../qfunctions/bc_freestream_type.h"
 
-PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
   Honee                    honee = *(Honee *)ctx;
   MPI_Comm                 comm  = honee->comm;
   Ceed                     ceed  = honee->ceed;
@@ -21,7 +21,7 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC 
   CeedQFunctionContext     gausswave_qfctx;
 
   PetscFunctionBeginUser;
-  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
+  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
 
   switch (honee->phys->state_var) {
     case STATEVAR_CONSERVATIVE:
