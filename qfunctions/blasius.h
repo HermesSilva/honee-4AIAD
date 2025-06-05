@@ -31,9 +31,9 @@ struct BlasiusContext_ {
 // This helper function evaluates Chebyshev polynomials with a set of coefficients with all their derivatives represented as a recurrence table.
 // *****************************************************************************
 CEED_QFUNCTION_HELPER void ChebyshevEval(int N, const double *Tf, double x, double eta_max, double *f) {
-  double dX_deta     = 2 / eta_max;
-  double table[4][3] = {
+  double dX_deta = 2 / eta_max;
   // Chebyshev polynomials T_0, T_1, T_2 of the first kind in (-1,1)
+  double table[4][3] = {
       {1, x, 2 * x * x - 1},
       {0, 1, 4 * x        },
       {0, 0, 4            },
