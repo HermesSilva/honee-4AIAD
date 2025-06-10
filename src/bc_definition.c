@@ -35,8 +35,13 @@ PetscErrorCode BCDefinitionCreate(const char *name, PetscInt num_label_values, P
 **/
 PetscErrorCode BCDefinitionGetInfo(BCDefinition bc_def, const char *name[], PetscInt *num_label_values, const PetscInt *label_values[]) {
   PetscFunctionBeginUser;
-  if (name) *name = bc_def->name;
+  if (name) {
+    PetscAssertPointer(name, 2);
+    *name = bc_def->name;
+  }
   if (label_values) {
+    PetscAssertPointer(num_label_values, 3);
+    PetscAssertPointer(label_values, 4);
     *num_label_values = bc_def->num_label_values;
     *label_values     = bc_def->label_values;
   }
@@ -85,6 +90,8 @@ PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essent
 **/
 PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[]) {
   PetscFunctionBeginUser;
+  PetscAssertPointer(num_essential_comps, 2);
+  PetscAssertPointer(essential_comps, 3);
   *num_essential_comps = bc_def->num_essential_comps;
   *essential_comps     = bc_def->essential_comps;
   PetscFunctionReturn(PETSC_SUCCESS);
