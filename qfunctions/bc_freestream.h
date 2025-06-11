@@ -43,11 +43,7 @@ CEED_QFUNCTION_HELPER int Freestream(void *ctx, CeedInt Q, const CeedScalar *con
     UnpackState_U(flux, Flux);
     for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
 
-    if (is_implicit) {
-      CeedScalar zeros[6] = {0.};
-      StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
-      StoredValuesPack(Q, i, 5, 6, zeros, jac_data_sur);  // Every output value must be set
-    }
+    if (is_implicit) StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
   }
   return 0;
 }

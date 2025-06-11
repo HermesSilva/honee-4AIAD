@@ -314,7 +314,7 @@ typedef struct {
 
 // Problem specific data
 struct ProblemData_private {
-  CeedInt              jac_data_size_vol, jac_data_size_sur;
+  CeedInt              jac_data_size_vol;
   ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian;
   bool                 compute_exact_solution_error;
   PetscBool            set_bc_from_ics, use_strong_bc_ceed;

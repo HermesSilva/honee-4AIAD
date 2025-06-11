@@ -127,7 +127,6 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const CeedScalar(*q_data_sur)    = in[2];
   const CeedScalar(*X)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[3];
   CeedScalar(*v)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[0];
-  CeedScalar(*jac_data_sur)        = context->newtonian_ctx.is_implicit ? out[1] : NULL;
 
   const bool                     is_implicit = context->implicit;
   const NewtonianIdealGasContext gas         = &context->newtonian_ctx;
@@ -135,7 +134,6 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const CeedScalar               rho_0       = S_infty.U.density;
   const CeedScalar               U_infty     = Norm3(S_infty.Y.velocity);
   const CeedScalar               x0          = U_infty * rho_0 / (gas->mu * 25 / Square(context->delta0));
-  const CeedScalar               zeros[11]   = {0.};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
@@ -171,7 +169,6 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     CeedScalar       Flux[5];
     FluxTotal_Boundary(Flux_inviscid, stress, Fe, normal, Flux);
     for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
-    if (is_implicit) StoredValuesPack(Q, i, 0, 11, zeros, jac_data_sur);
   }
   return 0;
 }
