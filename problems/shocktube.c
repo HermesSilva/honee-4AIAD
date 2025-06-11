@@ -35,7 +35,7 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   problem->apply_vol_rhs.qf_loc            = EulerShockTube_loc;
   problem->apply_vol_ifunction.qf_func_ptr = NULL;
   problem->apply_vol_ifunction.qf_loc      = NULL;
-  problem->jac_data_size_vol               = 0;
+  problem->num_comps_jac_data              = 0;
   problem->compute_exact_solution_error    = PETSC_FALSE;
   problem->print_info                      = PRINT_SHOCKTUBE;
 

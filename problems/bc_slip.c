@@ -62,8 +62,8 @@ PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&honee_bc));
-  honee_bc->honee             = honee;
-  honee_bc->jac_data_size_sur = 5;
+  honee_bc->honee              = honee;
+  honee_bc->num_comps_jac_data = 5;
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
 
   PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));

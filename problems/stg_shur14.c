@@ -314,8 +314,8 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
 
         PetscCall(PetscNew(&honee_bc));
         PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &honee_bc->qfctx));
-        honee_bc->honee             = honee;
-        honee_bc->jac_data_size_sur = honee->phys->implicit ? 11 : 0;
+        honee_bc->honee              = honee;
+        honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
         PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
         PetscCall(BCDefinitionSetIFunction(bc_def, STGWeakInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

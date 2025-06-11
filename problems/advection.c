@@ -338,8 +338,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   // ------------------------------------------------------
   //               SET UP ADVECTION
   // ------------------------------------------------------
-  problem->print_info        = PRINT_ADVECTION;
-  problem->jac_data_size_vol = 0;
+  problem->print_info         = PRINT_ADVECTION;
+  problem->num_comps_jac_data = 0;
   switch (dim) {
     case 2:
       problem->ics.qf_func_ptr                 = ICsAdvection2d;
@@ -574,8 +574,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
 
       PetscCall(PetscNew(&honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &honee_bc->qfctx));
-      honee_bc->honee             = honee;
-      honee_bc->jac_data_size_sur = 0;
+      honee_bc->honee              = honee;
+      honee_bc->num_comps_jac_data = 0;
       PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, AdvectionInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
