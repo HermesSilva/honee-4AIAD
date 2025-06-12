@@ -6,22 +6,144 @@
 #include <petsc-ceed.h>
 #include <petsc/private/petscimpl.h>
 
+PetscClassId BC_DEFINITION_CLASSID;
+
+/**
+  @brief Initalize `BCDefinition` class.
+
+  Not collective across MPI processes.
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode BCDefinitionInitalize() {
+  static PetscBool registered = PETSC_FALSE;
+
+  PetscFunctionBeginUser;
+  if (registered) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(PetscClassIdRegister("BCDefinition", &BC_DEFINITION_CLASSID));
+  registered = PETSC_TRUE;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /**
    @brief Create `BCDefinition`
 
+   @param[in]  comm             `MPI_Comm` for the object
    @param[in]  name             Name of the boundary condition
    @param[in]  num_label_values Number of `DMLabel` values
    @param[in]  label_values     Array of label values that define the boundaries controlled by the `BCDefinition`, size `num_label_values`
    @param[out] bc_def           The new `BCDefinition`
 **/
-PetscErrorCode BCDefinitionCreate(const char *name, PetscInt num_label_values, PetscInt label_values[], BCDefinition *bc_def) {
-  PetscFunctionBeginUser;
-  PetscCall(PetscNew(bc_def));
+PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char *name, PetscInt num_label_values, PetscInt label_values[], BCDefinition *bc_def) {
+  BCDefinition bc_def_;
 
-  PetscCall(PetscStrallocpy(name, &(*bc_def)->name));
-  (*bc_def)->num_label_values = num_label_values;
-  PetscCall(PetscMalloc1(num_label_values, &(*bc_def)->label_values));
-  for (PetscInt i = 0; i < num_label_values; i++) (*bc_def)->label_values[i] = label_values[i];
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionInitalize());
+  PetscCall(
+      PetscHeaderCreate(bc_def_, BC_DEFINITION_CLASSID, "BCDefinition", "BCDefinition", "BCDefinition", comm, BCDefinitionDestroy, BCDefinitionView));
+
+  PetscCall(PetscStrallocpy(name, &bc_def_->name));
+  PetscCall(PetscObjectSetName((PetscObject)bc_def_, name));
+  bc_def_->num_label_values = num_label_values;
+  PetscCall(PetscMalloc1(num_label_values, &bc_def_->label_values));
+  for (PetscInt i = 0; i < num_label_values; i++) bc_def_->label_values[i] = label_values[i];
+  *bc_def = bc_def_;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+   @brief Destory a `BCDefinition` object
+
+   @param[in,out] bc_def `BCDefinition` to be destroyed
+**/
+PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
+  BCDefinition bc_def_ = *bc_def;
+  PetscFunctionBeginUser;
+  if (!bc_def_) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscValidHeaderSpecific(bc_def_, BC_DEFINITION_CLASSID, 1);
+  if (bc_def_->name) PetscCall(PetscFree(bc_def_->name));
+  if (bc_def_->label_values) PetscCall(PetscFree(bc_def_->label_values));
+  if (bc_def_->essential_comps) PetscCall(PetscFree(bc_def_->essential_comps));
+  if (bc_def_->dm) PetscCall(DMDestroy(&bc_def_->dm));
+  if (bc_def_->DestroyCtx) PetscCall((*(bc_def_->DestroyCtx))(&bc_def_->ctx));
+  PetscCall(PetscHeaderDestroy(&bc_def_));
+  *bc_def = NULL;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief View a `BCDefinition` object.
+
+  Not collective across MPI processes.
+
+  @param[in]  bc_def  `BCDefinition` object
+  @param[in]  viewer     Optional `PetscViewer` context or `NULL`
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+PetscErrorCode BCDefinitionView(BCDefinition bc_def, PetscViewer viewer) {
+  PetscBool         is_ascii;
+  PetscViewerFormat format;
+  PetscMPIInt       size;
+
+  PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscValidHeaderSpecific(viewer, PETSC_VIEWER_CLASSID, 2);
+  if (!viewer) PetscCall(PetscViewerASCIIGetStdout(PetscObjectComm((PetscObject)bc_def), &viewer));
+
+  PetscCall(PetscViewerGetFormat(viewer, &format));
+  PetscCallMPI(MPI_Comm_size(PetscObjectComm((PetscObject)bc_def), &size));
+  if (size == 1 && format == PETSC_VIEWER_LOAD_BALANCE) PetscFunctionReturn(PETSC_SUCCESS);
+
+  PetscCall(PetscObjectTypeCompare((PetscObject)viewer, PETSCVIEWERASCII, &is_ascii));
+  {
+    PetscBool is_detailed = format == PETSC_VIEWER_ASCII_INFO_DETAIL;
+
+    PetscCall(PetscObjectPrintClassNamePrefixType((PetscObject)bc_def, viewer));
+    PetscCall(PetscViewerASCIIPushTab(viewer));  // BCDefinition
+
+    if (is_detailed) PetscCall(DMView(bc_def->dm, viewer));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "DM Field: %" PetscInt_FMT "\n", bc_def->dm_field));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "Face Sets:"));
+    PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_FALSE));
+    if (bc_def->num_label_values > 0) {
+      for (PetscInt i = 0; i < bc_def->num_label_values; i++) {
+        PetscCall(PetscViewerASCIIPrintf(viewer, " %" PetscInt_FMT, bc_def->label_values[i]));
+      }
+      PetscCall(PetscViewerASCIIPrintf(viewer, "\n"));
+    } else {
+      PetscCall(PetscViewerASCIIPrintf(viewer, " None\n"));
+    }
+    PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_TRUE));
+
+    PetscCall(PetscViewerASCIIPrintf(viewer, "Essential Components:"));
+    PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_FALSE));
+    if (bc_def->num_essential_comps > 0) {
+      for (PetscInt i = 0; i < bc_def->num_essential_comps; i++) {
+        PetscCall(PetscViewerASCIIPrintf(viewer, " %" PetscInt_FMT, bc_def->essential_comps[i]));
+      }
+      PetscCall(PetscViewerASCIIPrintf(viewer, "\n"));
+    } else {
+      PetscCall(PetscViewerASCIIPrintf(viewer, " None\n"));
+    }
+    PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_TRUE));
+
+    PetscCall(PetscViewerASCIIPopTab(viewer));  // BCDefinition
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief View `BCDefinition` from options database (command line/YAML)
+
+  @param[in] bc_def `BCDefintion` to view
+  @param[in] obj    Optional object that provides the prefix for the options database (if `NULL` then the prefix in `bc_def` is used)
+  @param[in] name   Option string that is used to activate viewing
+**/
+PetscErrorCode BCDefinitionViewFromOptions(BCDefinition bc_def, PetscObject obj, const char name[]) {
+  PetscFunctionBegin;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscCall(PetscObjectViewFromOptions((PetscObject)bc_def, obj, name));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -35,6 +157,7 @@ PetscErrorCode BCDefinitionCreate(const char *name, PetscInt num_label_values, P
 **/
 PetscErrorCode BCDefinitionGetInfo(BCDefinition bc_def, const char *name[], PetscInt *num_label_values, const PetscInt *label_values[]) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   if (name) {
     PetscAssertPointer(name, 2);
     *name = bc_def->name;
@@ -49,24 +172,6 @@ PetscErrorCode BCDefinitionGetInfo(BCDefinition bc_def, const char *name[], Pets
 }
 
 /**
-   @brief Destory a `BCDefinition` object
-
-   @param[in,out] bc_def `BCDefinition` to be destroyed
-**/
-PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
-  BCDefinition bc_def_ = *bc_def;
-  PetscFunctionBeginUser;
-  if (bc_def_->name) PetscCall(PetscFree(bc_def_->name));
-  if (bc_def_->label_values) PetscCall(PetscFree(bc_def_->label_values));
-  if (bc_def_->essential_comps) PetscCall(PetscFree(bc_def_->essential_comps));
-  if (bc_def_->dm) PetscCall(DMDestroy(&bc_def_->dm));
-  if (bc_def_->DestroyCtx) PetscCall((*(bc_def_->DestroyCtx))(&bc_def_->ctx));
-  PetscCall(PetscFree(bc_def_));
-  *bc_def = NULL;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/**
    @brief Set `DM_BC_ESSENTIAL` boundary condition values
 
    @param[in,out] bc_def              `BCDefinition` to set values to
@@ -75,6 +180,7 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
 **/
 PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, PetscInt essential_comps[]) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   bc_def->num_essential_comps = num_essential_comps;
   PetscCall(PetscMalloc1(num_essential_comps, &bc_def->essential_comps));
   PetscCall(PetscArraycpy(bc_def->essential_comps, essential_comps, num_essential_comps));
@@ -90,6 +196,7 @@ PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essent
 **/
 PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[]) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   PetscAssertPointer(num_essential_comps, 2);
   PetscAssertPointer(essential_comps, 3);
   *num_essential_comps = bc_def->num_essential_comps;
@@ -107,7 +214,7 @@ PetscErrorCode PetscOptionsBCDefinition_Private(PetscOptionItems PetscOptionsObj
   PetscFunctionBeginUser;
   PetscCall(PetscOptionsIntArray(opt, text, man, label_values, &num_label_values, set));
   if (num_label_values > 0) {
-    PetscCall(BCDefinitionCreate(name, num_label_values, label_values, bc_def));
+    PetscCall(BCDefinitionCreate(PetscOptionsObject->comm, name, num_label_values, label_values, bc_def));
   } else {
     *bc_def = NULL;
   }
@@ -122,6 +229,7 @@ PetscErrorCode PetscOptionsBCDefinition_Private(PetscOptionItems PetscOptionsObj
 **/
 PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   if (bc_def->dm) PetscCall(DMDestroy(&bc_def->dm));
   if (dm) {
     PetscValidHeaderSpecific(dm, DM_CLASSID, 2);
@@ -138,6 +246,7 @@ PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm) {
   @param[out] dm     `DM` assigned to BCDefinition
 **/
 PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   PetscFunctionBeginUser;
   PetscAssertPointer(dm, 2);
   *dm = bc_def->dm;
@@ -153,6 +262,7 @@ PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
 **/
 PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   if (bc_def->DestroyCtx) PetscCall((*(bc_def->DestroyCtx))(&bc_def->ctx));
   bc_def->ctx        = ctx;
   bc_def->DestroyCtx = destroy_ctx;
@@ -167,6 +277,7 @@ PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *de
 **/
 PetscErrorCode BCDefinitionGetContext(BCDefinition bc_def, void *ctx) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   PetscAssertPointer(ctx, 2);
   *(void **)ctx = bc_def->ctx;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -181,6 +292,7 @@ PetscErrorCode BCDefinitionGetContext(BCDefinition bc_def, void *ctx) {
 **/
 PetscErrorCode BCDefinitionSetIFunction(BCDefinition bc_def, BCDefinitionCreateQFunction create_qf, BCDefinitionAddIFunctionOperator add_op) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   bc_def->CreateIFunctionQF    = create_qf;
   bc_def->AddIFunctionOperator = add_op;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -195,6 +307,7 @@ PetscErrorCode BCDefinitionSetIFunction(BCDefinition bc_def, BCDefinitionCreateQ
 **/
 PetscErrorCode BCDefinitionSetIJacobian(BCDefinition bc_def, BCDefinitionCreateQFunction create_qf, BCDefinitionAddIJacobianOperator add_op) {
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   bc_def->CreateIJacobianQF    = create_qf;
   bc_def->AddIJacobianOperator = add_op;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -217,6 +330,7 @@ PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifu
   const PetscInt *face_set_values;
 
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   if (!bc_def->CreateIFunctionQF || !bc_def->AddIFunctionOperator) PetscFunctionReturn(PETSC_SUCCESS);
   PetscBool add_ijac = (!bc_def->CreateIJacobianQF || !bc_def->AddIJacobianOperator || !op_ijac) ? PETSC_FALSE : PETSC_TRUE;
   PetscCheck(bc_def->dm, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "BCDefinition must have DM set using BCDefinitionSetDM()");

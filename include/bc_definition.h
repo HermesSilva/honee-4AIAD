@@ -4,6 +4,7 @@
 
 #include <ceed.h>
 #include <petsc.h>
+#include <petsc/private/petscimpl.h>
 
 typedef struct _p_BCDefinition *BCDefinition;
 
@@ -13,7 +14,11 @@ typedef PetscErrorCode (*BCDefinitionAddIFunctionOperator)(BCDefinition bc_def, 
 typedef PetscErrorCode (*BCDefinitionAddIJacobianOperator)(BCDefinition bc_def, CeedOperator sub_op_ifunction, DMLabel orientation_label,
                                                            PetscInt orientation, CeedQFunction qf, CeedOperator op);
 
+typedef struct _BCDefinitionOps *BCDefinitionOps;
+struct _BCDefinitionOps {};
+
 struct _p_BCDefinition {
+  PETSCHEADER(struct _BCDefinitionOps);
   char *name;
   DM    dm;
 
@@ -47,8 +52,10 @@ struct _p_BCDefinition {
 PetscErrorCode PetscOptionsBCDefinition_Private(PetscOptionItems PetscOptionsObject, const char opt[], const char text[], const char man[],
                                                 const char name[], BCDefinition *bc_def, PetscBool *set);
 
-PetscErrorCode BCDefinitionCreate(const char *name, PetscInt num_label_values, PetscInt label_values[], BCDefinition *bc_def);
+PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char *name, PetscInt num_label_values, PetscInt label_values[], BCDefinition *bc_def);
 PetscErrorCode BCDefinitionGetInfo(BCDefinition bc_def, const char *name[], PetscInt *num_label_values, const PetscInt *label_values[]);
+PetscErrorCode BCDefinitionView(BCDefinition bc_def, PetscViewer viewer);
+PetscErrorCode BCDefinitionViewFromOptions(BCDefinition bc_def, PetscObject obj, const char name[]);
 PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def);
 
 PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, PetscInt essential_comps[]);
