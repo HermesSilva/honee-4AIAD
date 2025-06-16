@@ -197,8 +197,15 @@ typedef struct {
   PetscInt collocated_database_num_ranks;
 } *SmartSimData;
 
+typedef struct _HoneeOps *HoneeOps;
+struct _HoneeOps {};
+
+PetscErrorCode HoneeInit(MPI_Comm comm, Honee *honee);
+PetscErrorCode HoneeDestroy(Honee *honee);
+
 // PETSc user data
 struct Honee_private {
+  PETSCHEADER(struct _HoneeOps);
   MPI_Comm                  comm;
   DM                        dm;
   DM                        dm_viz;
