@@ -15,6 +15,8 @@ typedef struct {
   SGSModelDDImplementation sgs_dd_model_implementation;
 } *SgsDDSetupData;
 
+#define GRAD_VELO_PROJ_KEY "Gradient of Velocity Projection"
+
 PetscErrorCode SgsDDSetupDataDestroy(SgsDDSetupData sgs_dd_setup_data) {
   Ceed ceed;
 
@@ -80,16 +82,18 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs;
   DMLabel             domain_label = NULL;
   PetscInt            label_value = 0, height = 0, dm_field = 0;
+  NodalProjectionData grad_velo_proj;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(honee->dm, &dim));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
+  PetscCall(PetscObjectContainerQuery((PetscObject)honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
 
   {  // Get velocity gradient information
     CeedOperatorField op_field;
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->grad_velo_proj->l2_rhs_ctx->op, "velocity gradient", &op_field));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(grad_velo_proj->l2_rhs_ctx->op, "velocity gradient", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_grad_velo));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_grad_velo, &num_comp_grad_velo));
   }
@@ -133,8 +137,8 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_nodal, "inverse multiplicity", elem_restr_inv_multiplicity, CEED_BASIS_NONE, inv_multiplicity));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_nodal, "km_sgs", elem_restr_sgs, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
-  PetscCall(OperatorApplyContextCreate(honee->grad_velo_proj->dm, sgs_dd_data->dm_sgs, ceed, op_sgs_dd_nodal, NULL, sgs_dd_data->sgs_nodal_ceed, NULL,
-                                       NULL, &sgs_dd_data->op_nodal_evaluation_ctx));
+  PetscCall(OperatorApplyContextCreate(grad_velo_proj->dm, sgs_dd_data->dm_sgs, ceed, op_sgs_dd_nodal, NULL, sgs_dd_data->sgs_nodal_ceed, NULL, NULL,
+                                       &sgs_dd_data->op_nodal_evaluation_ctx));
 
   sgs_dd_setup_data->elem_restr_sgs = elem_restr_sgs;
   sgs_dd_data->sgs_nodal_eval       = SgsDDNodalStressEval_Fused;
@@ -262,6 +266,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   CeedInt             num_comp_q, num_comp_grad_velo, num_comp_x, num_comp_grid_aniso, num_comp_eigvec = 9 + 1;
   PetscInt            dim;
   CeedVector          inv_multiplicity, eigvec;
+  NodalProjectionData grad_velo_proj;
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs, elem_restr_eigvec, elem_restr_dd_inputs,
       elem_restr_dd_outputs;
   DMLabel  domain_label = NULL;
@@ -315,10 +320,11 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
+  PetscCall(PetscObjectContainerQuery((PetscObject)honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
 
   {  // Get velocity gradient information
     CeedOperatorField op_field;
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->grad_velo_proj->l2_rhs_ctx->op, "velocity gradient", &op_field));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(grad_velo_proj->l2_rhs_ctx->op, "velocity gradient", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_grad_velo));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_grad_velo, &num_comp_grad_velo));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_grad_velo, &sgs_dd_data->grad_velo_ceed, NULL));
@@ -373,7 +379,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
     PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_inputs, "eigenvectors", elem_restr_eigvec, CEED_BASIS_NONE, eigvec));
     PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_inputs, "model inputs", elem_restr_dd_inputs, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
-    PetscCall(OperatorApplyContextCreate(honee->grad_velo_proj->dm, sgs_dd_data->dm_dd_inputs, ceed, op_sgs_dd_inputs, NULL, NULL, NULL, NULL,
+    PetscCall(OperatorApplyContextCreate(grad_velo_proj->dm, sgs_dd_data->dm_dd_inputs, ceed, op_sgs_dd_inputs, NULL, NULL, NULL, NULL,
                                          &sgs_dd_data->op_nodal_dd_inputs_ctx));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_sgs_dd_inputs));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_dd_inputs));
@@ -493,14 +499,16 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
 
 // @brief Calculate and add data-driven SGS residual to the global residual
 PetscErrorCode SgsDDApplyIFunction(Honee honee, const Vec Q_loc, Vec G_loc) {
-  SgsDDData    sgs_dd_data = honee->sgs_dd_data;
-  Vec          VelocityGradient, SGSNodal_loc;
-  PetscMemType sgs_nodal_mem_type;
+  SgsDDData           sgs_dd_data = honee->sgs_dd_data;
+  Vec                 VelocityGradient, SGSNodal_loc;
+  PetscMemType        sgs_nodal_mem_type;
+  NodalProjectionData grad_velo_proj;
 
   PetscFunctionBeginUser;
   PetscCall(PetscLogEventBegin(HONEE_SgsModel, Q_loc, G_loc, NULL, NULL));
-  PetscCall(DMGetGlobalVector(honee->grad_velo_proj->dm, &VelocityGradient));
-  PetscCall(VelocityGradientProjectionApply(honee->grad_velo_proj, Q_loc, VelocityGradient));
+  PetscCall(PetscObjectContainerQuery((PetscObject)honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
+  PetscCall(DMGetGlobalVector(grad_velo_proj->dm, &VelocityGradient));
+  PetscCall(VelocityGradientProjectionApply(grad_velo_proj, Q_loc, VelocityGradient));
 
   // -- Compute Nodal SGS tensor
   PetscCall(DMGetLocalVector(sgs_dd_data->dm_sgs, &SGSNodal_loc));
@@ -513,7 +521,7 @@ PetscErrorCode SgsDDApplyIFunction(Honee honee, const Vec Q_loc, Vec G_loc) {
   // -- Return local SGS vector
   PetscCall(VecCeedToPetsc(sgs_dd_data->sgs_nodal_ceed, sgs_nodal_mem_type, SGSNodal_loc));
   PetscCall(DMRestoreLocalVector(sgs_dd_data->dm_sgs, &SGSNodal_loc));
-  PetscCall(DMRestoreGlobalVector(honee->grad_velo_proj->dm, &VelocityGradient));
+  PetscCall(DMRestoreGlobalVector(grad_velo_proj->dm, &VelocityGradient));
   PetscCall(PetscLogEventEnd(HONEE_SgsModel, Q_loc, G_loc, NULL, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -587,10 +595,11 @@ PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem) {
   char                     sgs_dd_dir[PETSC_MAX_PATH_LEN] = "./dd_sgs_parameters";
   SgsDDSetupData           sgs_dd_setup_data;
   NewtonianIdealGasContext gas;
+  NodalProjectionData      grad_velo_proj;
 
   PetscFunctionBeginUser;
-  PetscCall(
-      VelocityGradientProjectionSetup(ceed, honee, problem, honee->phys->state_var, honee->elem_restr_q, honee->basis_q, &honee->grad_velo_proj));
+  PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, honee->phys->state_var, honee->elem_restr_q, honee->basis_q, &grad_velo_proj));
+  PetscCall(PetscObjectContainerCompose((PetscObject)honee, GRAD_VELO_PROJ_KEY, grad_velo_proj, (PetscCtxDestroyFn *)NodalProjectionDataDestroy));
 
   PetscCall(PetscNew(&honee->sgs_dd_data));
   honee->sgs_dd_data->num_comp_inputs  = 6;

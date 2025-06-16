@@ -14,6 +14,8 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include <nodal_projection.h>
+
 #include <petsc_ops.h>
 #include "../qfunctions/newtonian_types.h"
 
@@ -123,13 +125,6 @@ struct AppCtx_private {
   PetscInt check_step_interval;
 };
 
-typedef struct {
-  DM                   dm;
-  PetscInt             num_comp;
-  OperatorApplyContext l2_rhs_ctx;
-  KSP                  ksp;
-} *NodalProjectionData;
-
 typedef struct DivDiffFluxProjectionData_private *DivDiffFluxProjectionData;
 
 struct DivDiffFluxProjectionData_private {
@@ -221,7 +216,6 @@ struct Honee_private {
   KSP                       mass_ksp;
   OperatorApplyContext      op_rhs_ctx, op_strong_bc_ctx;
   CeedScalar                time_bc_set;
-  NodalProjectionData       grad_velo_proj;
   SgsDDData                 sgs_dd_data;
   DiffFilterData            diff_filter;
   SmartSimData              smartsim;
@@ -389,7 +383,6 @@ PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
 PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
 PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume);
-PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData *context);
 
 // -----------------------------------------------------------------------------
 // Turbulence Statistics Collection Functions
