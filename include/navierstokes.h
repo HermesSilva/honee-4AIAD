@@ -389,7 +389,7 @@ PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
 PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
 PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume);
-PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
+PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData *context);
 
 // -----------------------------------------------------------------------------
 // Turbulence Statistics Collection Functions

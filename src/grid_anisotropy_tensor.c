@@ -116,7 +116,7 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
     PetscCall(DMRestoreGlobalVector(grid_aniso_proj->dm, &Grid_Anisotropy));
   }
 
-  PetscCall(NodalProjectionDataDestroy(grid_aniso_proj));
+  PetscCall(NodalProjectionDataDestroy(&grid_aniso_proj));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_grid_aniso));
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));

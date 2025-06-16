@@ -179,13 +179,20 @@ int FreeContextPetsc(void *data) {
   return CEED_ERROR_SUCCESS;
 }
 
-PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context) {
+/**
+  @brief Destroy `NodalProjectionData` object
+
+  @param[in] context `NodalProjectionData` object to destroy
+**/
+PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData *context) {
+  NodalProjectionData context_ = *context;
   PetscFunctionBeginUser;
-  if (context == NULL) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(DMDestroy(&context->dm));
-  PetscCall(KSPDestroy(&context->ksp));
-  PetscCall(OperatorApplyContextDestroy(context->l2_rhs_ctx));
-  PetscCall(PetscFree(context));
+  if (context_ == NULL) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(DMDestroy(&context_->dm));
+  PetscCall(KSPDestroy(&context_->ksp));
+  PetscCall(OperatorApplyContextDestroy(context_->l2_rhs_ctx));
+  PetscCall(PetscFree(context_));
+  *context = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

@@ -383,7 +383,7 @@ PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train) {
   if (!sgs_dd_train) PetscFunctionReturn(PETSC_SUCCESS);
 
   PetscCall(OperatorApplyContextDestroy(sgs_dd_train->op_training_data_calc_ctx));
-  PetscCall(NodalProjectionDataDestroy(sgs_dd_train->filtered_grad_velo_proj));
+  PetscCall(NodalProjectionDataDestroy(&sgs_dd_train->filtered_grad_velo_proj));
   PetscCall(DMDestroy(&sgs_dd_train->dm_dd_training));
   PetscCall(PetscFree(sgs_dd_train));
 
