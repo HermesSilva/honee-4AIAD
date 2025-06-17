@@ -161,6 +161,11 @@ info:
 	$(info )
 	$(info -----------------------------------------)
 	$(info )
+	$(info Git:)
+	$(info describe        = $(GIT_DESCRIBE))
+	$(info )
+	$(info -----------------------------------------)
+	$(info )
 	@true
 
 # Get number of processors of the machine
@@ -181,8 +186,15 @@ navierstokes: $(src.o) | $(petsc.pc) $(ceed.pc)
 # Quiet, color output
 quiet ?= $($(1))
 
+# Inject Git/version macros when compiling honee-version.c
+GIT_DESCRIBE := $(shell git describe --always --dirty 2>/dev/null || printf "unknown\n")
+
+$(OBJDIR)/src/honee-config.o: Makefile
+$(OBJDIR)/src/honee-config.o src/honee-config.c.tidy: CONFIGFLAGS += -DHONEE_GIT_VERSION="\"$(GIT_DESCRIBE)\""
+$(OBJDIR)/src/honee-config.o src/honee-config.c.tidy: CONFIGFLAGS += -DHONEE_BUILD_CONFIGURATION="\"// Build Configuration:$(foreach v,$(CONFIG_VARS),\n$(v) = $($(v)))\""
+ 
 $(OBJDIR)/%.o : %.c | $$(@D)/.DIR
-	$(call quiet,CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $(abspath $<)
+	$(call quiet,CC) $(CPPFLAGS) $(CFLAGS) $(CONFIGFLAGS) -c -o $@ $(abspath $<)
 
 $(OBJDIR)/%.o : %.cpp | $$(@D)/.DIR
 	$(call quiet,CXX) $(CPPFLAGS) $(CXXFLAGS) -c -o $@ $(abspath $<)
@@ -248,7 +260,7 @@ doc-clean:
 # Tidy
 CLANG_TIDY     ?= clang-tidy
 TIDY_OPTS      ?= --quiet
-TIDY_FILE_OPTS += $(CPPFLAGS) --std=c99
+TIDY_FILE_OPTS += $(CPPFLAGS) $(CONFIGFLAGS) --std=c99
 
 %.c.tidy : %.c
 	$(call quiet,CLANG_TIDY) $(TIDY_OPTS) $^ -- $(TIDY_FILE_OPTS)

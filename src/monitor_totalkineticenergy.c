@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
-
 #include "../qfunctions/monitor_totalkineticenergy.h"
+#include <honee.h>
 #include <navierstokes.h>
 #include <time.h>
 
@@ -169,8 +169,13 @@ PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt step, PetscReal solu
     if (!monitor_ctx->is_header_written) {
       char        buf[PETSC_MAX_PATH_LEN];
       const char *buf_const;
+      int         major, minor, patch;
       time_t      t = time(NULL);
 
+      PetscCall(HoneeGetVersion(&major, &minor, &patch, NULL));
+      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# honee_version: %d.%d.%d\n", major, minor, patch));
+      PetscCall(HoneeGetGitVersion(&buf_const));
+      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# honee_git_commit: %s\n", buf_const));
       PetscCall(PetscGetVersion(buf, sizeof(buf)));
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# petsc_version: %s\n", buf));
       PetscCall(PetscGetPetscDir(&buf_const));
@@ -187,7 +192,6 @@ PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt step, PetscReal solu
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# hostname: %s\n", buf));
       PetscCall(PetscGetWorkingDirectory(buf, sizeof(buf)));
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# working_directory: %s\n", buf));
-
       PetscCall(PetscViewerFileGetName(ctx->viewer, &buf_const));
       PetscCall(PetscGetFullPath(buf_const, buf, sizeof(buf)));
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# original_file_path: %s\n", buf));
