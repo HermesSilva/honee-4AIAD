@@ -68,7 +68,6 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
   AppCtx      app_ctx = honee_->app_ctx;
   ProblemData problem = honee_->problem_data;
 
-  PetscCall(SgsDDDataDestroy(honee_->sgs_dd_data));
   PetscCall(DifferentialFilterDataDestroy(honee_->diff_filter));
   PetscCall(SGS_DD_TrainingDataDestroy(honee_->sgs_dd_train));
   PetscCall(SmartSimDataDestroy(honee_->smartsim));

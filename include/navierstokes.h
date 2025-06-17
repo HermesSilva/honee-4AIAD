@@ -151,19 +151,6 @@ struct DivDiffFluxProjectionData_private {
   OperatorApplyContext calc_div_diff_flux;
 };
 
-typedef PetscErrorCode (*SgsDDNodalStressEval)(Honee honee, Vec Q_loc, Vec VelocityGradient, Vec SGSNodal_loc);
-typedef PetscErrorCode (*SgsDDNodalStressInference)(Vec DD_Inputs_loc, Vec DD_Outputs_loc, void *ctx);
-typedef struct {
-  DM                        dm_sgs, dm_dd_inputs, dm_dd_outputs;
-  PetscInt                  num_comp_sgs, num_comp_inputs, num_comp_outputs;
-  OperatorApplyContext      op_nodal_evaluation_ctx, op_nodal_dd_inputs_ctx, op_nodal_dd_outputs_ctx, op_sgs_apply_ctx;
-  CeedVector                sgs_nodal_ceed, grad_velo_ceed;
-  SgsDDNodalStressEval      sgs_nodal_eval;
-  SgsDDNodalStressInference sgs_nodal_inference;
-  void                     *sgs_nodal_inference_ctx;
-  PetscErrorCode (*sgs_nodal_inference_ctx_destroy)(void *ctx);
-} *SgsDDData;
-
 typedef struct {
   DM                   dm_dd_training;
   PetscInt             num_comp_dd_inputs, write_data_interval, num_filter_widths;
@@ -216,7 +203,6 @@ struct Honee_private {
   KSP                       mass_ksp;
   OperatorApplyContext      op_rhs_ctx, op_strong_bc_ctx;
   CeedScalar                time_bc_set;
-  SgsDDData                 sgs_dd_data;
   DiffFilterData            diff_filter;
   SmartSimData              smartsim;
   SGS_DD_TrainingData       sgs_dd_train;
@@ -394,7 +380,6 @@ PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, Pet
 // Data-Driven Subgrid Stress (DD-SGS) Modeling Functions
 // -----------------------------------------------------------------------------
 PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem);
-PetscErrorCode SgsDDDataDestroy(SgsDDData sgs_dd_data);
 PetscErrorCode SgsDDApplyIFunction(Honee honee, const Vec Q_loc, Vec G_loc);
 PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemData problem, StateVariable state_var_input,
                                                CeedElemRestriction elem_restr_input, CeedBasis basis_input, NodalProjectionData *pgrad_velo_proj);
