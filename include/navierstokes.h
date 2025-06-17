@@ -152,16 +152,6 @@ struct DivDiffFluxProjectionData_private {
 };
 
 typedef struct {
-  DM                   dm_dd_training;
-  PetscInt             num_comp_dd_inputs, write_data_interval, num_filter_widths;
-  PetscScalar          filter_widths[16];
-  OperatorApplyContext op_training_data_calc_ctx;
-  NodalProjectionData  filtered_grad_velo_proj;
-  size_t               training_data_array_dims[2];
-  PetscBool            overwrite_training_data;
-} *SGS_DD_TrainingData;
-
-typedef struct {
   DM                    dm_filter;
   PetscInt              num_filtered_fields;
   CeedInt              *num_field_components;
@@ -205,7 +195,6 @@ struct Honee_private {
   CeedScalar                time_bc_set;
   DiffFilterData            diff_filter;
   SmartSimData              smartsim;
-  SGS_DD_TrainingData       sgs_dd_train;
   DivDiffFluxProjectionData diff_flux_proj;
 
   ProblemData problem_data;
@@ -416,7 +405,6 @@ PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim);
 PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem);
 PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx);
 PetscErrorCode TSPostStep_SGS_DD_Training(TS ts);
-PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train);
 
 // -----------------------------------------------------------------------------
 // Divergence of Diffusive Flux Projection
