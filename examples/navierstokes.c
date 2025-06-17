@@ -131,6 +131,10 @@ int main(int argc, char **argv) {
   // -- Set up libCEED objects
   PetscCall(SetupLibceed(ceed, dm, honee, app_ctx, problem));
 
+  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
+    PetscCall(BCDefinitionViewFromOptions(problem->bc_defs[i], NULL, "-bc_definitions_view"));
+  }
+
   // ---------------------------------------------------------------------------
   // Set up ICs
   // ---------------------------------------------------------------------------
