@@ -82,14 +82,9 @@ src.o = $(src.c:%.c=$(OBJDIR)/%.o) $(src.cpp:%.cpp=$(OBJDIR)/%.o)
 # Path to install directory for SmartRedis. Example: /software/smartredis/install
 SMARTREDIS_DIR ?=
 ifdef SMARTREDIS_DIR
-	hiredis.pc := $(SMARTREDIS_DIR)/lib/pkgconfig/hiredis.pc
-	lsmartredis:= -lsmartredis
-	redis++.pc = $(wildcard $(SMARTREDIS_DIR)/lib/pkgconfig/redis++.pc $(SMARTREDIS_DIR)/lib64/pkgconfig/redis++.pc)
-
-	CPPFLAGS += $(call pkgconf, --cflags-only-I $(hiredis.pc) $(redis++.pc))
-	LDFLAGS += $(call pkgconf, --libs-only-L --libs-only-other $(hiredis.pc) $(redis++.pc))
-	LDFLAGS += $(patsubst -L%, $(call pkgconf, --variable=ldflag_rpath $(petsc.pc))%, $(call pkgconf, --libs-only-L $(hiredis.pc) $(redis++.pc)))
-	LDLIBS += $(call pkgconf, --libs-only-l $(hiredis.pc) $(redis++.pc)) $(lsmartredis)
+	CPPFLAGS += -I$(SMARTREDIS_DIR)/include
+	LDFLAGS += -L$(SMARTREDIS_DIR)/lib $(call pkgconf, --variable=ldflag_rpath $(petsc.pc))$(SMARTREDIS_DIR)/lib
+	LDLIBS +=  -lsmartredis
 	src.c += $(sort $(wildcard $(SRCDIR)/smartsim/*.c))
 endif
 
