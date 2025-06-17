@@ -128,8 +128,8 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscPrintf(comm, "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
       PetscCall(PetscNew(&honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &honee_bc->qfctx));
-      honee_bc->honee             = honee;
-      honee_bc->jac_data_size_sur = honee->phys->implicit ? 11 : 0;
+      honee_bc->honee              = honee;
+      honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
       PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, ChannelOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
@@ -140,8 +140,8 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscPrintf(comm, "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
       PetscCall(PetscNew(&honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &honee_bc->qfctx));
-      honee_bc->honee             = honee;
-      honee_bc->jac_data_size_sur = honee->phys->implicit ? 11 : 0;
+      honee_bc->honee              = honee;
+      honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
       PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, ChannelInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

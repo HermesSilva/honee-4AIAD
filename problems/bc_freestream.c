@@ -158,7 +158,7 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
   honee_bc->ctx                  = freestream_honee_bc;
   honee_bc->DestroyCtx           = PetscCtxDestroyDefault;
   honee_bc->honee                = honee;
-  honee_bc->jac_data_size_sur    = honee->phys->implicit ? 5 : 0;
+  honee_bc->num_comps_jac_data   = honee->phys->implicit ? 5 : 0;
   honee_bc->qfctx                = freestream_qfctx;
   PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 

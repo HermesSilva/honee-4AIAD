@@ -364,7 +364,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   // ------------------------------------------------------
   //           Setup Generic Newtonian IG Problem
   // ------------------------------------------------------
-  problem->jac_data_size_vol            = 14;
+  problem->num_comps_jac_data           = 14;
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
 
@@ -528,7 +528,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
                                NULL, idl_decay_time, &idl_decay_time, &idl_enable));
   PetscCheck(!(idl_enable && idl_decay_time == 0), comm, PETSC_ERR_SUP, "idl_decay_time may not be equal to zero.");
   if (idl_decay_time < 0) idl_enable = PETSC_FALSE;
-  if (idl_enable) problem->jac_data_size_vol++;
+  if (idl_enable) problem->num_comps_jac_data++;
   PetscCall(PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, idl_start, &idl_start, NULL));
   PetscCall(PetscOptionsScalar("-idl_length", "Length of IDL in the positive x direction", NULL, idl_length, &idl_length, NULL));
   idl_pressure = reference.pressure;
@@ -642,8 +642,8 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
       PetscCall(PetscNew(&honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
-      honee_bc->honee             = honee;
-      honee_bc->jac_data_size_sur = honee->phys->implicit ? 11 : 0;
+      honee_bc->honee              = honee;
+      honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
       PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, BoundaryIntegralBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

@@ -158,7 +158,7 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
   honee_bc->ctx                  = outflow_honee_bc;
   honee_bc->DestroyCtx           = PetscCtxDestroyDefault;
   honee_bc->honee                = honee;
-  honee_bc->jac_data_size_sur    = honee->phys->implicit ? 11 : 0;
+  honee_bc->num_comps_jac_data   = honee->phys->implicit ? 11 : 0;
   honee_bc->qfctx                = outflow_qfctx;
   PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
