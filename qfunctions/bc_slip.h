@@ -35,11 +35,7 @@ CEED_QFUNCTION_HELPER int Slip(void *ctx, CeedInt Q, const CeedScalar *const *in
     UnpackState_U(flux, Flux);
     for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
 
-    if (newt_ctx->is_implicit) {
-      CeedScalar zeros[6] = {0.};
-      StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
-      StoredValuesPack(Q, i, 5, 6, zeros, jac_data_sur);  // Every output value must be set
-    }
+    if (newt_ctx->is_implicit) StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
   }
   return 0;
 }

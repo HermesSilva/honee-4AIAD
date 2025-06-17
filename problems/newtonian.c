@@ -365,7 +365,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   //           Setup Generic Newtonian IG Problem
   // ------------------------------------------------------
   problem->jac_data_size_vol            = 14;
-  problem->jac_data_size_sur            = 11;
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
 
@@ -644,7 +643,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscNew(&honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
       honee_bc->honee             = honee;
-      honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+      honee_bc->jac_data_size_sur = honee->phys->implicit ? 11 : 0;
       PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, BoundaryIntegralBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

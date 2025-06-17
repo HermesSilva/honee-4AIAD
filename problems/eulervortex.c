@@ -53,7 +53,6 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   problem->apply_vol_ifunction.qf_func_ptr = IFunction_Euler;
   problem->apply_vol_ifunction.qf_loc      = IFunction_Euler_loc;
   problem->jac_data_size_vol               = 0;
-  problem->jac_data_size_sur               = 0;
   problem->compute_exact_solution_error    = PETSC_TRUE;
   problem->print_info                      = PRINT_EULER_VORTEX;
 
@@ -160,7 +159,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscNew(&honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
       honee_bc->honee             = honee;
-      honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+      honee_bc->jac_data_size_sur = 0;
       PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
@@ -171,7 +170,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscNew(&honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
       honee_bc->honee             = honee;
-      honee_bc->jac_data_size_sur = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+      honee_bc->jac_data_size_sur = 0;
       PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

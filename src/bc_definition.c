@@ -218,7 +218,7 @@ PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifu
 
   PetscFunctionBeginUser;
   if (!bc_def->CreateIFunctionQF || !bc_def->AddIFunctionOperator) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscBool add_ijac = (!bc_def->CreateIJacobianQF || !bc_def->AddIJacobianOperator) ? PETSC_FALSE : PETSC_TRUE;
+  PetscBool add_ijac = (!bc_def->CreateIJacobianQF || !bc_def->AddIJacobianOperator || !op_ijac) ? PETSC_FALSE : PETSC_TRUE;
   PetscCheck(bc_def->dm, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "BCDefinition must have DM set using BCDefinitionSetDM()");
 
   PetscCall(bc_def->CreateIFunctionQF(bc_def, &qf_ifunction));

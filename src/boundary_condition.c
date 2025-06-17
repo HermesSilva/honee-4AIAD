@@ -202,7 +202,7 @@ PetscErrorCode HoneeBCCreateIJacobianQF(BCDefinition bc_def, CeedQFunctionUser q
   PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_ijac, "Grad_dq", num_comp_q * dim_sur, CEED_EVAL_GRAD));
   PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_ijac, "surface qdata", q_data_size_sur, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_ijac, "x", num_comp_x, CEED_EVAL_INTERP));
-  PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_ijac, "surface jacobian data", jac_data_size_sur, CEED_EVAL_NONE));
+  if (jac_data_size_sur) PetscCallCeed(ceed, CeedQFunctionAddInput(*qf_ijac, "surface jacobian data", jac_data_size_sur, CEED_EVAL_NONE));
   PetscCallCeed(ceed, CeedQFunctionAddOutput(*qf_ijac, "v", num_comp_q, CEED_EVAL_INTERP));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -311,7 +311,7 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
 
   PetscFunctionBeginUser;
   PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
-  if (honee_bc->jac_data_size_sur == 0) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscBool use_jac_data = honee_bc->jac_data_size_sur > 0;
   PetscCall(BCDefinitionGetDM(bc_def, &dm));
   honee = honee_bc->honee;
   ceed  = honee_bc->honee->ceed;
@@ -340,8 +340,10 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_op_ifunc, "x", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_x));
 
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_op_ifunc, "surface jacobian data", &op_field));
-    PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_jac, NULL, &jac_data));
+    if (use_jac_data) {
+      PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_op_ifunc, "surface jacobian data", &op_field));
+      PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_jac, NULL, &jac_data));
+    }
   }
 
   PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, elem_restr_x, basis_x, honee->x_coord, &elem_restr_qd, &q_data, &q_data_size));
@@ -351,15 +353,17 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ijac, "Grad_dq", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ijac, "surface qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ijac, "x", elem_restr_x, basis_x, honee->x_coord));
-  PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ijac, "surface jacobian data", elem_restr_jac, CEED_BASIS_NONE, jac_data));
+  if (use_jac_data) PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ijac, "surface jacobian data", elem_restr_jac, CEED_BASIS_NONE, jac_data));
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ijac, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
 
   PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_ijac, sub_op_ijac));
 
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x));
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_jac));
-  PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));
+  if (use_jac_data) {
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_jac));
+    PetscCallCeed(ceed, CeedVectorDestroy(&jac_data));
+  }
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
