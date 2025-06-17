@@ -68,10 +68,9 @@ noether-lint:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export CC=gcc HIPCC=hipcc
+    - export CC=gcc
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
-    - echo "-------------- HIPCC ---------------" && $HIPCC --version && export HIP_DIR=/opt/rocm
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
@@ -79,7 +78,7 @@ noether-lint:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-serial-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-serial-cuda && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
     # make with Werror, Wall, supress loop vectorization warnings
@@ -87,7 +86,7 @@ noether-lint:
     - PEDANTIC=1 PEDANTICFLAGS="-Werror -Wall -Wno-pass-failed" make -j$NPROC_CPU
     # Clang-tidy
     - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-15 && $CLANG_TIDY --version
-    - PETSC_ARCH=arch-serial-hip make -j$NPROC_CPU tidy
+    - PETSC_ARCH=arch-serial-cuda make -j$NPROC_CPU tidy
     # Report status
     - touch .SUCCESS
 
@@ -167,7 +166,7 @@ noether-cpu:
     # -- PETSc
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-parallel-hip && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_ARCH=arch-parallel-cuda && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
     # HONEE
@@ -179,11 +178,11 @@ noether-cpu:
     - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CPU backend, parallel
     - echo "Parallel tests skipped for now"
-    - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
-    - export SMARTREDIS_DIR=/home/phypid/SmartSimTestingSoftware/smartredis/install
+    # - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
+    - export SMARTREDIS_DIR=/projects/honee/SmartSim/smartredis/install
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search=navierstokes
-    - spack unload py-torch@2.3+cuda && export USE_TORCH=0
-    - source /home/phypid/SmartSimTestingSoftware/bin/activate
+    # - spack unload py-torch@2.3+cuda && export USE_TORCH=0
+    - source /projects/honee/SmartSim/venv/bin/activate
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search="test-smartsim"
     # Report status
     - touch .SUCCESS
@@ -241,10 +240,10 @@ noether-cpu-int64:
     - echo "-------------- HONEE tests ---------"
     - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CPU backend, serial
-    - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
-    - export SMARTREDIS_DIR=/home/phypid/SmartSimTestingSoftware/smartredis/install
+    # - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
+    - export SMARTREDIS_DIR=/projects/honee/SmartSim/smartredis/install
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial-int64" junit search=navierstokes
-    - spack unload py-torch@2.3+cuda && export USE_TORCH=0
+    # - spack unload py-torch@2.3+cuda && export USE_TORCH=0
     - source /home/phypid/SmartSimTestingSoftware/bin/activate
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search="test-py-smartsim_regression_framework"
     # Report status
@@ -363,7 +362,7 @@ noether-cuda:
     - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CUDA backend, serial
     # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
-    - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
+    # - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
     - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/gpu/cuda/shared" JUNIT_BATCH="cuda-serial" junit search=navierstokes
     # Report status
     - touch .SUCCESS
@@ -399,7 +398,7 @@ docs-review:
     - .test-basic
   interruptible: true
   script:
-    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-hip CEED_DIR=/projects/honee/libCEED
+    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-cuda CEED_DIR=/projects/honee/libCEED
     - git -c safe.directory=/builds/phypid/honee submodule update --init
     - make doc-html pkgconf=true DOXYGENOPTS= SPHINXOPTS=-W
     - mv doc/build/html public
