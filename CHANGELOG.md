@@ -27,6 +27,9 @@ On this page we provide a summary of the main API changes, new features and exam
 - Spanwise statistics writes a logging message when a file is written, which includes post-processing information (e.g. time span for the statistics)
 - Add `-ts_eval_solutions_view` to output solutions gathered via `-ts_eval_times`
 - Add `-taylorgreen_background_velocity` to add a background velocity to the initial condition
+- Add `HONEEGetGitVersion()` to access the Git commit and dirty state of the repository at build time.
+- Add `HONEEGetVersion()` to access the semantic version of HONEE at runtime.
+- Add `HoneeGetBuildConfiguration()` function for retrieving build configuration info.
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
