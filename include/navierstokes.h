@@ -277,12 +277,6 @@ struct Units_private {
   PetscScalar Joule;
 };
 
-// Boundary conditions
-struct SimpleBC_private {
-  PetscInt num_inflow, num_outflow, num_freestream, num_slip;
-  PetscInt inflows[16], outflows[16], freestreams[16], slips[16];
-};
-
 // Struct that contains all enums and structs used for the physics of all problems
 struct Physics_private {
   PetscBool             implicit;
@@ -293,7 +287,24 @@ struct Physics_private {
   CeedContextFieldLabel ics_time_label;
 };
 
-PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx, SimpleBC bc);
+typedef struct {
+  Honee                honee;
+  CeedInt              jac_data_size_sur;
+  CeedQFunctionContext qfctx;
+  void                *ctx;
+  PetscCtxDestroyFn   *DestroyCtx;
+} *HoneeBCStruct;
+
+PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx);
+PetscErrorCode HoneeBCDestroy(void **ctx);
+PetscErrorCode HoneeBCCreateIFunctionQF(BCDefinition bc_def, CeedQFunctionUser qf_func_ptr, const char *qf_loc, CeedQFunctionContext qfctx,
+                                        CeedQFunction *qf_ifunc);
+PetscErrorCode HoneeBCCreateIJacobianQF(BCDefinition bc_def, CeedQFunctionUser qf_func_ptr, const char *qf_loc, CeedQFunctionContext qfctx,
+                                        CeedQFunction *qf_ijac);
+PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, PetscInt label_value, CeedQFunction qf_ifunc, CeedOperator op_ifunc,
+                                     CeedOperator *sub_op_ifunc);
+PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_ifunc, DMLabel domain_label, PetscInt label_value,
+                                     CeedQFunction qf_ijac, CeedOperator op_ijac);
 
 typedef struct {
   CeedQFunctionUser    qf_func_ptr;  // !< QFunction function pointer
@@ -304,12 +315,11 @@ typedef struct {
 // Problem specific data
 struct ProblemData_private {
   CeedInt              jac_data_size_vol, jac_data_size_sur;
-  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian, apply_inflow, apply_outflow, apply_freestream, apply_slip,
-      apply_inflow_jacobian, apply_outflow_jacobian, apply_freestream_jacobian, apply_slip_jacobian;
-  bool          compute_exact_solution_error;
-  PetscBool     set_bc_from_ics, use_strong_bc_ceed;
-  PetscCount    num_bc_defs;
-  BCDefinition *bc_defs;
+  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian;
+  bool                 compute_exact_solution_error;
+  PetscBool            set_bc_from_ics, use_strong_bc_ceed;
+  PetscCount           num_bc_defs;
+  BCDefinition        *bc_defs;
   PetscErrorCode (*print_info)(Honee, ProblemData, AppCtx);
   PetscErrorCode (*create_mass_operator)(Honee, CeedOperator *);
 };
@@ -320,16 +330,15 @@ extern int FreeContextPetsc(void *);
 // Set up problems
 // -----------------------------------------------------------------------------
 // Set up function for each problem
-extern PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
-extern PetscErrorCode NS_ADVECTION2D(ProblemData problem, DM dm, void *ctx, SimpleBC bc);
+extern PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx);
+extern PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx);
 
 // Print function for each problem
 extern PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx);
@@ -343,7 +352,7 @@ PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, 
 // -----------------------------------------------------------------------------
 // libCEED functions
 // -----------------------------------------------------------------------------
-PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem, SimpleBC bc);
+PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem);
 
 PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
                         CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
@@ -368,8 +377,8 @@ PetscErrorCode UpdateBoundaryValues(Honee honee, Vec Q_loc, PetscReal t);
 // Setup DM
 // -----------------------------------------------------------------------------
 PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType, VecType, DM *dm);
-PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, SimpleBC bc, Physics phys);
-PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, SimpleBC bc, Physics phys);
+PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, Physics phys);
+PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, Physics phys);
 
 PetscErrorCode DMSetupByOrderBegin_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
                                        PetscInt num_fields, const PetscInt *field_sizes, DM dm);
@@ -380,7 +389,7 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
 // -----------------------------------------------------------------------------
 // Process command line options
 // -----------------------------------------------------------------------------
-PetscErrorCode ProcessCommandLineOptions(Honee honee, SimpleBC bc);
+PetscErrorCode ProcessCommandLineOptions(Honee honee);
 PetscErrorCode HoneeOptionsSetValueDefault(PetscOptions options, const char name[], const char value[]);
 
 // -----------------------------------------------------------------------------
@@ -425,10 +434,12 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
 // -----------------------------------------------------------------------------
 // Boundary Condition Related Functions
 // -----------------------------------------------------------------------------
-PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem, SimpleBC bc);
-PetscErrorCode FreestreamBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
-PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference);
-PetscErrorCode SlipBCSetup(ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
+PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem);
+PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
+                                 const StatePrimitive *reference);
+PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
+                              const StatePrimitive *reference);
+PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
 
 // -----------------------------------------------------------------------------
 // Differential Filtering Functions

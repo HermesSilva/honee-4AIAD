@@ -9,7 +9,7 @@
 #include <navierstokes.h>
 #include "../problems/stg_shur14.h"
 
-PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData problem, SimpleBC bc, Physics phys, CeedOperator op_strong_bc) {
+PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData problem, Physics phys, CeedOperator op_strong_bc) {
   CeedInt             num_comp_x, num_comp_q = 5, stg_data_size = 1, dXdx_size;
   CeedVector          multiplicity, x_stored, scale_stored, stg_data, dXdx;
   CeedBasis           basis_x_to_q_face;
@@ -19,6 +19,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
   DMLabel             domain_label;
   const PetscInt      dm_field = 0, height_face = 1, height_cell = 0;
   PetscInt            dim;
+  MPI_Comm            comm = honee->comm;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetLabel(dm, "Face Sets", &domain_label));
@@ -55,15 +56,34 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
   PetscCall(SetupStrongStg_PreProcessing(ceed, problem, num_comp_x, stg_data_size, dXdx_size, &qf_stgdata));
   PetscCall(SetupStrongStg_QF(ceed, problem, num_comp_x, num_comp_q, stg_data_size, dXdx_size, &qf_strongbc));
 
+  // Get face label values for the inflow BC
+  PetscInt        num_inflow_faces;
+  const PetscInt *inflow_faces;
+  {
+    BCDefinition bc_def = NULL;
+    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+      BCDefinition bc_def_ = problem->bc_defs[b];
+      const char  *name;
+
+      PetscCall(BCDefinitionGetInfo(bc_def_, &name, NULL, NULL));
+      if (!strcmp(name, "inflow")) {
+        bc_def = bc_def_;
+        break;
+      }
+    }
+    PetscCheck(bc_def, comm, PETSC_ERR_SUP, "Could not find BCDefintion named 'inflow' for STG setup.");
+    PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_inflow_faces, &inflow_faces));
+  }
+
   // Compute contribution on each boundary face
-  for (CeedInt i = 0; i < bc->num_inflow; i++) {
+  for (CeedInt i = 0; i < num_inflow_faces; i++) {
     DMLabel  face_orientation_label;
     PetscInt num_orientations_values, *orientation_values;
 
     {
       char *face_orientation_label_name;
 
-      PetscCall(DMPlexCreateFaceLabel(dm, bc->inflows[i], &face_orientation_label_name));
+      PetscCall(DMPlexCreateFaceLabel(dm, inflow_faces[i], &face_orientation_label_name));
       PetscCall(DMGetLabel(dm, face_orientation_label_name, &face_orientation_label));
       PetscCall(PetscFree(face_orientation_label_name));
     }
@@ -83,16 +103,16 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
         PetscCallCeed(ceed, CeedBasisDestroy(&basis_q_face));
       }
 
-      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, bc->inflows[i], height_face, dm_field, &elem_restr_q_face));
-      PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, bc->inflows[i], height_face, &elem_restr_x_face));
+      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, inflow_faces[i], height_face, dm_field, &elem_restr_q_face));
+      PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, inflow_faces[i], height_face, &elem_restr_x_face));
       PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, face_orientation_label, orientation, height_cell, &elem_restr_x_cell));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q_face, &multiplicity, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(elem_restr_q_face, multiplicity));
 
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, bc->inflows[i], height_face, num_comp_x, &elem_restr_x_stored));
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, bc->inflows[i], height_face, 1, &elem_restr_scale));
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, bc->inflows[i], height_face, stg_data_size, &elem_restr_stgdata));
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, bc->inflows[i], height_face, dXdx_size, &elem_restr_dXdx));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, inflow_faces[i], height_face, num_comp_x, &elem_restr_x_stored));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, inflow_faces[i], height_face, 1, &elem_restr_scale));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, inflow_faces[i], height_face, stg_data_size, &elem_restr_stgdata));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, inflow_faces[i], height_face, dXdx_size, &elem_restr_dXdx));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_x_stored, &x_stored, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_scale, &scale_stored, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_stgdata, &stg_data, NULL));
@@ -186,7 +206,7 @@ PetscErrorCode DMPlexInsertBoundaryValues_StrongBCCeed(DM dm, PetscBool insert_e
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem, SimpleBC bc) {
+PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem) {
   CeedOperator op_strong_bc;
 
   PetscFunctionBeginUser;
@@ -208,7 +228,7 @@ PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData pro
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));
 
     if (use_strongstg) {
-      PetscCall(SetupStrongSTG_Ceed(ceed, honee, dm, problem, bc, honee->phys, op_strong_bc));
+      PetscCall(SetupStrongSTG_Ceed(ceed, honee, dm, problem, honee->phys, op_strong_bc));
     }
   }
 

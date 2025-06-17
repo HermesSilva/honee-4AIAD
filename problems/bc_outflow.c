@@ -18,7 +18,100 @@ typedef enum {
   OUTFLOW_PRESSURE,
 } OutflowType;
 
-PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx, const StatePrimitive *reference) {
+typedef struct {
+  OutflowType outflow_type;
+} *OutflowHoneeBCCtx;
+
+static PetscErrorCode OutflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  Honee         honee;
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  honee                              = honee_bc->honee;
+  OutflowHoneeBCCtx outflow_honee_bc = (OutflowHoneeBCCtx)honee_bc->ctx;
+
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      switch (outflow_honee_bc->outflow_type) {
+        case OUTFLOW_RIEMANN:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, RiemannOutflow_Conserv, RiemannOutflow_Conserv_loc, honee_bc->qfctx, qf));
+          break;
+        case OUTFLOW_PRESSURE:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, PressureOutflow_Conserv, PressureOutflow_Conserv_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_PRIMITIVE:
+      switch (outflow_honee_bc->outflow_type) {
+        case OUTFLOW_RIEMANN:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, RiemannOutflow_Prim, RiemannOutflow_Prim_loc, honee_bc->qfctx, qf));
+          break;
+        case OUTFLOW_PRESSURE:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, PressureOutflow_Prim, PressureOutflow_Prim_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_ENTROPY:
+      switch (outflow_honee_bc->outflow_type) {
+        case OUTFLOW_RIEMANN:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, RiemannOutflow_Entropy, RiemannOutflow_Entropy_loc, honee_bc->qfctx, qf));
+          break;
+        case OUTFLOW_PRESSURE:
+          PetscCall(HoneeBCCreateIFunctionQF(bc_def, PressureOutflow_Entropy, PressureOutflow_Entropy_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode OutflowBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
+  Honee         honee;
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  honee                              = honee_bc->honee;
+  OutflowHoneeBCCtx outflow_honee_bc = (OutflowHoneeBCCtx)honee_bc->ctx;
+
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      switch (outflow_honee_bc->outflow_type) {
+        case OUTFLOW_RIEMANN:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, RiemannOutflow_Jacobian_Conserv, RiemannOutflow_Jacobian_Conserv_loc, honee_bc->qfctx, qf));
+          break;
+        case OUTFLOW_PRESSURE:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, PressureOutflow_Jacobian_Conserv, PressureOutflow_Jacobian_Conserv_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_PRIMITIVE:
+      switch (outflow_honee_bc->outflow_type) {
+        case OUTFLOW_RIEMANN:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, RiemannOutflow_Jacobian_Prim, RiemannOutflow_Jacobian_Prim_loc, honee_bc->qfctx, qf));
+          break;
+        case OUTFLOW_PRESSURE:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, PressureOutflow_Jacobian_Prim, PressureOutflow_Jacobian_Prim_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+    case STATEVAR_ENTROPY:
+      switch (outflow_honee_bc->outflow_type) {
+        case OUTFLOW_RIEMANN:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, RiemannOutflow_Jacobian_Entropy, RiemannOutflow_Jacobian_Entropy_loc, honee_bc->qfctx, qf));
+          break;
+        case OUTFLOW_PRESSURE:
+          PetscCall(HoneeBCCreateIJacobianQF(bc_def, PressureOutflow_Jacobian_Entropy, PressureOutflow_Jacobian_Entropy_loc, honee_bc->qfctx, qf));
+          break;
+      }
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
+                              const StatePrimitive *reference) {
   Honee                honee = *(Honee *)ctx;
   Ceed                 ceed  = honee->ceed;
   OutflowContext       outflow_ctx;
@@ -26,6 +119,8 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
   CeedQFunctionContext outflow_qfctx;
   const PetscScalar    Kelvin = honee->units->Kelvin;
   const PetscScalar    Pascal = honee->units->Pascal;
+  HoneeBCStruct        honee_bc;
+  OutflowHoneeBCCtx    outflow_honee_bc;
 
   PetscFunctionBeginUser;
   CeedScalar pressure    = reference->pressure / Pascal;
@@ -46,53 +141,7 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
   pressure *= Pascal;
   temperature *= Kelvin;
 
-  switch (outflow_type) {
-    case OUTFLOW_RIEMANN:
-      switch (honee->phys->state_var) {
-        case STATEVAR_CONSERVATIVE:
-          problem->apply_outflow.qf_func_ptr          = RiemannOutflow_Conserv;
-          problem->apply_outflow.qf_loc               = RiemannOutflow_Conserv_loc;
-          problem->apply_outflow_jacobian.qf_func_ptr = RiemannOutflow_Jacobian_Conserv;
-          problem->apply_outflow_jacobian.qf_loc      = RiemannOutflow_Jacobian_Conserv_loc;
-          break;
-        case STATEVAR_PRIMITIVE:
-          problem->apply_outflow.qf_func_ptr          = RiemannOutflow_Prim;
-          problem->apply_outflow.qf_loc               = RiemannOutflow_Prim_loc;
-          problem->apply_outflow_jacobian.qf_func_ptr = RiemannOutflow_Jacobian_Prim;
-          problem->apply_outflow_jacobian.qf_loc      = RiemannOutflow_Jacobian_Prim_loc;
-          break;
-        case STATEVAR_ENTROPY:
-          problem->apply_outflow.qf_func_ptr          = RiemannOutflow_Entropy;
-          problem->apply_outflow.qf_loc               = RiemannOutflow_Entropy_loc;
-          problem->apply_outflow_jacobian.qf_func_ptr = RiemannOutflow_Jacobian_Entropy;
-          problem->apply_outflow_jacobian.qf_loc      = RiemannOutflow_Jacobian_Entropy_loc;
-          break;
-      }
-      break;
-    case OUTFLOW_PRESSURE:
-      switch (honee->phys->state_var) {
-        case STATEVAR_CONSERVATIVE:
-          problem->apply_outflow.qf_func_ptr          = PressureOutflow_Conserv;
-          problem->apply_outflow.qf_loc               = PressureOutflow_Conserv_loc;
-          problem->apply_outflow_jacobian.qf_func_ptr = PressureOutflow_Jacobian_Conserv;
-          problem->apply_outflow_jacobian.qf_loc      = PressureOutflow_Jacobian_Conserv_loc;
-          break;
-        case STATEVAR_PRIMITIVE:
-          problem->apply_outflow.qf_func_ptr          = PressureOutflow_Prim;
-          problem->apply_outflow.qf_loc               = PressureOutflow_Prim_loc;
-          problem->apply_outflow_jacobian.qf_func_ptr = PressureOutflow_Jacobian_Prim;
-          problem->apply_outflow_jacobian.qf_loc      = PressureOutflow_Jacobian_Prim_loc;
-          break;
-        case STATEVAR_ENTROPY:
-          problem->apply_outflow.qf_func_ptr          = PressureOutflow_Entropy;
-          problem->apply_outflow.qf_loc               = PressureOutflow_Entropy_loc;
-          problem->apply_outflow_jacobian.qf_func_ptr = PressureOutflow_Jacobian_Entropy;
-          problem->apply_outflow_jacobian.qf_loc      = PressureOutflow_Jacobian_Entropy_loc;
-          break;
-      }
-      break;
-  }
-  PetscCall(PetscCalloc1(1, &outflow_ctx));
+  PetscCall(PetscNew(&outflow_ctx));
   outflow_ctx->gas               = *newtonian_ig_ctx;
   outflow_ctx->recirc            = recirc;
   outflow_ctx->softplus_velocity = softplus_velocity;
@@ -102,7 +151,19 @@ PetscErrorCode OutflowBCSetup(ProblemData problem, DM dm, void *ctx, NewtonianId
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &outflow_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(outflow_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*outflow_ctx), outflow_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(outflow_qfctx, CEED_MEM_HOST, FreeContextPetsc));
-  problem->apply_outflow.qfctx = outflow_qfctx;
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(outflow_qfctx, &problem->apply_outflow_jacobian.qfctx));
+
+  PetscCall(PetscNew(&honee_bc));
+  PetscCall(PetscNew(&outflow_honee_bc));
+  outflow_honee_bc->outflow_type = outflow_type;
+  honee_bc->ctx                  = outflow_honee_bc;
+  honee_bc->DestroyCtx           = PetscCtxDestroyDefault;
+  honee_bc->honee                = honee;
+  honee_bc->jac_data_size_sur    = honee->phys->implicit ? problem->jac_data_size_sur : 0;
+  honee_bc->qfctx                = outflow_qfctx;
+  PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+  PetscCall(BCDefinitionSetIFunction(bc_def, OutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, OutflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
+
   PetscFunctionReturn(PETSC_SUCCESS);
 }

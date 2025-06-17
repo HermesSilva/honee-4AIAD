@@ -12,33 +12,63 @@
 #include <navierstokes.h>
 #include "../qfunctions/newtonian_types.h"
 
-PetscErrorCode SlipBCSetup(ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx) {
-  Honee honee = *(Honee *)ctx;
-  Ceed  ceed  = honee->ceed;
+static PetscErrorCode SlipBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+  Honee         honee;
+  HoneeBCStruct honee_bc;
 
   PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  honee = honee_bc->honee;
+
   switch (honee->phys->state_var) {
     case STATEVAR_CONSERVATIVE:
-      problem->apply_slip.qf_func_ptr          = Slip_Conserv;
-      problem->apply_slip.qf_loc               = Slip_Conserv_loc;
-      problem->apply_slip_jacobian.qf_func_ptr = Slip_Jacobian_Conserv;
-      problem->apply_slip_jacobian.qf_loc      = Slip_Jacobian_Conserv_loc;
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, Slip_Conserv, Slip_Conserv_loc, honee_bc->qfctx, qf));
       break;
     case STATEVAR_PRIMITIVE:
-      problem->apply_slip.qf_func_ptr          = Slip_Prim;
-      problem->apply_slip.qf_loc               = Slip_Prim_loc;
-      problem->apply_slip_jacobian.qf_func_ptr = Slip_Jacobian_Prim;
-      problem->apply_slip_jacobian.qf_loc      = Slip_Jacobian_Prim_loc;
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, Slip_Prim, Slip_Prim_loc, honee_bc->qfctx, qf));
       break;
     case STATEVAR_ENTROPY:
-      problem->apply_slip.qf_func_ptr          = Slip_Entropy;
-      problem->apply_slip.qf_loc               = Slip_Entropy_loc;
-      problem->apply_slip_jacobian.qf_func_ptr = Slip_Jacobian_Entropy;
-      problem->apply_slip_jacobian.qf_loc      = Slip_Jacobian_Entropy_loc;
+      PetscCall(HoneeBCCreateIFunctionQF(bc_def, Slip_Entropy, Slip_Entropy_loc, honee_bc->qfctx, qf));
       break;
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
 
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_slip.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_slip_jacobian.qfctx));
+static PetscErrorCode SlipBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
+  Honee         honee;
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  honee = honee_bc->honee;
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      PetscCall(HoneeBCCreateIJacobianQF(bc_def, Slip_Jacobian_Conserv, Slip_Jacobian_Conserv_loc, honee_bc->qfctx, qf));
+      break;
+    case STATEVAR_PRIMITIVE:
+      PetscCall(HoneeBCCreateIJacobianQF(bc_def, Slip_Jacobian_Prim, Slip_Jacobian_Prim_loc, honee_bc->qfctx, qf));
+      break;
+    case STATEVAR_ENTROPY:
+      PetscCall(HoneeBCCreateIJacobianQF(bc_def, Slip_Jacobian_Entropy, Slip_Jacobian_Entropy_loc, honee_bc->qfctx, qf));
+      break;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx) {
+  Honee         honee = *(Honee *)ctx;
+  Ceed          ceed  = honee->ceed;
+  HoneeBCStruct honee_bc;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscNew(&honee_bc));
+  honee_bc->honee             = honee;
+  honee_bc->jac_data_size_sur = problem->jac_data_size_sur;
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
+
+  PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+
+  PetscCall(BCDefinitionSetIFunction(bc_def, SlipBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, SlipBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

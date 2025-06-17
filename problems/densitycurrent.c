@@ -11,7 +11,7 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx) {
   Honee                    honee = *(Honee *)ctx;
   MPI_Comm                 comm  = honee->comm;
   Ceed                     ceed  = honee->ceed;
@@ -21,7 +21,7 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx, SimpleB
   PetscInt                 dim;
 
   PetscFunctionBeginUser;
-  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx, bc));
+  PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
   PetscCall(PetscCalloc1(1, &density_current_ctx));
   // ------------------------------------------------------
   //               SET UP DENSITY_CURRENT

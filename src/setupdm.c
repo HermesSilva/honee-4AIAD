@@ -58,13 +58,19 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
 }
 
 // Setup DM
-PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, SimpleBC bc, Physics phys) {
+PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, Physics phys) {
   PetscInt num_comp_q = 5;
 
   PetscFunctionBeginUser;
   PetscCall(DMClearFields(dm));
   PetscCall(DMSetLocalSection(dm, NULL));
   PetscCall(DMSetupByOrderBegin_FEM(PETSC_TRUE, PETSC_TRUE, degree, PETSC_DECIDE, q_extra, 1, &num_comp_q, dm));
+
+  {
+    PetscBool use_strongstg = PETSC_FALSE;
+    PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));
+    if (use_strongstg) PetscCall(SetupStrongStg(dm, problem, phys));
+  }
 
   {  // Add strong boundary conditions to DM
     DMLabel label;
@@ -78,17 +84,13 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
       const PetscInt *essential_comps, *label_values;
       const char     *name;
 
+      PetscCall(BCDefinitionSetDM(problem->bc_defs[i], dm));
       PetscCall(BCDefinitionGetEssential(bc_def, &num_essential_comps, &essential_comps));
       if (essential_comps > 0) {
         PetscCall(BCDefinitionGetInfo(bc_def, &name, &num_label_values, &label_values));
         PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, name, label, num_label_values, label_values, 0, num_essential_comps, essential_comps, NULL, NULL,
                                 NULL, NULL));
       }
-    }
-    {
-      PetscBool use_strongstg = PETSC_FALSE;
-      PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));
-      if (use_strongstg) PetscCall(SetupStrongStg(dm, bc, problem, phys));
     }
   }
 
@@ -127,7 +129,7 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
 }
 
 // Refine DM for high-order viz
-PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, SimpleBC bc, Physics phys) {
+PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, Physics phys) {
   DM      dm_hierarchy[honee->app_ctx->viz_refine + 1];
   VecType vec_type;
 
@@ -146,7 +148,7 @@ PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, SimpleBC bc,
     if (i + 1 == honee->app_ctx->viz_refine) d = 1;
     PetscCall(DMGetVecType(dm, &vec_type));
     PetscCall(DMSetVecType(dm_hierarchy[i + 1], vec_type));
-    PetscCall(SetUpDM(dm_hierarchy[i + 1], problem, d, q_order, bc, phys));
+    PetscCall(SetUpDM(dm_hierarchy[i + 1], problem, d, q_order, phys));
     PetscCall(DMCreateInterpolation(dm_hierarchy[i], dm_hierarchy[i + 1], &interp_next, NULL));
     if (!i) honee->interp_viz = interp_next;
     else {

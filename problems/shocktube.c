@@ -11,7 +11,7 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx, SimpleBC bc) {
+PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   SetupContextShock    setup_context;
   Honee                honee = *(Honee *)ctx;
   MPI_Comm             comm  = honee->comm;

@@ -6,14 +6,28 @@
 #include <petsc.h>
 
 typedef struct _p_BCDefinition *BCDefinition;
+
+typedef PetscErrorCode (*BCDefinitionCreateQFunction)(BCDefinition bc_def, CeedQFunction *qf);
+typedef PetscErrorCode (*BCDefinitionAddIFunctionOperator)(BCDefinition bc_def, DMLabel orientation_label, PetscInt orientation, CeedQFunction qf,
+                                                           CeedOperator op, CeedOperator *sub_op);
+typedef PetscErrorCode (*BCDefinitionAddIJacobianOperator)(BCDefinition bc_def, CeedOperator sub_op_ifunction, DMLabel orientation_label,
+                                                           PetscInt orientation, CeedQFunction qf, CeedOperator op);
+
 struct _p_BCDefinition {
   char *name;
+  DM    dm;
 
   // Boundary ID information
   PetscInt num_label_values, *label_values, dm_field;
 
   // Essential Boundary information
   PetscInt num_essential_comps, *essential_comps;
+
+  void                            *ctx;
+  PetscCtxDestroyFn               *DestroyCtx;
+  BCDefinitionCreateQFunction      CreateIFunctionQF, CreateIJacobianQF;
+  BCDefinitionAddIFunctionOperator AddIFunctionOperator;
+  BCDefinitionAddIJacobianOperator AddIJacobianOperator;
 };
 
 /**
@@ -39,3 +53,13 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def);
 
 PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, PetscInt essential_comps[]);
 PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[]);
+
+PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm);
+PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm);
+
+PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx);
+PetscErrorCode BCDefinitionGetContext(BCDefinition bc_def, void *ctx);
+
+PetscErrorCode BCDefinitionSetIFunction(BCDefinition bc_def, BCDefinitionCreateQFunction create_qf, BCDefinitionAddIFunctionOperator add_op);
+PetscErrorCode BCDefinitionSetIJacobian(BCDefinition bc_def, BCDefinitionCreateQFunction create_qf, BCDefinitionAddIJacobianOperator add_op);
+PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifunction, CeedOperator op_ijacobian);
