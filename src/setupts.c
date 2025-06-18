@@ -8,6 +8,7 @@
 #include <petscdmplex.h>
 #include <petscts.h>
 
+#include <differential_filter.h>
 #include <navierstokes.h>
 #include "../qfunctions/newtonian_state.h"
 

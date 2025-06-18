@@ -3,9 +3,9 @@
 
 #include "../../qfunctions/sgs_dd_training.h"
 
-#include <petscdmplex.h>
-
+#include <differential_filter.h>
 #include <navierstokes.h>
+#include <petscdmplex.h>
 #include <smartsim.h>
 
 typedef struct {

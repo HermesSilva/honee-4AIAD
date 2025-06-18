@@ -3,12 +3,11 @@
 /// @file
 /// Functions for setting up and performing differential filtering
 
-#include "../qfunctions//differential_filter.h"
+#include "../qfunctions/differential_filter.h"
 #include <ceed.h>
-
-#include <petscdmplex.h>
-
+#include <differential_filter.h>
 #include <navierstokes.h>
+#include <petscdmplex.h>
 
 const char *const DifferentialFilterDampingFunctions[] = {"NONE", "VAN_DRIEST", "MMS", "DifferentialFilterDampingFunction", "DIFF_FILTER_DAMP_",
                                                           NULL};
@@ -361,9 +360,9 @@ PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData *diff_filter) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DifferentialFilterMmsICSetup(ProblemData problem) {
+PetscErrorCode DifferentialFilterMmsICSetup(Honee honee) {
   PetscFunctionBeginUser;
-  problem->ics.qf_func_ptr = DifferentialFilter_MMS_IC;
-  problem->ics.qf_loc      = DifferentialFilter_MMS_IC_loc;
+  honee->problem_data->ics.qf_func_ptr = DifferentialFilter_MMS_IC;
+  honee->problem_data->ics.qf_loc      = DifferentialFilter_MMS_IC_loc;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

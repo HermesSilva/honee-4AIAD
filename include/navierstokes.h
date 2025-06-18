@@ -151,18 +151,6 @@ struct DivDiffFluxProjectionData_private {
 };
 
 typedef struct {
-  DM                    dm_filter;
-  PetscInt              num_filtered_fields;
-  CeedInt              *num_field_components;
-  PetscInt              field_prim_state, field_velo_prod;
-  OperatorApplyContext  op_rhs_ctx;
-  KSP                   ksp;
-  PetscObjectState      X_loc_state;
-  PetscBool             do_mms_test;
-  CeedContextFieldLabel filter_width_scaling_label;
-} *DiffFilterData;
-
-typedef struct {
   void    *client;
   char     rank_id_name[16];
   PetscInt collocated_database_num_ranks;
@@ -385,16 +373,6 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
 PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
                               const StatePrimitive *reference);
 PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
-
-// -----------------------------------------------------------------------------
-// Differential Filtering Functions
-// -----------------------------------------------------------------------------
-PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter);
-PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData *diff_filter);
-PetscErrorCode TSMonitor_DifferentialFilterSetup(TS ts, PetscViewerAndFormat *ctx);
-PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
-PetscErrorCode DifferentialFilterApply(Honee honee, DiffFilterData diff_filter, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution);
-PetscErrorCode DifferentialFilterMmsICSetup(ProblemData problem);
 
 // -----------------------------------------------------------------------------
 // SGS Data-Driven Training via SmartSim
