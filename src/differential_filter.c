@@ -14,9 +14,9 @@ const char *const DifferentialFilterDampingFunctions[] = {"NONE", "VAN_DRIEST", 
                                                           NULL};
 
 // @brief Create RHS and LHS operators for differential filtering
-PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, Honee honee, CeedQFunctionContext diff_filter_qfctx) {
-  DiffFilterData      diff_filter = honee->diff_filter;
-  DM                  dm_filter   = diff_filter->dm_filter;
+static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFunctionContext diff_filter_qfctx, DiffFilterData diff_filter) {
+  Ceed                ceed      = honee->ceed;
+  DM                  dm_filter = diff_filter->dm_filter;
   CeedInt             num_comp_q, q_data_size, num_comp_x;
   PetscInt            dim;
   CeedVector          q_data;
@@ -186,53 +186,55 @@ PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, Honee honee, CeedQFu
 }
 
 // @brief Setup DM, operators, contexts, etc. for performing differential filtering
-PetscErrorCode DifferentialFilterSetup(Ceed ceed, Honee honee, ProblemData problem) {
-  MPI_Comm                  comm = honee->comm;
+PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter) {
+  MPI_Comm                  comm    = honee->comm;
+  Ceed                      ceed    = honee->ceed;
+  ProblemData               problem = honee->problem_data;
+  DiffFilterData            diff_filter_;
   NewtonianIdealGasContext  gas;
   DifferentialFilterContext diff_filter_ctx;
   CeedQFunctionContext      diff_filter_qfctx;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscNew(&honee->diff_filter));
-  DiffFilterData diff_filter = honee->diff_filter;
-  PetscCall(PetscOptionsGetBool(NULL, NULL, "-diff_filter_mms", &diff_filter->do_mms_test, NULL));
+  PetscCall(PetscNew(&diff_filter_));
+  PetscCall(PetscOptionsGetBool(NULL, NULL, "-diff_filter_mms", &diff_filter_->do_mms_test, NULL));
 
   {  // Create DM for filtered quantities
     PetscSection section;
 
-    PetscCall(DMClone(honee->dm, &diff_filter->dm_filter));
-    PetscCall(DMSetMatrixPreallocateSkip(diff_filter->dm_filter, PETSC_TRUE));
-    PetscCall(PetscObjectSetName((PetscObject)diff_filter->dm_filter, "Differential Filtering"));
+    PetscCall(DMClone(honee->dm, &diff_filter_->dm_filter));
+    PetscCall(DMSetMatrixPreallocateSkip(diff_filter_->dm_filter, PETSC_TRUE));
+    PetscCall(PetscObjectSetName((PetscObject)diff_filter_->dm_filter, "Differential Filtering"));
 
-    diff_filter->num_filtered_fields = diff_filter->do_mms_test ? 1 : 2;
-    PetscCall(PetscMalloc1(diff_filter->num_filtered_fields, &diff_filter->num_field_components));
+    diff_filter_->num_filtered_fields = diff_filter_->do_mms_test ? 1 : 2;
+    PetscCall(PetscMalloc1(diff_filter_->num_filtered_fields, &diff_filter_->num_field_components));
 
-    if (diff_filter->do_mms_test) {
+    if (diff_filter_->do_mms_test) {
       PetscInt field_components;
-      diff_filter->num_field_components[0] = field_components = 1;
-      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, diff_filter->num_filtered_fields,
-                                   &field_components, diff_filter->dm_filter));
+      diff_filter_->num_field_components[0] = field_components = 1;
+      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, diff_filter_->num_filtered_fields,
+                                   &field_components, diff_filter_->dm_filter));
 
-      PetscCall(DMGetLocalSection(diff_filter->dm_filter, &section));
+      PetscCall(DMGetLocalSection(diff_filter_->dm_filter, &section));
       PetscCall(PetscSectionSetFieldName(section, 0, ""));
       PetscCall(PetscSectionSetComponentName(section, 0, 0, "FilteredPhi"));
     } else {
       PetscInt field_components[2];
-      diff_filter->num_field_components[0] = field_components[0] = DIFF_FILTER_STATE_NUM;
-      diff_filter->num_field_components[1] = field_components[1] = DIFF_FILTER_VELOCITY_SQUARED_NUM;
-      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, diff_filter->num_filtered_fields,
-                                   field_components, diff_filter->dm_filter));
+      diff_filter_->num_field_components[0] = field_components[0] = DIFF_FILTER_STATE_NUM;
+      diff_filter_->num_field_components[1] = field_components[1] = DIFF_FILTER_VELOCITY_SQUARED_NUM;
+      PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, diff_filter_->num_filtered_fields,
+                                   field_components, diff_filter_->dm_filter));
 
-      diff_filter->field_prim_state = 0;
-      diff_filter->field_velo_prod  = 1;
-      PetscCall(DMGetLocalSection(diff_filter->dm_filter, &section));
-      PetscCall(PetscSectionSetFieldName(section, diff_filter->field_prim_state, "Filtered Primitive State Variables"));
+      diff_filter_->field_prim_state = 0;
+      diff_filter_->field_velo_prod  = 1;
+      PetscCall(DMGetLocalSection(diff_filter_->dm_filter, &section));
+      PetscCall(PetscSectionSetFieldName(section, diff_filter_->field_prim_state, "Filtered Primitive State Variables"));
       PetscCall(PetscSectionSetComponentName(section, 0, DIFF_FILTER_PRESSURE, "FilteredPressure"));
       PetscCall(PetscSectionSetComponentName(section, 0, DIFF_FILTER_VELOCITY_X, "FilteredVelocityX"));
       PetscCall(PetscSectionSetComponentName(section, 0, DIFF_FILTER_VELOCITY_Y, "FilteredVelocityY"));
       PetscCall(PetscSectionSetComponentName(section, 0, DIFF_FILTER_VELOCITY_Z, "FilteredVelocityZ"));
       PetscCall(PetscSectionSetComponentName(section, 0, DIFF_FILTER_TEMPERATURE, "FilteredTemperature"));
-      PetscCall(PetscSectionSetFieldName(section, diff_filter->field_velo_prod, "Filtered Velocity Products"));
+      PetscCall(PetscSectionSetFieldName(section, diff_filter_->field_velo_prod, "Filtered Velocity Products"));
       PetscCall(PetscSectionSetComponentName(section, 1, DIFF_FILTER_VELOCITY_SQUARED_XX, "FilteredVelocitySquaredXX"));
       PetscCall(PetscSectionSetComponentName(section, 1, DIFF_FILTER_VELOCITY_SQUARED_YY, "FilteredVelocitySquaredYY"));
       PetscCall(PetscSectionSetComponentName(section, 1, DIFF_FILTER_VELOCITY_SQUARED_ZZ, "FilteredVelocitySquaredZZ"));
@@ -284,15 +286,15 @@ PetscErrorCode DifferentialFilterSetup(Ceed ceed, Honee honee, ProblemData probl
                           sizeof(diff_filter_ctx->width_scaling) / sizeof(diff_filter_ctx->width_scaling[0]), "Filter width scaling"));
 
   // -- Setup Operators
-  PetscCall(DifferentialFilterCreateOperators(ceed, honee, diff_filter_qfctx));
+  PetscCall(DifferentialFilterCreateOperators(honee, diff_filter_qfctx, diff_filter_));
+  *diff_filter = diff_filter_;
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&diff_filter_qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Apply differential filter to the solution given by Q
-PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution) {
-  DiffFilterData   diff_filter = honee->diff_filter;
+PetscErrorCode DifferentialFilterApply(Honee honee, DiffFilterData diff_filter, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution) {
   PetscObjectState X_loc_state;
   Vec              RHS;
 
@@ -314,17 +316,30 @@ PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_tim
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+PetscErrorCode TSMonitor_DifferentialFilterSetup(TS ts, PetscViewerAndFormat *ctx) {
+  Honee          honee;
+  DiffFilterData diff_filter;
+
+  PetscFunctionBeginUser;
+  PetscCall(TSGetApplicationContext(ts, &honee));
+  PetscCall(DifferentialFilterSetup(honee, &diff_filter));
+  ctx->data         = diff_filter;
+  ctx->data_destroy = (PetscCtxDestroyFn *)DifferentialFilterDataDestroy;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // @brief TSMonitor for just applying differential filtering to the simulation
 // This runs every time step and is primarily for testing purposes
-PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx) {
-  Honee          honee       = (Honee)ctx;
-  DiffFilterData diff_filter = honee->diff_filter;
+PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx) {
+  Honee          honee;
+  DiffFilterData diff_filter = (DiffFilterData)ctx->data;
   Vec            Filtered_Field;
 
   PetscFunctionBeginUser;
+  PetscCall(TSGetApplicationContext(ts, &honee));
   PetscCall(DMGetGlobalVector(diff_filter->dm_filter, &Filtered_Field));
 
-  PetscCall(DifferentialFilterApply(honee, solution_time, Q, Filtered_Field));
+  PetscCall(DifferentialFilterApply(honee, diff_filter, solution_time, Q, Filtered_Field));
   PetscCall(VecViewFromOptions(Filtered_Field, NULL, "-diff_filter_view"));
   if (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER) PetscCall(RegressionTest(honee->app_ctx, Filtered_Field));
 
@@ -332,16 +347,17 @@ PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal sol
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData diff_filter) {
+PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData *diff_filter) {
+  DiffFilterData diff_filter_ = *diff_filter;
+
   PetscFunctionBeginUser;
-  if (!diff_filter) PetscFunctionReturn(PETSC_SUCCESS);
-
-  PetscCall(OperatorApplyContextDestroy(diff_filter->op_rhs_ctx));
-  PetscCall(DMDestroy(&diff_filter->dm_filter));
-  PetscCall(KSPDestroy(&diff_filter->ksp));
-
-  PetscCall(PetscFree(diff_filter->num_field_components));
-  PetscCall(PetscFree(diff_filter));
+  if (!diff_filter_) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(OperatorApplyContextDestroy(diff_filter_->op_rhs_ctx));
+  PetscCall(DMDestroy(&diff_filter_->dm_filter));
+  PetscCall(KSPDestroy(&diff_filter_->ksp));
+  PetscCall(PetscFree(diff_filter_->num_field_components));
+  PetscCall(PetscFree(diff_filter_));
+  *diff_filter = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

@@ -481,9 +481,10 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   PetscCall(PetscOptionsDeprecated("-ts_monitor_turbulence_spanstats_viewer", "-ts_monitor_spanstats_turbulence", "HONEE 0.0", NULL));
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_spanstats_turbulence", "Setup spanwise statistics collection", NULL,
                                     TSMonitor_TurbulenceSpanwiseStatistics, SpanwiseStatisticsSetup_Turbulence));
+  PetscCall(TSMonitorSetFromOptions(*ts, "-diff_filter_monitor", "Run differential filtering for every timestep (used for testing)", NULL,
+                                    TSMonitor_DifferentialFilter, TSMonitor_DifferentialFilterSetup));
   PetscOptionsEnd();
 
-  if (app_ctx->diff_filter_monitor) PetscCall(TSMonitorSet(*ts, TSMonitor_DifferentialFilter, honee, NULL));
   if (app_ctx->sgs_train_enable) PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
 
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(PrintRunInfo(honee, honee->phys, problem, *ts));

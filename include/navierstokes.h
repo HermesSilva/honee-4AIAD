@@ -116,8 +116,7 @@ struct AppCtx_private {
   // Subgrid Stress Model
   SGSModelType sgs_model_type;
   PetscBool    sgs_train_enable;
-  // Differential Filtering
-  PetscBool         diff_filter_monitor;
+
   MeshTransformType mesh_transform_type;
   // Divergence of Diffusive Flux Projection
   DivDiffFluxProjectionMethod divFdiffproj_method;
@@ -193,7 +192,6 @@ struct Honee_private {
   KSP                       mass_ksp;
   OperatorApplyContext      op_rhs_ctx, op_strong_bc_ctx;
   CeedScalar                time_bc_set;
-  DiffFilterData            diff_filter;
   SmartSimData              smartsim;
   DivDiffFluxProjectionData diff_flux_proj;
 
@@ -391,10 +389,11 @@ PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void
 // -----------------------------------------------------------------------------
 // Differential Filtering Functions
 // -----------------------------------------------------------------------------
-PetscErrorCode DifferentialFilterSetup(Ceed ceed, Honee honee, ProblemData problem);
-PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData diff_filter);
-PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx);
-PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution);
+PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter);
+PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData *diff_filter);
+PetscErrorCode TSMonitor_DifferentialFilterSetup(TS ts, PetscViewerAndFormat *ctx);
+PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
+PetscErrorCode DifferentialFilterApply(Honee honee, DiffFilterData diff_filter, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution);
 PetscErrorCode DifferentialFilterMmsICSetup(ProblemData problem);
 
 // -----------------------------------------------------------------------------

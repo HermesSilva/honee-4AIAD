@@ -13,6 +13,7 @@ typedef struct {
   PetscInt             num_comp_dd_inputs, write_data_interval, num_filter_widths;
   PetscScalar          filter_widths[16];
   OperatorApplyContext op_training_data_calc_ctx;
+  DiffFilterData       diff_filter;
   NodalProjectionData  filtered_grad_velo_proj;
   size_t               training_data_array_dims[2];
   PetscBool            overwrite_training_data;
@@ -28,6 +29,7 @@ PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData *sgs_dd_train) {
   PetscCall(OperatorApplyContextDestroy(sgs_dd_train_->op_training_data_calc_ctx));
   PetscCall(NodalProjectionDataDestroy(&sgs_dd_train_->filtered_grad_velo_proj));
   PetscCall(DMDestroy(&sgs_dd_train_->dm_dd_training));
+  PetscCall(DifferentialFilterDataDestroy(&sgs_dd_train_->diff_filter));
   PetscCall(PetscFree(sgs_dd_train));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -106,7 +108,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   {  // -- Setup filtered velocity gradient projection
     CeedBasis         basis_filtered_state;
     CeedOperatorField op_field;
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->diff_filter->op_rhs_ctx->op, "v0", &op_field));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sgs_dd_train->diff_filter->op_rhs_ctx->op, "v0", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_filtered_state, &basis_filtered_state, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_filtered_state, &num_comp_filtered_state));
     PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, STATEVAR_PRIMITIVE, elem_restr_filtered_state, basis_filtered_state,
@@ -122,7 +124,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   CeedInt             num_comp_filtered_velo_prod;
   {  // Get filtered velocity product information
     CeedOperatorField op_field;
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->diff_filter->op_rhs_ctx->op, "v1", &op_field));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sgs_dd_train->diff_filter->op_rhs_ctx->op, "v1", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_filtered_velo_prod));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_filtered_velo_prod, &num_comp_filtered_velo_prod));
   }
@@ -170,13 +172,13 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
   SGS_DD_TrainingData      sgs_dd_train;
 
   PetscFunctionBeginUser;
-  if (!honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, problem));
   if (!honee->smartsim) PetscCall(SmartSimSetup(honee));
 
   PetscCall(PetscNew(&sgsdd_train_ctx));
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
   PetscCall(PetscNew(&sgs_dd_train));
   PetscCall(PetscObjectContainerCompose((PetscObject)honee, SGS_DD_TRAIN_KEY, sgs_dd_train, (PetscCtxDestroyFn *)SGS_DD_TrainingDataDestroy));
+  PetscCall(DifferentialFilterSetup(honee, &sgs_dd_train->diff_filter));
 
   sgs_dd_train->overwrite_training_data = PETSC_TRUE;
   sgs_dd_train->write_data_interval     = 1;
@@ -310,16 +312,16 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
         Mat          A_mat;
 
         for (int j = 0; j < 3; j++) filter_width_scaling[j] = sgs_dd_train->filter_widths[filter_index];
-        PetscCall(KSPGetOperators(honee->diff_filter->ksp, &A_mat, NULL));
+        PetscCall(KSPGetOperators(sgs_dd_train->diff_filter->ksp, &A_mat, NULL));
         PetscCall(MatCeedGetCeedOperators(A_mat, &op_mat, NULL));
-        PetscCall(CeedOperatorSetContextDouble(op_mat, honee->diff_filter->filter_width_scaling_label, filter_width_scaling));
+        PetscCall(CeedOperatorSetContextDouble(op_mat, sgs_dd_train->diff_filter->filter_width_scaling_label, filter_width_scaling));
       }
 
-      PetscCall(DMGetGlobalVector(honee->diff_filter->dm_filter, &FilteredFields));
-      PetscCall(DMGetLocalVector(honee->diff_filter->dm_filter, &FilteredFields_loc));
+      PetscCall(DMGetGlobalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields));
+      PetscCall(DMGetLocalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields_loc));
 
-      PetscCall(DifferentialFilterApply(honee, solution_time, Q, FilteredFields));
-      PetscCall(DMGlobalToLocal(honee->diff_filter->dm_filter, FilteredFields, INSERT_VALUES, FilteredFields_loc));
+      PetscCall(DifferentialFilterApply(honee, sgs_dd_train->diff_filter, solution_time, Q, FilteredFields));
+      PetscCall(DMGlobalToLocal(sgs_dd_train->diff_filter->dm_filter, FilteredFields, INSERT_VALUES, FilteredFields_loc));
 
       PetscCall(DMGetGlobalVector(sgs_dd_train->filtered_grad_velo_proj->dm, &FilteredVelocityGradient));
       PetscCall(VelocityGradientProjectionApply(sgs_dd_train->filtered_grad_velo_proj, FilteredFields_loc, FilteredVelocityGradient));
@@ -336,8 +338,8 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
       PetscCall(VecCeedToPetsc(filtered_fields, filtered_fields_mem_type, FilteredFields_loc));
 
       PetscCall(DMRestoreGlobalVector(sgs_dd_train->filtered_grad_velo_proj->dm, &FilteredVelocityGradient));
-      PetscCall(DMRestoreGlobalVector(honee->diff_filter->dm_filter, &FilteredFields));
-      PetscCall(DMRestoreLocalVector(honee->diff_filter->dm_filter, &FilteredFields_loc));
+      PetscCall(DMRestoreGlobalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields));
+      PetscCall(DMRestoreLocalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields_loc));
       PetscCallCeed(ceed, CeedVectorDestroy(&filtered_fields));
     }
     PetscCall(PetscLogEventEnd(HONEE_TrainDataCompute, 0, 0, 0, 0));

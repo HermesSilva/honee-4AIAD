@@ -303,7 +303,6 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
   }
 
   if (problem->use_strong_bc_ceed) PetscCall(SetupStrongBC_Ceed(ceed, dm, honee, problem));
-  if (app_ctx->diff_filter_monitor && !honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, problem));
   if (app_ctx->sgs_train_enable) PetscCall(SGS_DD_TrainingSetup(ceed, honee, problem));
   if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) PetscCall(DivDiffFluxProjectionSetup(honee, honee->diff_flux_proj));
 
