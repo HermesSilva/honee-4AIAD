@@ -165,7 +165,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
 }
 
 PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem) {
-  SGS_DDTrainingContext    sgsdd_train_qfctx;
+  SGS_DDTrainingContext    sgsdd_train_ctx;
   SGS_DD_TrainingSetupData sgs_dd_train_setup_data;
   SGS_DD_TrainingData      sgs_dd_train;
 
@@ -173,7 +173,7 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
   if (!honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, problem));
   if (!honee->smartsim) PetscCall(SmartSimSetup(honee));
 
-  PetscCall(PetscNew(&sgsdd_train_qfctx));
+  PetscCall(PetscNew(&sgsdd_train_ctx));
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
   PetscCall(PetscNew(&sgs_dd_train));
   PetscCall(PetscObjectContainerCompose((PetscObject)honee, SGS_DD_TRAIN_KEY, sgs_dd_train, (PetscCtxDestroyFn *)SGS_DD_TrainingDataDestroy));
@@ -197,11 +197,11 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
   {  // -- Create QFunction Context
     NewtonianIdealGasContext gas;
     PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
-    sgsdd_train_qfctx->gas = *gas;
+    sgsdd_train_ctx->gas = *gas;
     PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
     PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &sgs_dd_train_setup_data->sgs_dd_train_qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextSetData(sgs_dd_train_setup_data->sgs_dd_train_qfctx, CEED_MEM_HOST, CEED_USE_POINTER,
-                                                    sizeof(*sgsdd_train_qfctx), sgsdd_train_qfctx));
+                                                    sizeof(*sgsdd_train_ctx), sgsdd_train_ctx));
     PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(sgs_dd_train_setup_data->sgs_dd_train_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   }
 
