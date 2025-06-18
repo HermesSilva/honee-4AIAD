@@ -36,26 +36,6 @@ typedef enum {
 } EulerTestType;
 static const char *const EulerTestTypes[] = {"ISENTROPIC_VORTEX", "1", "2", "3", "4", "5", "EulerTestType", "EULER_TEST_", NULL};
 
-// Advection - Wind types
-static const char *const AdvDifWindTypes[] = {"ROTATION", "TRANSLATION", "BOUNDARY_LAYER", "WindType", "ADVDIF_WIND_", NULL};
-
-// Advection - Initial Condition Types
-static const char *const AdvDifICTypes[] = {"SPHERE",         "CYLINDER",        "COSINE_HILL", "SKEW", "WAVE",
-                                            "BOUNDARY_LAYER", "AdvectionICType", "ADVDIF_IC_",  NULL};
-
-// Advection - Wave Types
-static const char *const AdvDifWaveTypes[] = {"SINE", "SQUARE", "AdvDifWaveType", "ADVDIF_WAVE_", NULL};
-
-// Advection - Bubble Continuity Types
-static const char *const AdvDifBubbleContinuityTypes[] = {
-    "SMOOTH", "BACK_SHARP", "THICK", "COSINE", "BubbleContinuityType", "ADVDIF_BUBBLE_CONTINUITY_", NULL};
-
-// Stabilization methods
-static const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationType", "STAB_", NULL};
-
-// Stabilization tau constants
-static const char *const StabilizationTauTypes[] = {"CTAU", "ADVDIFF_SHAKIB", "StabilizationTauType", "STAB_TAU_", NULL};
-
 // Test mode type
 typedef enum {
   TESTTYPE_NONE           = 0,
@@ -87,13 +67,6 @@ typedef enum {
   MESH_TRANSFORM_PLATEMESH = 1,
 } MeshTransformType;
 static const char *const MeshTransformTypes[] = {"NONE", "PLATEMESH", "MeshTransformType", "MESH_TRANSFORM_", NULL};
-
-static const char *const DifferentialFilterDampingFunctions[] = {
-    "NONE", "VAN_DRIEST", "MMS", "DifferentialFilterDampingFunction", "DIFF_FILTER_DAMP_", NULL};
-
-static const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "INDIRECT", "DivDiffFluxProjectionMethod", "DIV_DIFF_FLUX_PROJ_", NULL};
-
-static const char *const StateVariables[] = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};
 
 // -----------------------------------------------------------------------------
 // Structs
