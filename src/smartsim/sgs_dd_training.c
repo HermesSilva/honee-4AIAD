@@ -172,7 +172,6 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
   SGS_DD_TrainingData      sgs_dd_train;
 
   PetscFunctionBeginUser;
-  if (!honee->smartsim) PetscCall(SmartSimSetup(honee));
 
   PetscCall(PetscNew(&sgsdd_train_ctx));
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
@@ -209,7 +208,8 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
 
   {  // -- Send training data array info to SmartRedis database
     PetscMPIInt  rank, num_ranks;
-    SmartSimData smartsim = honee->smartsim;
+    SmartSimData smartsim;
+    PetscCall(HoneeGetSmartSimData(honee, &smartsim));
     PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
     PetscCallMPI(MPI_Comm_size(honee->comm, &num_ranks));
 
@@ -288,11 +288,12 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
   Honee               honee = (Honee)ctx;
   Ceed                ceed  = honee->ceed;
   SGS_DD_TrainingData sgs_dd_train;
-  SmartSimData        smartsim = honee->smartsim;
+  SmartSimData        smartsim;
   Vec                 TrainingData;
   PetscMPIInt         rank;
 
   PetscFunctionBeginUser;
+  PetscCall(HoneeGetSmartSimData(honee, &smartsim));
   PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
   PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
 
@@ -388,11 +389,12 @@ PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
   PetscReal    check_run[2]      = {1};
   const size_t check_run_dims[1] = {2};
   size_t       check_run_key_size;
+  SmartSimData smartsim;
 
   PetscFunctionBeginUser;
   PetscCall(PetscStrlen(check_run_key, &check_run_key_size));
   PetscCall(TSGetApplicationContext(ts, &honee));
-  SmartSimData smartsim = honee->smartsim;
+  PetscCall(HoneeGetSmartSimData(honee, &smartsim));
 
   PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscCallSmartRedis(

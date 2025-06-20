@@ -150,12 +150,6 @@ struct DivDiffFluxProjectionData_private {
   OperatorApplyContext calc_div_diff_flux;
 };
 
-typedef struct {
-  void    *client;
-  char     rank_id_name[16];
-  PetscInt collocated_database_num_ranks;
-} *SmartSimData;
-
 typedef struct _HoneeOps *HoneeOps;
 struct _HoneeOps {};
 
@@ -180,7 +174,6 @@ struct Honee_private {
   KSP                       mass_ksp;
   OperatorApplyContext      op_rhs_ctx, op_strong_bc_ctx;
   CeedScalar                time_bc_set;
-  SmartSimData              smartsim;
   DivDiffFluxProjectionData diff_flux_proj;
 
   ProblemData problem_data;
@@ -377,8 +370,6 @@ PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void
 // -----------------------------------------------------------------------------
 // SGS Data-Driven Training via SmartSim
 // -----------------------------------------------------------------------------
-PetscErrorCode SmartSimSetup(Honee honee);
-PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim);
 PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem);
 PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx);
 PetscErrorCode TSPostStep_SGS_DD_Training(TS ts);

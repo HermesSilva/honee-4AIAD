@@ -6,22 +6,27 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim) {
-  PetscFunctionBeginUser;
-  if (!smartsim) PetscFunctionReturn(PETSC_SUCCESS);
+#define SMARTSIM_KEY "SmartSimData"
 
-  PetscCallSmartRedis(DeleteCClient(&smartsim->client));
-  PetscCall(PetscFree(smartsim));
+static PetscErrorCode SmartSimDataDestroy(SmartSimData *smartsim) {
+  SmartSimData smartsim_ = *smartsim;
+  PetscFunctionBeginUser;
+  if (!smartsim_) PetscFunctionReturn(PETSC_SUCCESS);
+
+  PetscCallSmartRedis(DeleteCClient(&smartsim_->client));
+  PetscCall(PetscFree(smartsim_));
+  *smartsim = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 static PetscErrorCode SmartSimTrainingSetup(Honee honee) {
-  SmartSimData smartsim = honee->smartsim;
+  SmartSimData smartsim;
   PetscMPIInt  rank;
   PetscReal    checkrun[2] = {1};
   size_t       dim_2[1]    = {2};
 
   PetscFunctionBeginUser;
+  PetscCall(HoneeGetSmartSimData(honee, &smartsim));
   PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
 
   if (rank % smartsim->collocated_database_num_ranks == 0) {
@@ -34,13 +39,13 @@ static PetscErrorCode SmartSimTrainingSetup(Honee honee) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SmartSimSetup(Honee honee) {
-  PetscMPIInt rank;
-  PetscInt    num_orchestrator_nodes = 1;
+static PetscErrorCode SmartSimSetup(Honee honee) {
+  PetscMPIInt  rank;
+  PetscInt     num_orchestrator_nodes = 1;
+  SmartSimData smartsim;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscNew(&honee->smartsim));
-  SmartSimData smartsim = honee->smartsim;
+  PetscCall(PetscNew(&smartsim));
 
   smartsim->collocated_database_num_ranks = 1;
   PetscOptionsBegin(honee->comm, NULL, "Options for SmartSim integration", NULL);
@@ -56,7 +61,20 @@ PetscErrorCode SmartSimSetup(Honee honee) {
   PetscCallSmartRedis(SmartRedisCClient(num_orchestrator_nodes != 1, smartsim->rank_id_name, strlen(smartsim->rank_id_name), &smartsim->client));
   PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Init, 0, 0, 0, 0));
 
+  PetscCall(PetscObjectContainerCompose((PetscObject)honee, SMARTSIM_KEY, smartsim, (PetscCtxDestroyFn *)SmartSimDataDestroy));
+
   PetscCall(SmartSimTrainingSetup(honee));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+PetscErrorCode HoneeGetSmartSimData(Honee honee, SmartSimData *smartsim) {
+  PetscFunctionBeginUser;
+  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SMARTSIM_KEY, smartsim));
+  if (*smartsim == NULL) {
+    PetscCall(SmartSimSetup(honee));
+    PetscCall(PetscObjectContainerQuery((PetscObject)honee, SMARTSIM_KEY, smartsim));
+    PetscCheck(*smartsim, honee->comm, PETSC_ERR_ARG_WRONGSTATE, "SmartSimData struct is not in Honee after setup.");
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

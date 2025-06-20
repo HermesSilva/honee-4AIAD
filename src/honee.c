@@ -68,7 +68,6 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
   AppCtx      app_ctx = honee_->app_ctx;
   ProblemData problem = honee_->problem_data;
 
-  PetscCall(SmartSimDataDestroy(honee_->smartsim));
   PetscCall(QDataClearStoredData());
   PetscCall(DivDiffFluxProjectionDataDestroy(honee_->diff_flux_proj));
 
