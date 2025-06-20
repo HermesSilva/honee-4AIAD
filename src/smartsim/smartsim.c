@@ -6,18 +6,16 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const size_t name_length) {
-  bool does_exist = true;
-
+PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim) {
   PetscFunctionBeginUser;
-  PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
-  PetscCallSmartRedis(tensor_exists(c_client, name, name_length, &does_exist));
-  PetscCheck(does_exist, PETSC_COMM_SELF, -1, "Tensor of name '%s' was not written to the database successfully", name);
-  PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
+  if (!smartsim) PetscFunctionReturn(PETSC_SUCCESS);
+
+  PetscCallSmartRedis(DeleteCClient(&smartsim->client));
+  PetscCall(PetscFree(smartsim));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SmartSimTrainingSetup(Honee honee) {
+static PetscErrorCode SmartSimTrainingSetup(Honee honee) {
   SmartSimData smartsim = honee->smartsim;
   PetscMPIInt  rank;
   PetscReal    checkrun[2] = {1};
@@ -62,11 +60,13 @@ PetscErrorCode SmartSimSetup(Honee honee) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim) {
-  PetscFunctionBeginUser;
-  if (!smartsim) PetscFunctionReturn(PETSC_SUCCESS);
+PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const size_t name_length) {
+  bool does_exist = true;
 
-  PetscCallSmartRedis(DeleteCClient(&smartsim->client));
-  PetscCall(PetscFree(smartsim));
+  PetscFunctionBeginUser;
+  PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
+  PetscCallSmartRedis(tensor_exists(c_client, name, name_length, &does_exist));
+  PetscCheck(does_exist, PETSC_COMM_SELF, -1, "Tensor of name '%s' was not written to the database successfully", name);
+  PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
