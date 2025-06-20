@@ -268,13 +268,6 @@ extern PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx);
 extern PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx);
 extern PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx);
 
-// Print function for each problem
-extern PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_EULER_VORTEX(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_SHOCKTUBE(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_ADVECTION(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_ADVECTION2D(Honee honee, ProblemData problem, AppCtx app_ctx);
-
 PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, TS ts);
 
 // -----------------------------------------------------------------------------
