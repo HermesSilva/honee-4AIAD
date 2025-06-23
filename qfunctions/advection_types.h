@@ -13,6 +13,9 @@ typedef enum {
   ADVDIF_WIND_TRANSLATION    = 1,
   ADVDIF_WIND_BOUNDARY_LAYER = 2,
 } AdvDifWindType;
+#ifndef CEED_RUNNING_JIT_PASS
+static const char *const AdvDifWindTypes[] = {"ROTATION", "TRANSLATION", "BOUNDARY_LAYER", "WindType", "ADVDIF_WIND_", NULL};
+#endif
 
 // Advection - Initial Condition Types
 typedef enum {
@@ -23,12 +26,19 @@ typedef enum {
   ADVDIF_IC_WAVE            = 4,
   ADVDIF_IC_BOUNDARY_LAYER  = 5,
 } AdvDifICType;
+#ifndef CEED_RUNNING_JIT_PASS
+static const char *const AdvDifICTypes[] = {"SPHERE",         "CYLINDER",        "COSINE_HILL", "SKEW", "WAVE",
+                                            "BOUNDARY_LAYER", "AdvectionICType", "ADVDIF_IC_",  NULL};
+#endif
 
 // Advection-Diffusion wave types
 typedef enum {
   ADVDIF_WAVE_SINE   = 0,
   ADVDIF_WAVE_SQUARE = 1,
 } AdvDifWaveType;
+#ifndef CEED_RUNNING_JIT_PASS
+static const char *const AdvDifWaveTypes[] = {"SINE", "SQUARE", "AdvDifWaveType", "ADVDIF_WAVE_", NULL};
+#endif
 
 // Advection - Bubble Continuity Types
 typedef enum {
@@ -37,6 +47,10 @@ typedef enum {
   ADVDIF_BUBBLE_CONTINUITY_THICK      = 2,  // Define a finite thickness
   ADVDIF_BUBBLE_CONTINUITY_COSINE     = 3,  // Use cosine wave for smoothing
 } AdvDifBubbleContinuityType;
+#ifndef CEED_RUNNING_JIT_PASS
+static const char *const AdvDifBubbleContinuityTypes[] = {
+    "SMOOTH", "BACK_SHARP", "THICK", "COSINE", "BubbleContinuityType", "ADVDIF_BUBBLE_CONTINUITY_", NULL};
+#endif
 
 typedef struct AdvectionContext_ *AdvectionContext;
 struct AdvectionContext_ {

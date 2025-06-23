@@ -11,6 +11,10 @@
 #include "utils.h"
 
 enum DifferentialFilterDampingFunction { DIFF_FILTER_DAMP_NONE, DIFF_FILTER_DAMP_VAN_DRIEST, DIFF_FILTER_DAMP_MMS };
+#ifndef CEED_RUNNING_JIT_PASS
+static const char *const DifferentialFilterDampingFunctions[] = {
+    "NONE", "VAN_DRIEST", "MMS", "DifferentialFilterDampingFunction", "DIFF_FILTER_DAMP_", NULL};
+#endif
 
 typedef struct DifferentialFilterContext_ *DifferentialFilterContext;
 struct DifferentialFilterContext_ {
