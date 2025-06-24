@@ -83,7 +83,7 @@ static PetscErrorCode SpanwiseStatisticssCreateDM(Honee honee, SpanStatsCtx span
 
     PetscCall(DMPlexLabelComplete(honee->dm, label));
     PetscCall(DMPlexFilter(honee->dm, label, 1, PETSC_FALSE, PETSC_FALSE, NULL, &spanstats->dm));
-    PetscCall(DMSetCoordinateDisc(spanstats->dm, NULL, PETSC_TRUE));  // Ensure that a coordinate FE exists
+    PetscCall(DMSetCoordinateDisc(spanstats->dm, NULL, PETSC_FALSE, PETSC_TRUE));  // Ensure that a coordinate FE exists
 
     PetscCall(DMPlexDistribute(spanstats->dm, 0, NULL, &parent_distributed_dm));
     PetscCallMPI(MPI_Comm_size(comm, &size));
