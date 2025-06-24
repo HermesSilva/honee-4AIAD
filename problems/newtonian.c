@@ -11,6 +11,9 @@
 
 #include <navierstokes.h>
 
+const char *const StateVariables[]     = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};
+const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationType", "STAB_", NULL};
+
 static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIdealGasContext gas);
 
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping

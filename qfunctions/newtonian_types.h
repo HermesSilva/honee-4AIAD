@@ -14,7 +14,7 @@ typedef enum {
   STATEVAR_ENTROPY      = 2,
 } StateVariable;
 #ifndef CEED_RUNNING_JIT_PASS
-static const char *const StateVariables[] = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};
+extern const char *const StateVariables[];
 #endif
 
 typedef struct NewtonianIdealGasContext_ *NewtonianIdealGasContext;
