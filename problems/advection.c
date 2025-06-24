@@ -11,6 +11,13 @@
 
 #include <navierstokes.h>
 
+const char *const AdvDifWindTypes[] = {"ROTATION", "TRANSLATION", "BOUNDARY_LAYER", "WindType", "ADVDIF_WIND_", NULL};
+const char *const AdvDifICTypes[]   = {"SPHERE", "CYLINDER", "COSINE_HILL", "SKEW", "WAVE", "BOUNDARY_LAYER", "AdvectionICType", "ADVDIF_IC_", NULL};
+const char *const AdvDifWaveTypes[] = {"SINE", "SQUARE", "AdvDifWaveType", "ADVDIF_WAVE_", NULL};
+const char *const AdvDifBubbleContinuityTypes[] = {"SMOOTH", "BACK_SHARP", "THICK", "COSINE", "BubbleContinuityType", "ADVDIF_BUBBLE_CONTINUITY_",
+                                                   NULL};
+const char *const StabilizationTauTypes[]       = {"CTAU", "ADVDIFF_SHAKIB", "StabilizationTauType", "STAB_TAU_", NULL};
+
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping
 //
 // Only used for SUPG stabilization

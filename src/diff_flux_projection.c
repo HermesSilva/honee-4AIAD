@@ -9,6 +9,8 @@
 
 #include <navierstokes.h>
 
+const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "INDIRECT", "DivDiffFluxProjectionMethod", "DIV_DIFF_FLUX_PROJ_", NULL};
+
 /**
   @brief Create `DivDiffFluxProjectionData` for solution DM in `honee`
 

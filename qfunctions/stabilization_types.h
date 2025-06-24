@@ -9,7 +9,7 @@ typedef enum {
   STAB_SUPG = 2,  // Streamline Upwind Petrov-Galerkin
 } StabilizationType;
 #ifndef CEED_RUNNING_JIT_PASS
-static const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationType", "STAB_", NULL};
+extern const char *const StabilizationTypes[];
 #endif
 
 typedef enum {
@@ -17,7 +17,7 @@ typedef enum {
   STAB_TAU_ADVDIFF_SHAKIB = 1,  // Approximation from Shakib's Thesis
 } StabilizationTauType;
 #ifndef CEED_RUNNING_JIT_PASS
-static const char *const StabilizationTauTypes[] = {"CTAU", "ADVDIFF_SHAKIB", "StabilizationTauType", "STAB_TAU_", NULL};
+extern const char *const StabilizationTauTypes[];
 #endif
 
 typedef enum {
@@ -26,5 +26,5 @@ typedef enum {
   DIV_DIFF_FLUX_PROJ_INDIRECT = 2,
 } DivDiffFluxProjectionMethod;
 #ifndef CEED_RUNNING_JIT_PASS
-static const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "INDIRECT", "DivDiffFluxProjectionMethod", "DIV_DIFF_FLUX_PROJ_", NULL};
+extern const char *const DivDiffFluxProjectionMethods[];
 #endif

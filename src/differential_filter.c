@@ -10,6 +10,9 @@
 
 #include <navierstokes.h>
 
+const char *const DifferentialFilterDampingFunctions[] = {"NONE", "VAN_DRIEST", "MMS", "DifferentialFilterDampingFunction", "DIFF_FILTER_DAMP_",
+                                                          NULL};
+
 // @brief Create RHS and LHS operators for differential filtering
 PetscErrorCode DifferentialFilterCreateOperators(Ceed ceed, Honee honee, CeedQFunctionContext diff_filter_qfctx) {
   DiffFilterData      diff_filter = honee->diff_filter;
