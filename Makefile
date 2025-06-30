@@ -187,7 +187,7 @@ navierstokes: $(src.o) | $(petsc.pc) $(ceed.pc)
 quiet ?= $($(1))
 
 # Inject Git/version macros when compiling honee-version.c
-GIT_DESCRIBE := $(shell git describe --always --dirty 2>/dev/null || printf "unknown\n")
+GIT_DESCRIBE := $(shell git -c safe.directory=$PWD describe --always --dirty 2>/dev/null || printf "unknown\n")
 
 $(OBJDIR)/src/honee-config.o: Makefile
 $(OBJDIR)/src/honee-config.o src/honee-config.c.tidy: CONFIGFLAGS += -DHONEE_GIT_VERSION="\"$(GIT_DESCRIBE)\""
