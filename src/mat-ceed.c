@@ -110,15 +110,12 @@ static PetscErrorCode MatCeedAssemblePointBlockDiagonalCOO(Mat mat_ceed, Mat mat
   PetscCall(MatAssemblyBegin(mat_coo, MAT_FINAL_ASSEMBLY));
   {
     const CeedScalar *values;
-    MatType           mat_type;
+    PetscMemType      mem_type_petsc;
     CeedMemType       mem_type = CEED_MEM_HOST;
     PetscBool         is_spd, is_spd_known;
 
-    PetscCall(MatGetType(mat_coo, &mat_type));
-    if (strstr(mat_type, "cusparse")) mem_type = CEED_MEM_DEVICE;
-    else if (strstr(mat_type, "kokkos")) mem_type = CEED_MEM_DEVICE;
-    else mem_type = CEED_MEM_HOST;
-
+    PetscCall(MatGetCurrentMemType(mat_coo, &mem_type_petsc));
+    mem_type = MemTypePetscToCeed(mem_type_petsc);
     PetscCall(PetscLogEventBegin(MATCEED_ASSEMBLE_PBDIAGONAL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
     PetscCallCeed(ctx->ceed, CeedOperatorLinearAssemblePointBlockDiagonal(ctx->op_mult, ctx->coo_values_pbd, CEED_REQUEST_IMMEDIATE));
     PetscCall(PetscLogEventEnd(MATCEED_ASSEMBLE_PBDIAGONAL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
@@ -462,9 +459,7 @@ PetscErrorCode MatCreateCeed(DM dm_x, DM dm_y, CeedOperator op_mult, CeedOperato
     MatType coo_mat_type;
 
     PetscCall(VecGetType(ctx->X_loc, &vec_type));
-    if (strstr(vec_type, VECCUDA)) coo_mat_type = MATAIJCUSPARSE;
-    else if (strstr(vec_type, VECKOKKOS)) coo_mat_type = MATAIJKOKKOS;
-    else coo_mat_type = MATAIJ;
+    PetscCall(DefaultMatTypeFromVecType(vec_type, &coo_mat_type));
     PetscCall(PetscStrallocpy(coo_mat_type, &ctx->coo_mat_type));
   }
   // -- Set mat operations
@@ -608,7 +603,7 @@ PetscErrorCode MatCeedCreateMatCOO(Mat mat_ceed, Mat *mat_coo) {
   // Check cl mat type
   {
     PetscBool is_coo_mat_type_cl = PETSC_FALSE;
-    char      coo_mat_type_cl[64];
+    char      coo_mat_type_cl[PETSC_MAX_OPTION_NAME];
 
     // Check for specific CL coo mat type for this Mat
     {
@@ -720,15 +715,12 @@ PetscErrorCode MatCeedAssembleCOO(Mat mat_ceed, Mat mat_coo) {
   PetscCall(MatAssemblyBegin(mat_coo, MAT_FINAL_ASSEMBLY));
   {
     const CeedScalar *values;
-    MatType           mat_type;
     CeedMemType       mem_type = CEED_MEM_HOST;
     PetscBool         is_spd, is_spd_known;
+    PetscMemType      mem_type_petsc;
 
-    PetscCall(MatGetType(mat_coo, &mat_type));
-    if (strstr(mat_type, "cusparse")) mem_type = CEED_MEM_DEVICE;
-    else if (strstr(mat_type, "kokkos")) mem_type = CEED_MEM_DEVICE;
-    else mem_type = CEED_MEM_HOST;
-
+    PetscCall(MatGetCurrentMemType(mat_coo, &mem_type_petsc));
+    mem_type = MemTypePetscToCeed(mem_type_petsc);
     PetscCall(PetscLogEventBegin(MATCEED_ASSEMBLE_FULL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
     PetscCallCeed(ctx->ceed, CeedOperatorLinearAssemble(ctx->op_mult, ctx->coo_values_full));
     PetscCall(PetscLogEventEnd(MATCEED_ASSEMBLE_FULL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
@@ -1579,6 +1571,9 @@ PetscErrorCode MatMult_Ceed(Mat A, Vec X, Vec Y) {
     PetscCall(PetscLogEventBegin(ctx->log_event_ceed_mult, A, X, Y, NULL));
     PetscCall(PetscLogGpuTimeBegin());
     PetscCallCeed(ctx->ceed, CeedOperatorApplyAdd(ctx->op_mult, ctx->x_loc, ctx->y_loc, CEED_REQUEST_IMMEDIATE));
+    // Log flops
+    if (PetscMemTypeDevice(ctx->mem_type)) PetscCall(PetscLogGpuFlops(ctx->flops_mult));
+    else PetscCall(PetscLogFlops(ctx->flops_mult));
     PetscCall(PetscLogGpuTimeEnd());
     PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult, A, X, Y, NULL));
 
@@ -1595,9 +1590,6 @@ PetscErrorCode MatMult_Ceed(Mat A, Vec X, Vec Y) {
     PetscCall(DMRestoreLocalVector(ctx->dm_y, &Y_loc));
   }
 
-  // Log flops
-  if (PetscMemTypeDevice(ctx->mem_type)) PetscCall(PetscLogGpuFlops(ctx->flops_mult));
-  else PetscCall(PetscLogFlops(ctx->flops_mult));
   PetscCall(PetscLogEventEnd(ctx->log_event_mult, A, X, Y, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -1640,6 +1632,9 @@ PetscErrorCode MatMultTranspose_Ceed(Mat A, Vec Y, Vec X) {
     PetscCall(PetscLogEventBegin(ctx->log_event_ceed_mult_transpose, A, Y, X, NULL));
     PetscCall(PetscLogGpuTimeBegin());
     PetscCallCeed(ctx->ceed, CeedOperatorApplyAdd(ctx->op_mult_transpose, ctx->y_loc, ctx->x_loc, CEED_REQUEST_IMMEDIATE));
+    // Log flops
+    if (PetscMemTypeDevice(ctx->mem_type)) PetscCall(PetscLogGpuFlops(ctx->flops_mult_transpose));
+    else PetscCall(PetscLogFlops(ctx->flops_mult_transpose));
     PetscCall(PetscLogGpuTimeEnd());
     PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult_transpose, A, Y, X, NULL));
 
@@ -1656,9 +1651,6 @@ PetscErrorCode MatMultTranspose_Ceed(Mat A, Vec Y, Vec X) {
     PetscCall(DMRestoreLocalVector(ctx->dm_x, &X_loc));
   }
 
-  // Log flops
-  if (PetscMemTypeDevice(ctx->mem_type)) PetscCall(PetscLogGpuFlops(ctx->flops_mult_transpose));
-  else PetscCall(PetscLogFlops(ctx->flops_mult_transpose));
   PetscCall(PetscLogEventEnd(ctx->log_event_mult_transpose, A, Y, X, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
