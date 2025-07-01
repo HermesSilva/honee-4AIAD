@@ -66,7 +66,7 @@ static inline CeedMemType MemTypePetscToCeed(PetscMemType mem_type) { return Pet
 
   @return An error code: 0 - success, otherwise - failure
 **/
-static inline PetscErrorCode IntArrayCeedToPetsc(PetscInt num_entries, CeedInt **array_ceed, PetscInt **array_petsc) {
+static inline PetscErrorCode IntArrayCeedToPetsc(PetscCount num_entries, CeedInt **array_ceed, PetscInt **array_petsc) {
   const CeedInt  int_c = 0;
   const PetscInt int_p = 0;
 
@@ -95,7 +95,7 @@ static inline PetscErrorCode IntArrayCeedToPetsc(PetscInt num_entries, CeedInt *
 
   @return An error code: 0 - success, otherwise - failure
 **/
-static inline PetscErrorCode IntArrayPetscToCeed(PetscInt num_entries, PetscInt **array_petsc, CeedInt **array_ceed) {
+static inline PetscErrorCode IntArrayPetscToCeed(PetscCount num_entries, PetscInt **array_petsc, CeedInt **array_ceed) {
   const CeedInt  int_c = 0;
   const PetscInt int_p = 0;
 
@@ -261,4 +261,50 @@ static inline CeedElemTopology PolytopeTypePetscToCeed(DMPolytopeType cell_type)
     default:
       return 0;
   }
+}
+
+/**
+  @brief Get default `MatType` for a given `VecType`
+
+  Not collective across MPI processes.
+
+  @param[in]   vec_type  `VecType` to check
+  @param[out]  mat_type  Default `MatType` for `VecType`
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static inline PetscErrorCode DefaultMatTypeFromVecType(VecType vec_type, MatType *mat_type) {
+  PetscFunctionBeginUser;
+  if (strstr(vec_type, VECCUDA)) *mat_type = MATAIJCUSPARSE;
+  else if (strstr(vec_type, VECHIP)) *mat_type = MATAIJHIPSPARSE;
+  else if (strstr(vec_type, VECKOKKOS)) *mat_type = MATAIJKOKKOS;
+  else *mat_type = MATAIJ;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get the default `PetscMemType` for a `Mat`
+
+  Not collective across MPI processes.
+
+  @param[in]   mat       `Mat` to get `PetscMemType` for
+  @param[out]  mem_type  Current default `PetscMemType` for @a mat
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static inline PetscErrorCode MatGetCurrentMemType(Mat mat, PetscMemType *mem_type) {
+  PetscBool bound;
+
+  PetscFunctionBeginUser;
+  *mem_type = PETSC_MEMTYPE_HOST;
+  PetscCall(MatBoundToCPU(mat, &bound));
+  if (!bound) {
+    VecType vec_type;
+
+    PetscCall(MatGetVecType(mat, &vec_type));
+    if (strstr(vec_type, VECCUDA)) *mem_type = PETSC_MEMTYPE_CUDA;
+    else if (strstr(vec_type, VECHIP)) *mem_type = PETSC_MEMTYPE_HIP;
+    else if (strstr(vec_type, VECKOKKOS)) *mem_type = PETSC_MEMTYPE_KOKKOS;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
 }
