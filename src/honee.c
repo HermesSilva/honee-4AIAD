@@ -138,3 +138,57 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
   *honee = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+/**
+  @brief Saves a pointer-to-data in a `Honee` object by key
+
+  This also checks whether `key` has been used previously and will error out if it has.
+
+  @param[in] honee             `Honee` object to save pointer to
+  @param[in] key               String used to identify the pointer
+  @param[in] container         Pointer to the data
+  @param[in] container_destroy Function to destroy the struct after it is used
+**/
+PetscErrorCode HoneeSetContainer(Honee honee, const char key[], void *container, PetscCtxDestroyFn *container_destroy) {
+  PetscFunctionBeginUser;
+  {  // Verify that key is not already taken
+    void *test_data;
+    PetscCall(PetscObjectContainerQuery((PetscObject)honee, key, &test_data));
+    PetscCheck(test_data == NULL, PetscObjectComm((PetscObject)honee), PETSC_ERR_SUP, "Cannot set container with key '%s'; key is already in use.",
+               key);
+  }
+  PetscCall(PetscObjectContainerCompose((PetscObject)honee, key, container, container_destroy));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Retrieve a pointer-to-data in a `Honee` object by key
+
+  This will error out if `honee` does not have a container identified by `key`.
+
+  @param[in]  honee     `Honee` object to retrieve pointer from
+  @param[in]  key       String used to identify the pointer
+  @param[out] container Pointer to the data
+**/
+PetscErrorCode HoneeGetContainer(Honee honee, const char key[], void *container) {
+  PetscFunctionBeginUser;
+  PetscCall(PetscObjectContainerQuery((PetscObject)honee, key, container));
+  PetscCheck(*(void **)container != NULL, PetscObjectComm((PetscObject)honee), PETSC_ERR_SUP, "Container with key '%s' not found.", key);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Check if `Honee` object as pointer-to-data identified by key
+
+  @param[in]  honee   `Honee` object to query for key
+  @param[in]  key     String to search for
+  @param[out] has_key Whether key has been set
+**/
+PetscErrorCode HoneeHasContainer(Honee honee, const char key[], PetscBool *has_key) {
+  void *test_data;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscObjectContainerQuery((PetscObject)honee, key, &test_data));
+  *has_key = test_data == NULL ? PETSC_FALSE : PETSC_TRUE;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}

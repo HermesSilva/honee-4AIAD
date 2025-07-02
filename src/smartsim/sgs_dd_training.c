@@ -96,7 +96,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   PetscInt            label_value = 0, height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_train_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
 
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_train->dm_dd_training, domain_label, label_value, height, dm_field, &elem_restr_sgs_train));
@@ -176,7 +176,7 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
   PetscCall(PetscNew(&sgsdd_train_ctx));
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
   PetscCall(PetscNew(&sgs_dd_train));
-  PetscCall(PetscObjectContainerCompose((PetscObject)honee, SGS_DD_TRAIN_KEY, sgs_dd_train, (PetscCtxDestroyFn *)SGS_DD_TrainingDataDestroy));
+  PetscCall(HoneeSetContainer(honee, SGS_DD_TRAIN_KEY, sgs_dd_train, (PetscCtxDestroyFn *)SGS_DD_TrainingDataDestroy));
   PetscCall(DifferentialFilterSetup(honee, &sgs_dd_train->diff_filter));
 
   sgs_dd_train->overwrite_training_data = PETSC_TRUE;
@@ -294,7 +294,7 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
 
   PetscFunctionBeginUser;
   PetscCall(HoneeGetSmartSimData(honee, &smartsim));
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
   PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
 
   if (step_num % sgs_dd_train->write_data_interval != 0) PetscFunctionReturn(PETSC_SUCCESS);

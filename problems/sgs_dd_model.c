@@ -99,7 +99,7 @@ static PetscErrorCode SgsDDNodalStressEval_Fused(Honee honee, Vec Q_loc, Vec Vel
   PetscMemType q_mem_type;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_DATA_KEY, &sgs_dd_data));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
   PetscCall(VecPetscToCeed(Q_loc, &q_mem_type, honee->q_ceed));  // q_ceed is an implicit input
 
   PetscCall(ApplyCeedOperatorGlobalToLocal(VelocityGradient, SGSNodal_loc, sgs_dd_data->op_nodal_evaluation_ctx));
@@ -126,8 +126,8 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_DATA_KEY, &sgs_dd_data));
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
+  PetscCall(HoneeGetContainer(honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
 
   {  // Get velocity gradient information
     CeedOperatorField op_field;
@@ -284,7 +284,7 @@ PetscErrorCode SgsDDNodalStressEval_Sequential(Honee honee, Vec Q_loc, Vec Veloc
   Vec          DD_Inputs_loc, DD_Outputs_loc;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_DATA_KEY, &sgs_dd_data));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
   PetscCall(DMGetLocalVector(sgs_dd_data->dm_dd_inputs, &DD_Inputs_loc));
   PetscCall(DMGetLocalVector(sgs_dd_data->dm_dd_outputs, &DD_Outputs_loc));
   PetscCall(VecPetscToCeed(Q_loc, &q_mem_type, honee->q_ceed));  // q_ceed is an implicit input
@@ -312,7 +312,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   PetscInt label_value = 0, height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_DATA_KEY, &sgs_dd_data));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
   {  // Create DMs for data-driven input and output values
     PetscSection section;
     PetscInt     degree, q_extra;
@@ -360,7 +360,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
+  PetscCall(HoneeGetContainer(honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
 
   {  // Get velocity gradient information
     CeedOperatorField op_field;
@@ -489,7 +489,7 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
   CeedElemRestriction elem_restr_qd;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_DATA_KEY, &sgs_dd_data));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
   PetscCall(DMGetDimension(honee->dm, &dim));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
@@ -547,8 +547,8 @@ PetscErrorCode SgsDDApplyIFunction(Honee honee, const Vec Q_loc, Vec G_loc) {
 
   PetscFunctionBeginUser;
   PetscCall(PetscLogEventBegin(HONEE_SgsModel, Q_loc, G_loc, NULL, NULL));
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, SGS_DD_DATA_KEY, &sgs_dd_data));
-  PetscCall(PetscObjectContainerQuery((PetscObject)honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
+  PetscCall(HoneeGetContainer(honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
   PetscCall(DMGetGlobalVector(grad_velo_proj->dm, &VelocityGradient));
   PetscCall(VelocityGradientProjectionApply(grad_velo_proj, Q_loc, VelocityGradient));
 
@@ -642,12 +642,12 @@ PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem) {
 
   PetscFunctionBeginUser;
   PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, honee->phys->state_var, honee->elem_restr_q, honee->basis_q, &grad_velo_proj));
-  PetscCall(PetscObjectContainerCompose((PetscObject)honee, GRAD_VELO_PROJ_KEY, grad_velo_proj, (PetscCtxDestroyFn *)NodalProjectionDataDestroy));
+  PetscCall(HoneeSetContainer(honee, GRAD_VELO_PROJ_KEY, grad_velo_proj, (PetscCtxDestroyFn *)NodalProjectionDataDestroy));
 
   PetscCall(PetscNew(&sgs_dd_data));
   sgs_dd_data->num_comp_inputs  = 6;
   sgs_dd_data->num_comp_outputs = 6;
-  PetscCall(PetscObjectContainerCompose((PetscObject)honee, SGS_DD_DATA_KEY, sgs_dd_data, (PetscCtxDestroyFn *)SgsDDDataDestroy));
+  PetscCall(HoneeSetContainer(honee, SGS_DD_DATA_KEY, sgs_dd_data, (PetscCtxDestroyFn *)SgsDDDataDestroy));
 
   PetscCall(PetscNew(&sgs_dd_setup_data));
 
