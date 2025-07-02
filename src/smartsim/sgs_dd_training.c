@@ -360,10 +360,10 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
       {
         const PetscScalar *training_data;
         PetscCall(VecGetArrayRead(TrainingData, &training_data));
-        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Train, 0, 0, 0, 0));
+        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Write, 0, 0, 0, 0));
         PetscCallSmartRedis(put_tensor(smartsim->client, array_key, array_key_len, (void *)training_data, sgs_dd_train->training_data_array_dims, 2,
                                        SRTensorTypeDouble, SRMemLayoutContiguous));
-        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Train, 0, 0, 0, 0));
+        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Write, 0, 0, 0, 0));
         PetscCall(VecRestoreArrayRead(TrainingData, &training_data));
       }
     }
