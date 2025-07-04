@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include "newtonian_types.h"
+#include "../newtonian_types.h"
 
 enum TurbComponent {
   TURB_MEAN_DENSITY,

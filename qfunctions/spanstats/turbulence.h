@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #include <ceed/types.h>
 
-#include "newtonian_state.h"
 #include "turb_stats_types.h"
-#include "utils.h"
+#include "../newtonian_state.h"
+#include "../utils.h"
 
 CEED_QFUNCTION_HELPER int ChildStatsCollection(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
   const CeedScalar(*q)[CEED_Q_VLA]      = (const CeedScalar(*)[CEED_Q_VLA])in[0];
