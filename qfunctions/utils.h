@@ -49,6 +49,9 @@ CEED_QFUNCTION_HELPER CeedScalar DotN(const CeedScalar *u, const CeedScalar *v, 
 // @brief Dot product of 3 element vectors
 CEED_QFUNCTION_HELPER CeedScalar Dot3(const CeedScalar *u, const CeedScalar *v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; }
 
+// @brief Dot product of 2 element vectors
+CEED_QFUNCTION_HELPER CeedScalar Dot2(const CeedScalar *u, const CeedScalar *v) { return u[0] * v[0] + u[1] * v[1]; }
+
 // @brief \ell^2 norm of 3 element vectors
 CEED_QFUNCTION_HELPER CeedScalar Norm3(const CeedScalar *u) { return sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]); }
 
@@ -85,6 +88,11 @@ CEED_QFUNCTION_HELPER void MatVecNM(const CeedScalar *A, const CeedScalar *x, co
 // @brief 3x3 Matrix vector product  b = Ax + b.
 CEED_QFUNCTION_HELPER void MatVec3(const CeedScalar A[3][3], const CeedScalar x[3], const CeedTransposeMode transpose_A, CeedScalar b[3]) {
   MatVecNM((const CeedScalar *)A, (const CeedScalar *)x, 3, 3, transpose_A, (CeedScalar *)b);
+}
+
+// @brief 2x2 Matrix vector product  b = Ax + b.
+CEED_QFUNCTION_HELPER void MatVec2(const CeedScalar A[2][2], const CeedScalar x[2], const CeedTransposeMode transpose_A, CeedScalar b[2]) {
+  MatVecNM((const CeedScalar *)A, (const CeedScalar *)x, 2, 2, transpose_A, (CeedScalar *)b);
 }
 
 // @brief Matrix-Matrix product, B = DA + B, where D is diagonal.
@@ -153,6 +161,12 @@ CEED_QFUNCTION_HELPER void MatMatN(const CeedScalar *A, const CeedScalar *B, con
 CEED_QFUNCTION_HELPER void MatMat3(const CeedScalar A[3][3], const CeedScalar B[3][3], const CeedTransposeMode transpose_A,
                                    const CeedTransposeMode transpose_B, CeedScalar C[3][3]) {
   MatMatN((const CeedScalar *)A, (const CeedScalar *)B, 3, transpose_A, transpose_B, (CeedScalar *)C);
+}
+
+// @brief 2x2 Matrix-Matrix product, C = AB + C
+CEED_QFUNCTION_HELPER void MatMat2(const CeedScalar A[2][2], const CeedScalar B[2][2], const CeedTransposeMode transpose_A,
+                                   const CeedTransposeMode transpose_B, CeedScalar C[2][2]) {
+  MatMatN((const CeedScalar *)A, (const CeedScalar *)B, 2, transpose_A, transpose_B, (CeedScalar *)C);
 }
 
 /**
