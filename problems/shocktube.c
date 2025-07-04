@@ -11,6 +11,17 @@
 
 #include <navierstokes.h>
 
+static PetscErrorCode PRINT_SHOCKTUBE(Honee honee, ProblemData problem, AppCtx app_ctx) {
+  MPI_Comm comm = honee->comm;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscPrintf(comm,
+                        "  Problem:\n"
+                        "    Problem Name                       : %s\n",
+                        app_ctx->problem_name));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   SetupContextShock    setup_context;
   Honee                honee = *(Honee *)ctx;
@@ -132,16 +143,5 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextSetData(shocktube_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*shocktube_ctx), shocktube_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(shocktube_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   problem->apply_vol_rhs.qfctx = shocktube_qfctx;
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-PetscErrorCode PRINT_SHOCKTUBE(Honee honee, ProblemData problem, AppCtx app_ctx) {
-  MPI_Comm comm = honee->comm;
-
-  PetscFunctionBeginUser;
-  PetscCall(PetscPrintf(comm,
-                        "  Problem:\n"
-                        "    Problem Name                       : %s\n",
-                        app_ctx->problem_name));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -16,6 +16,22 @@ const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationTy
 
 static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIdealGasContext gas);
 
+static PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx) {
+  MPI_Comm                 comm = honee->comm;
+  Ceed                     ceed = honee->ceed;
+  NewtonianIdealGasContext newtonian_ctx;
+
+  PetscFunctionBeginUser;
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ctx));
+  PetscCall(PetscPrintf(comm,
+                        "  Problem:\n"
+                        "    Problem Name                       : %s\n"
+                        "    Stabilization                      : %s\n",
+                        app_ctx->problem_name, StabilizationTypes[newtonian_ctx->stabilization]));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ctx));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping
 //
 // Only used for SUPG stabilization
@@ -660,21 +676,9 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx) {
-  MPI_Comm                 comm = honee->comm;
-  Ceed                     ceed = honee->ceed;
-  NewtonianIdealGasContext newtonian_ctx;
-
-  PetscFunctionBeginUser;
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ctx));
-  PetscCall(PetscPrintf(comm,
-                        "  Problem:\n"
-                        "    Problem Name                       : %s\n"
-                        "    Stabilization                      : %s\n",
-                        app_ctx->problem_name, StabilizationTypes[newtonian_ctx->stabilization]));
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ctx));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
+//------------------------------------
+// Unit test functions
+//------------------------------------
 
 static PetscErrorCode CheckQWithTolerance(const CeedScalar Q_s[5], const CeedScalar Q_a[5], const CeedScalar Q_b[5], const char *name,
                                           PetscReal rtol_0, PetscReal rtol_u, PetscReal rtol_4) {

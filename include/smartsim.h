@@ -3,6 +3,7 @@
 #pragma once
 
 #include <c_client.h>
+#include <honee.h>
 #include <petscsys.h>
 #include <sr_enums.h>
 
@@ -22,5 +23,13 @@ void PetscCallSmartRedis(SRError);
               SRGetLastError());                                                                                                   \
   } while (0)
 #endif
+
+typedef struct {
+  void    *client;
+  char     rank_id_name[16];
+  PetscInt collocated_database_num_ranks;
+} *SmartSimData;
+
+PetscErrorCode HoneeGetSmartSimData(Honee honee, SmartSimData *smartsim);
 
 PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const size_t name_length);

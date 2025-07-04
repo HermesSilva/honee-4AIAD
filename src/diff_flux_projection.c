@@ -402,7 +402,7 @@ PetscErrorCode DivDiffFluxProjectionDataDestroy(DivDiffFluxProjectionData diff_f
   if (diff_flux_proj == NULL) PetscFunctionReturn(PETSC_SUCCESS);
   Ceed ceed = CeedVectorReturnCeed(diff_flux_proj->div_diff_flux_ceed);
 
-  PetscCall(NodalProjectionDataDestroy(diff_flux_proj->projection));
+  PetscCall(NodalProjectionDataDestroy(&diff_flux_proj->projection));
   PetscCall(OperatorApplyContextDestroy(diff_flux_proj->calc_div_diff_flux));
   if (diff_flux_proj->ceed_vec_has_array) {
     PetscCall(VecReadCeedToPetsc(diff_flux_proj->div_diff_flux_ceed, diff_flux_proj->DivDiffFlux_memtype, diff_flux_proj->DivDiffFlux_loc));

@@ -18,29 +18,16 @@ const char help[] = "HONEE - High-Order Navier-stokes Equation Evaluator\n";
 #include <petscts.h>
 
 int main(int argc, char **argv) {
-  AppCtx      app_ctx;
-  ProblemData problem;
-  Honee       honee;
-  Physics     phys_ctx;
-  Units       units;
-  MPI_Comm    comm;
+  Honee    honee;
+  MPI_Comm comm;
 
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
+  comm = PETSC_COMM_WORLD;
 
-  PetscCall(PetscCalloc1(1, &honee));
-  PetscCall(PetscCalloc1(1, &app_ctx));
-  PetscCall(PetscCalloc1(1, &problem));
-  PetscCall(PetscCalloc1(1, &phys_ctx));
-  PetscCall(PetscCalloc1(1, &units));
-  honee->app_ctx           = app_ctx;
-  honee->units             = units;
-  honee->phys              = phys_ctx;
-  honee->problem_data      = problem;
-  problem->set_bc_from_ics = PETSC_TRUE;
-  honee->comm = comm = PETSC_COMM_WORLD;
-  honee->start_time  = time(NULL);
-
-  PetscCall(RegisterLogEvents());
+  PetscCall(HoneeInit(comm, &honee));
+  AppCtx      app_ctx  = honee->app_ctx;
+  ProblemData problem  = honee->problem_data;
+  Physics     phys_ctx = honee->phys;
 
   // ---------------------------------------------------------------------------
   // Process command line options
@@ -175,49 +162,10 @@ int main(int argc, char **argv) {
   // ---------------------------------------------------------------------------
   PetscCall(PostProcess(ts, dm, problem, honee, Q, final_time));
 
-  // ---------------------------------------------------------------------------
-  // Destroy libCEED objects
-  // ---------------------------------------------------------------------------
-
-  PetscCall(NodalProjectionDataDestroy(honee->grad_velo_proj));
-  PetscCall(SgsDDDataDestroy(honee->sgs_dd_data));
-  PetscCall(DifferentialFilterDataDestroy(honee->diff_filter));
-  PetscCall(SGS_DD_TrainingDataDestroy(honee->sgs_dd_train));
-  PetscCall(SmartSimDataDestroy(honee->smartsim));
-  PetscCall(QDataClearStoredData());
-  PetscCall(DivDiffFluxProjectionDataDestroy(honee->diff_flux_proj));
-
-  // -- Vectors
-  PetscCallCeed(ceed, CeedVectorDestroy(&honee->x_coord));
-  PetscCallCeed(ceed, CeedVectorDestroy(&honee->q_ceed));
-  PetscCallCeed(ceed, CeedVectorDestroy(&honee->q_dot_ceed));
-  PetscCallCeed(ceed, CeedVectorDestroy(&honee->g_ceed));
-
-  // -- Bases
-  PetscCallCeed(ceed, CeedBasisDestroy(&honee->basis_q));
-  PetscCallCeed(ceed, CeedBasisDestroy(&honee->basis_x));
-
-  // -- Restrictions
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&honee->elem_restr_q));
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&honee->elem_restr_x));
-
-  // Destroy QFunction contexts after using
-  // ToDo: Simplify tracked libCEED objects, smaller struct
-  {
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_vol_rhs.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_vol_ifunction.qfctx));
-    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->apply_vol_ijacobian.qfctx));
-  }
-
-  // -- Operators
-  PetscCall(OperatorApplyContextDestroy(honee->op_ics_ctx));
-  PetscCall(OperatorApplyContextDestroy(honee->op_rhs_ctx));
-  PetscCall(OperatorApplyContextDestroy(honee->op_strong_bc_ctx));
-  PetscCallCeed(ceed, CeedOperatorDestroy(&honee->op_ifunction));
-
-  // -- Ceed
-  PetscCheck(CeedDestroy(&ceed) == CEED_ERROR_SUCCESS, comm, PETSC_ERR_LIB, "Destroying Ceed object failed");
+  // Cleanup
+  PetscCall(VecDestroy(&Q));
+  PetscCall(DMDestroy(&dm));
+  PetscCall(TSDestroy(&ts));
 
   if (app_ctx->test_type != TESTTYPE_NONE) {
     PetscInt  num_options_left = 0;
@@ -230,47 +178,7 @@ int main(int argc, char **argv) {
                  "There are unused options. This is not allowed. See error message for the unused options (or use -options_left directly)");
   }
 
-  // ---------------------------------------------------------------------------
-  // Clean up PETSc
-  // ---------------------------------------------------------------------------
-  // -- Vectors
-  PetscCall(VecDestroy(&Q));
-  PetscCall(VecDestroy(&honee->Q_loc));
-  PetscCall(VecDestroy(&honee->Q_dot_loc));
-
-  PetscCall(KSPDestroy(&honee->mass_ksp));
-
-  // -- Matrices
-  PetscCall(MatDestroy(&honee->interp_viz));
-  PetscCall(MatDestroy(&honee->mat_ijacobian));
-
-  // -- DM
-  PetscCall(DMDestroy(&dm));
-  PetscCall(DMDestroy(&honee->dm_viz));
-
-  // -- TS
-  PetscCall(TSDestroy(&ts));
-
-  // -- Function list
-  PetscCall(PetscFunctionListDestroy(&app_ctx->problems));
-
-  PetscCall(PetscFree(app_ctx->amat_type));
-  PetscCall(PetscFree(app_ctx->wall_forces.walls));
-  PetscCall(PetscViewerDestroy(&app_ctx->wall_forces.viewer));
-
-  // -- Structs
-  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
-    PetscCall(BCDefinitionDestroy(&problem->bc_defs[i]));
-  }
-  PetscCall(PetscFree(problem->bc_defs));
-  PetscCall(PetscFree(units));
-  PetscCall(PetscFree(honee));
-  PetscCall(PetscFree(problem));
-  PetscCall(PetscFree(phys_ctx));
-  PetscCall(PetscFree(app_ctx));
-  PetscCall(PetscFree(honee));
-  PetscCall(PetscFree(problem));
-
+  PetscCall(HoneeDestroy(&honee));
   return PetscFinalize();
 }
 

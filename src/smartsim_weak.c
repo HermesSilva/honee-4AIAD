@@ -18,25 +18,8 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
   SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "Must build with SMARTREDIS_DIR set to run %s", __func__);
 };
 
-PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train) __attribute__((weak));
-PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train) {
-  PetscFunctionBeginUser;
-  if (!sgs_dd_train) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Warning: SGS_DD_TrainingData struct should not be initialized if SMARTREDIS_DIR isn't set on build..."));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
 PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) __attribute__((weak));
 PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
   PetscFunctionBeginUser;
   SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "Must build with SMARTREDIS_DIR set to run %s", __func__);
 };
-
-PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim) __attribute__((weak));
-PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim) {
-  PetscFunctionBeginUser;
-  if (!smartsim) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(PetscPrintf(PETSC_COMM_WORLD, "Warning: SmartSimData struct should not be initialized if SMARTREDIS_DIR isn't set on build..."));
-
-  PetscFunctionReturn(PETSC_SUCCESS);
-}

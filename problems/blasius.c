@@ -10,6 +10,7 @@
 #include <petscdm.h>
 #include <petscdt.h>
 
+#include <differential_filter.h>
 #include <navierstokes.h>
 #include "stg_shur14.h"
 
@@ -372,7 +373,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   if (use_stg) {
     PetscCall(SetupStg(comm, dm, problem, honee, weakT, S_infty.Y.temperature, S_infty.Y.pressure));
   } else if (diff_filter_mms) {
-    PetscCall(DifferentialFilterMmsICSetup(problem));
+    PetscCall(DifferentialFilterMmsICSetup(honee));
   } else {
     PetscCheck((honee->phys->state_var == STATEVAR_CONSERVATIVE) || (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER), honee->comm,
                PETSC_ERR_ARG_INCOMP, "Can only use conservative variables with Blasius and weak inflow");

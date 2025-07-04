@@ -14,6 +14,8 @@
 #include <stdbool.h>
 #include <time.h>
 
+#include <nodal_projection.h>
+
 #include <petsc_ops.h>
 #include "../qfunctions/newtonian_types.h"
 
@@ -114,21 +116,13 @@ struct AppCtx_private {
   // Subgrid Stress Model
   SGSModelType sgs_model_type;
   PetscBool    sgs_train_enable;
-  // Differential Filtering
-  PetscBool         diff_filter_monitor;
+
   MeshTransformType mesh_transform_type;
   // Divergence of Diffusive Flux Projection
   DivDiffFluxProjectionMethod divFdiffproj_method;
 
   PetscInt check_step_interval;
 };
-
-typedef struct {
-  DM                   dm;
-  PetscInt             num_comp;
-  OperatorApplyContext l2_rhs_ctx;
-  KSP                  ksp;
-} *NodalProjectionData;
 
 typedef struct DivDiffFluxProjectionData_private *DivDiffFluxProjectionData;
 
@@ -156,49 +150,15 @@ struct DivDiffFluxProjectionData_private {
   OperatorApplyContext calc_div_diff_flux;
 };
 
-typedef PetscErrorCode (*SgsDDNodalStressEval)(Honee honee, Vec Q_loc, Vec VelocityGradient, Vec SGSNodal_loc);
-typedef PetscErrorCode (*SgsDDNodalStressInference)(Vec DD_Inputs_loc, Vec DD_Outputs_loc, void *ctx);
-typedef struct {
-  DM                        dm_sgs, dm_dd_inputs, dm_dd_outputs;
-  PetscInt                  num_comp_sgs, num_comp_inputs, num_comp_outputs;
-  OperatorApplyContext      op_nodal_evaluation_ctx, op_nodal_dd_inputs_ctx, op_nodal_dd_outputs_ctx, op_sgs_apply_ctx;
-  CeedVector                sgs_nodal_ceed, grad_velo_ceed;
-  SgsDDNodalStressEval      sgs_nodal_eval;
-  SgsDDNodalStressInference sgs_nodal_inference;
-  void                     *sgs_nodal_inference_ctx;
-  PetscErrorCode (*sgs_nodal_inference_ctx_destroy)(void *ctx);
-} *SgsDDData;
+typedef struct _HoneeOps *HoneeOps;
+struct _HoneeOps {};
 
-typedef struct {
-  DM                   dm_dd_training;
-  PetscInt             num_comp_dd_inputs, write_data_interval, num_filter_widths;
-  PetscScalar          filter_widths[16];
-  OperatorApplyContext op_training_data_calc_ctx;
-  NodalProjectionData  filtered_grad_velo_proj;
-  size_t               training_data_array_dims[2];
-  PetscBool            overwrite_training_data;
-} *SGS_DD_TrainingData;
-
-typedef struct {
-  DM                    dm_filter;
-  PetscInt              num_filtered_fields;
-  CeedInt              *num_field_components;
-  PetscInt              field_prim_state, field_velo_prod;
-  OperatorApplyContext  op_rhs_ctx;
-  KSP                   ksp;
-  PetscObjectState      X_loc_state;
-  PetscBool             do_mms_test;
-  CeedContextFieldLabel filter_width_scaling_label;
-} *DiffFilterData;
-
-typedef struct {
-  void    *client;
-  char     rank_id_name[16];
-  PetscInt collocated_database_num_ranks;
-} *SmartSimData;
+PetscErrorCode HoneeInit(MPI_Comm comm, Honee *honee);
+PetscErrorCode HoneeDestroy(Honee *honee);
 
 // PETSc user data
 struct Honee_private {
+  PETSCHEADER(struct _HoneeOps);
   MPI_Comm                  comm;
   DM                        dm;
   DM                        dm_viz;
@@ -214,11 +174,6 @@ struct Honee_private {
   KSP                       mass_ksp;
   OperatorApplyContext      op_rhs_ctx, op_strong_bc_ctx;
   CeedScalar                time_bc_set;
-  NodalProjectionData       grad_velo_proj;
-  SgsDDData                 sgs_dd_data;
-  DiffFilterData            diff_filter;
-  SmartSimData              smartsim;
-  SGS_DD_TrainingData       sgs_dd_train;
   DivDiffFluxProjectionData diff_flux_proj;
 
   ProblemData problem_data;
@@ -313,13 +268,6 @@ extern PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx);
 extern PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx);
 extern PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx);
 
-// Print function for each problem
-extern PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_EULER_VORTEX(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_SHOCKTUBE(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_ADVECTION(Honee honee, ProblemData problem, AppCtx app_ctx);
-extern PetscErrorCode PRINT_ADVECTION2D(Honee honee, ProblemData problem, AppCtx app_ctx);
-
 PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, TS ts);
 
 // -----------------------------------------------------------------------------
@@ -340,9 +288,6 @@ PetscErrorCode QDataClearStoredData();
 // -----------------------------------------------------------------------------
 // Time-stepping functions
 // -----------------------------------------------------------------------------
-PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data);
-PetscErrorCode IFunction_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, Vec G, void *user_data);
-PetscErrorCode TSMonitor_NS(TS ts, PetscInt step_no, PetscReal time, Vec Q, void *ctx);
 PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, ProblemData problem, Vec Q, PetscScalar *f_time, TS *ts);
 PetscErrorCode UpdateBoundaryValues(Honee honee, Vec Q_loc, PetscReal t);
 
@@ -382,7 +327,6 @@ PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
 PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
 PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume);
-PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData context);
 
 // -----------------------------------------------------------------------------
 // Turbulence Statistics Collection Functions
@@ -394,7 +338,6 @@ PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, Pet
 // Data-Driven Subgrid Stress (DD-SGS) Modeling Functions
 // -----------------------------------------------------------------------------
 PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem);
-PetscErrorCode SgsDDDataDestroy(SgsDDData sgs_dd_data);
 PetscErrorCode SgsDDApplyIFunction(Honee honee, const Vec Q_loc, Vec G_loc);
 PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemData problem, StateVariable state_var_input,
                                                CeedElemRestriction elem_restr_input, CeedBasis basis_input, NodalProjectionData *pgrad_velo_proj);
@@ -415,23 +358,11 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
 PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
 
 // -----------------------------------------------------------------------------
-// Differential Filtering Functions
-// -----------------------------------------------------------------------------
-PetscErrorCode DifferentialFilterSetup(Ceed ceed, Honee honee, ProblemData problem);
-PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData diff_filter);
-PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, void *ctx);
-PetscErrorCode DifferentialFilterApply(Honee honee, const PetscReal solution_time, const Vec Q, Vec Filtered_Solution);
-PetscErrorCode DifferentialFilterMmsICSetup(ProblemData problem);
-
-// -----------------------------------------------------------------------------
 // SGS Data-Driven Training via SmartSim
 // -----------------------------------------------------------------------------
-PetscErrorCode SmartSimSetup(Honee honee);
-PetscErrorCode SmartSimDataDestroy(SmartSimData smartsim);
 PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem);
 PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx);
 PetscErrorCode TSPostStep_SGS_DD_Training(TS ts);
-PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train);
 
 // -----------------------------------------------------------------------------
 // Divergence of Diffusive Flux Projection

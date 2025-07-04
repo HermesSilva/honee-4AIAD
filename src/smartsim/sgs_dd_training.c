@@ -3,10 +3,36 @@
 
 #include "../../qfunctions/sgs_dd_training.h"
 
-#include <petscdmplex.h>
-
+#include <differential_filter.h>
 #include <navierstokes.h>
+#include <petscdmplex.h>
 #include <smartsim.h>
+
+typedef struct {
+  DM                   dm_dd_training;
+  PetscInt             num_comp_dd_inputs, write_data_interval, num_filter_widths;
+  PetscScalar          filter_widths[16];
+  OperatorApplyContext op_training_data_calc_ctx;
+  DiffFilterData       diff_filter;
+  NodalProjectionData  filtered_grad_velo_proj;
+  size_t               training_data_array_dims[2];
+  PetscBool            overwrite_training_data;
+} *SGS_DD_TrainingData;
+
+#define SGS_DD_TRAIN_KEY "SGS Data Driven Training"
+
+PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData *sgs_dd_train) {
+  SGS_DD_TrainingData sgs_dd_train_ = *sgs_dd_train;
+
+  PetscFunctionBeginUser;
+  if (!sgs_dd_train_) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(OperatorApplyContextDestroy(sgs_dd_train_->op_training_data_calc_ctx));
+  PetscCall(NodalProjectionDataDestroy(&sgs_dd_train_->filtered_grad_velo_proj));
+  PetscCall(DMDestroy(&sgs_dd_train_->dm_dd_training));
+  PetscCall(DifferentialFilterDataDestroy(&sgs_dd_train_->diff_filter));
+  PetscCall(PetscFree(sgs_dd_train));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
 
 typedef struct {
   CeedElemRestriction  elem_restr_grid_aniso;
@@ -60,7 +86,7 @@ static PetscErrorCode SGS_DD_TrainingCreateDM(DM dm_source, DM *dm_dd_training, 
 
 // @brief Create CeedOperator to calculate training data for data-drive SGS model at nodes
 static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, ProblemData problem, SGS_DD_TrainingSetupData sgs_dd_train_setup_data) {
-  SGS_DD_TrainingData sgs_dd_train = honee->sgs_dd_train;
+  SGS_DD_TrainingData sgs_dd_train;
   CeedQFunction       qf_sgs_dd_train;
   CeedOperator        op_sgs_dd_train;
   CeedInt             num_comp_grad_velo, num_comp_grid_aniso;
@@ -70,6 +96,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   PetscInt            label_value = 0, height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_train_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
 
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_train->dm_dd_training, domain_label, label_value, height, dm_field, &elem_restr_sgs_train));
@@ -81,7 +108,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   {  // -- Setup filtered velocity gradient projection
     CeedBasis         basis_filtered_state;
     CeedOperatorField op_field;
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->diff_filter->op_rhs_ctx->op, "v0", &op_field));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sgs_dd_train->diff_filter->op_rhs_ctx->op, "v0", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_filtered_state, &basis_filtered_state, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_filtered_state, &num_comp_filtered_state));
     PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, STATEVAR_PRIMITIVE, elem_restr_filtered_state, basis_filtered_state,
@@ -97,7 +124,7 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   CeedInt             num_comp_filtered_velo_prod;
   {  // Get filtered velocity product information
     CeedOperatorField op_field;
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(honee->diff_filter->op_rhs_ctx->op, "v1", &op_field));
+    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sgs_dd_train->diff_filter->op_rhs_ctx->op, "v1", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_filtered_velo_prod));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_filtered_velo_prod, &num_comp_filtered_velo_prod));
   }
@@ -140,17 +167,17 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
 }
 
 PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem) {
-  SGS_DDTrainingContext    sgsdd_train_qfctx;
+  SGS_DDTrainingContext    sgsdd_train_ctx;
   SGS_DD_TrainingSetupData sgs_dd_train_setup_data;
+  SGS_DD_TrainingData      sgs_dd_train;
 
   PetscFunctionBeginUser;
-  if (!honee->diff_filter) PetscCall(DifferentialFilterSetup(ceed, honee, problem));
-  if (!honee->smartsim) PetscCall(SmartSimSetup(honee));
 
-  PetscCall(PetscNew(&sgsdd_train_qfctx));
+  PetscCall(PetscNew(&sgsdd_train_ctx));
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
-  PetscCall(PetscNew(&honee->sgs_dd_train));
-  SGS_DD_TrainingData sgs_dd_train = honee->sgs_dd_train;
+  PetscCall(PetscNew(&sgs_dd_train));
+  PetscCall(HoneeSetContainer(honee, SGS_DD_TRAIN_KEY, sgs_dd_train, (PetscCtxDestroyFn *)SGS_DD_TrainingDataDestroy));
+  PetscCall(DifferentialFilterSetup(honee, &sgs_dd_train->diff_filter));
 
   sgs_dd_train->overwrite_training_data = PETSC_TRUE;
   sgs_dd_train->write_data_interval     = 1;
@@ -171,17 +198,18 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
   {  // -- Create QFunction Context
     NewtonianIdealGasContext gas;
     PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
-    sgsdd_train_qfctx->gas = *gas;
+    sgsdd_train_ctx->gas = *gas;
     PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
     PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &sgs_dd_train_setup_data->sgs_dd_train_qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextSetData(sgs_dd_train_setup_data->sgs_dd_train_qfctx, CEED_MEM_HOST, CEED_USE_POINTER,
-                                                    sizeof(*sgsdd_train_qfctx), sgsdd_train_qfctx));
+                                                    sizeof(*sgsdd_train_ctx), sgsdd_train_ctx));
     PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(sgs_dd_train_setup_data->sgs_dd_train_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   }
 
   {  // -- Send training data array info to SmartRedis database
     PetscMPIInt  rank, num_ranks;
-    SmartSimData smartsim = honee->smartsim;
+    SmartSimData smartsim;
+    PetscCall(HoneeGetSmartSimData(honee, &smartsim));
     PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
     PetscCallMPI(MPI_Comm_size(honee->comm, &num_ranks));
 
@@ -257,15 +285,16 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
 }
 
 PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx) {
-  Honee               honee        = (Honee)ctx;
-  Ceed                ceed         = honee->ceed;
-  SGS_DD_TrainingData sgs_dd_train = honee->sgs_dd_train;
-  SmartSimData        smartsim     = honee->smartsim;
+  Honee               honee = (Honee)ctx;
+  Ceed                ceed  = honee->ceed;
+  SGS_DD_TrainingData sgs_dd_train;
+  SmartSimData        smartsim;
   Vec                 TrainingData;
   PetscMPIInt         rank;
 
   PetscFunctionBeginUser;
-
+  PetscCall(HoneeGetSmartSimData(honee, &smartsim));
+  PetscCall(HoneeGetContainer(honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
   PetscCallMPI(MPI_Comm_rank(honee->comm, &rank));
 
   if (step_num % sgs_dd_train->write_data_interval != 0) PetscFunctionReturn(PETSC_SUCCESS);
@@ -284,16 +313,16 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
         Mat          A_mat;
 
         for (int j = 0; j < 3; j++) filter_width_scaling[j] = sgs_dd_train->filter_widths[filter_index];
-        PetscCall(KSPGetOperators(honee->diff_filter->ksp, &A_mat, NULL));
+        PetscCall(KSPGetOperators(sgs_dd_train->diff_filter->ksp, &A_mat, NULL));
         PetscCall(MatCeedGetCeedOperators(A_mat, &op_mat, NULL));
-        PetscCall(CeedOperatorSetContextDouble(op_mat, honee->diff_filter->filter_width_scaling_label, filter_width_scaling));
+        PetscCall(CeedOperatorSetContextDouble(op_mat, sgs_dd_train->diff_filter->filter_width_scaling_label, filter_width_scaling));
       }
 
-      PetscCall(DMGetGlobalVector(honee->diff_filter->dm_filter, &FilteredFields));
-      PetscCall(DMGetLocalVector(honee->diff_filter->dm_filter, &FilteredFields_loc));
+      PetscCall(DMGetGlobalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields));
+      PetscCall(DMGetLocalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields_loc));
 
-      PetscCall(DifferentialFilterApply(honee, solution_time, Q, FilteredFields));
-      PetscCall(DMGlobalToLocal(honee->diff_filter->dm_filter, FilteredFields, INSERT_VALUES, FilteredFields_loc));
+      PetscCall(DifferentialFilterApply(honee, sgs_dd_train->diff_filter, solution_time, Q, FilteredFields));
+      PetscCall(DMGlobalToLocal(sgs_dd_train->diff_filter->dm_filter, FilteredFields, INSERT_VALUES, FilteredFields_loc));
 
       PetscCall(DMGetGlobalVector(sgs_dd_train->filtered_grad_velo_proj->dm, &FilteredVelocityGradient));
       PetscCall(VelocityGradientProjectionApply(sgs_dd_train->filtered_grad_velo_proj, FilteredFields_loc, FilteredVelocityGradient));
@@ -310,8 +339,8 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
       PetscCall(VecCeedToPetsc(filtered_fields, filtered_fields_mem_type, FilteredFields_loc));
 
       PetscCall(DMRestoreGlobalVector(sgs_dd_train->filtered_grad_velo_proj->dm, &FilteredVelocityGradient));
-      PetscCall(DMRestoreGlobalVector(honee->diff_filter->dm_filter, &FilteredFields));
-      PetscCall(DMRestoreLocalVector(honee->diff_filter->dm_filter, &FilteredFields_loc));
+      PetscCall(DMRestoreGlobalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields));
+      PetscCall(DMRestoreLocalVector(sgs_dd_train->diff_filter->dm_filter, &FilteredFields_loc));
       PetscCallCeed(ceed, CeedVectorDestroy(&filtered_fields));
     }
     PetscCall(PetscLogEventEnd(HONEE_TrainDataCompute, 0, 0, 0, 0));
@@ -350,7 +379,7 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
     PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   }
 
-  PetscCall(DMRestoreGlobalVector(honee->sgs_dd_train->dm_dd_training, &TrainingData));
+  PetscCall(DMRestoreGlobalVector(sgs_dd_train->dm_dd_training, &TrainingData));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -360,11 +389,12 @@ PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
   PetscReal    check_run[2]      = {1};
   const size_t check_run_dims[1] = {2};
   size_t       check_run_key_size;
+  SmartSimData smartsim;
 
   PetscFunctionBeginUser;
   PetscCall(PetscStrlen(check_run_key, &check_run_key_size));
   PetscCall(TSGetApplicationContext(ts, &honee));
-  SmartSimData smartsim = honee->smartsim;
+  PetscCall(HoneeGetSmartSimData(honee, &smartsim));
 
   PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscCallSmartRedis(
@@ -374,18 +404,6 @@ PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
     PetscCall(PetscPrintf(honee->comm, "-- Simulation stopped by 'check-run' tensor in Redis database\n"));
     PetscCall(TSSetConvergedReason(ts, TS_CONVERGED_USER));
   }
-
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData sgs_dd_train) {
-  PetscFunctionBeginUser;
-  if (!sgs_dd_train) PetscFunctionReturn(PETSC_SUCCESS);
-
-  PetscCall(OperatorApplyContextDestroy(sgs_dd_train->op_training_data_calc_ctx));
-  PetscCall(NodalProjectionDataDestroy(sgs_dd_train->filtered_grad_velo_proj));
-  PetscCall(DMDestroy(&sgs_dd_train->dm_dd_training));
-  PetscCall(PetscFree(sgs_dd_train));
 
   PetscFunctionReturn(PETSC_SUCCESS);
 }

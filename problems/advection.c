@@ -18,6 +18,58 @@ const char *const AdvDifBubbleContinuityTypes[] = {"SMOOTH", "BACK_SHARP", "THIC
                                                    NULL};
 const char *const StabilizationTauTypes[]       = {"CTAU", "ADVDIFF_SHAKIB", "StabilizationTauType", "STAB_TAU_", NULL};
 
+static PetscErrorCode PRINT_ADVECTION(Honee honee, ProblemData problem, AppCtx app_ctx) {
+  MPI_Comm         comm = honee->comm;
+  Ceed             ceed = honee->ceed;
+  SetupContextAdv  setup_ctx;
+  AdvectionContext advection_ctx;
+  PetscInt         dim;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetDimension(honee->dm, &dim));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &setup_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &advection_ctx));
+  PetscCall(PetscPrintf(comm,
+                        "  Problem:\n"
+                        "    Problem Name                       : %s\n"
+                        "    Stabilization                      : %s\n"
+                        "    Stabilization Tau                  : %s\n"
+                        "    Wind Type                          : %s\n",
+                        app_ctx->problem_name, StabilizationTypes[advection_ctx->stabilization],
+                        StabilizationTauTypes[advection_ctx->stabilization_tau], AdvDifWindTypes[setup_ctx->wind_type]));
+
+  if (setup_ctx->wind_type == ADVDIF_WIND_TRANSLATION) {
+    CeedScalar *wind = setup_ctx->wind;
+    switch (dim) {
+      case 2:
+        PetscCall(PetscPrintf(comm, "    Background Wind                    : %f,%f\n", wind[0], wind[1]));
+        break;
+      case 3:
+        PetscCall(PetscPrintf(comm, "    Background Wind                    : %f,%f,%f\n", wind[0], wind[1], wind[2]));
+        break;
+    }
+  }
+
+  PetscCall(PetscPrintf(comm, "    Initial Condition Type             : %s\n", AdvDifICTypes[setup_ctx->initial_condition_type]));
+  switch (setup_ctx->initial_condition_type) {
+    case ADVDIF_IC_SKEW:
+    case ADVDIF_IC_COSINE_HILL:
+    case ADVDIF_IC_BOUNDARY_LAYER:
+      break;
+    case ADVDIF_IC_BUBBLE_SPHERE:
+    case ADVDIF_IC_BUBBLE_CYLINDER:
+      PetscCall(PetscPrintf(comm, "    Bubble Continuity                  : %s\n", AdvDifBubbleContinuityTypes[setup_ctx->bubble_continuity_type]));
+      break;
+    case ADVDIF_IC_WAVE:
+      PetscCall(PetscPrintf(comm, "    Wave Type                          : %s\n", AdvDifWaveTypes[setup_ctx->wave_type]));
+      break;
+  }
+
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &setup_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &advection_ctx));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // @brief Create CeedOperator for stabilized mass KSP for explicit timestepping
 //
 // Only used for SUPG stabilization
@@ -589,57 +641,5 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
       PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
     }
   }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-PetscErrorCode PRINT_ADVECTION(Honee honee, ProblemData problem, AppCtx app_ctx) {
-  MPI_Comm         comm = honee->comm;
-  Ceed             ceed = honee->ceed;
-  SetupContextAdv  setup_ctx;
-  AdvectionContext advection_ctx;
-  PetscInt         dim;
-
-  PetscFunctionBeginUser;
-  PetscCall(DMGetDimension(honee->dm, &dim));
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &setup_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &advection_ctx));
-  PetscCall(PetscPrintf(comm,
-                        "  Problem:\n"
-                        "    Problem Name                       : %s\n"
-                        "    Stabilization                      : %s\n"
-                        "    Stabilization Tau                  : %s\n"
-                        "    Wind Type                          : %s\n",
-                        app_ctx->problem_name, StabilizationTypes[advection_ctx->stabilization],
-                        StabilizationTauTypes[advection_ctx->stabilization_tau], AdvDifWindTypes[setup_ctx->wind_type]));
-
-  if (setup_ctx->wind_type == ADVDIF_WIND_TRANSLATION) {
-    CeedScalar *wind = setup_ctx->wind;
-    switch (dim) {
-      case 2:
-        PetscCall(PetscPrintf(comm, "    Background Wind                    : %f,%f\n", wind[0], wind[1]));
-        break;
-      case 3:
-        PetscCall(PetscPrintf(comm, "    Background Wind                    : %f,%f,%f\n", wind[0], wind[1], wind[2]));
-        break;
-    }
-  }
-
-  PetscCall(PetscPrintf(comm, "    Initial Condition Type             : %s\n", AdvDifICTypes[setup_ctx->initial_condition_type]));
-  switch (setup_ctx->initial_condition_type) {
-    case ADVDIF_IC_SKEW:
-    case ADVDIF_IC_COSINE_HILL:
-    case ADVDIF_IC_BOUNDARY_LAYER:
-      break;
-    case ADVDIF_IC_BUBBLE_SPHERE:
-    case ADVDIF_IC_BUBBLE_CYLINDER:
-      PetscCall(PetscPrintf(comm, "    Bubble Continuity                  : %s\n", AdvDifBubbleContinuityTypes[setup_ctx->bubble_continuity_type]));
-      break;
-    case ADVDIF_IC_WAVE:
-      PetscCall(PetscPrintf(comm, "    Wave Type                          : %s\n", AdvDifWaveTypes[setup_ctx->wave_type]));
-      break;
-  }
-
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &setup_ctx));
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &advection_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

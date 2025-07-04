@@ -27,15 +27,17 @@ On this page we provide a summary of the main API changes, new features and exam
 - Spanwise statistics writes a logging message when a file is written, which includes post-processing information (e.g. time span for the statistics)
 - Add `-ts_eval_solutions_view` to output solutions gathered via `-ts_eval_times`
 - Add `-taylorgreen_background_velocity` to add a background velocity to the initial condition
-- Add `HONEEGetGitVersion()` to access the Git commit and dirty state of the repository at build time.
-- Add `HONEEGetVersion()` to access the semantic version of HONEE at runtime.
+- Add `HoneeGetGitVersion()` to access the Git commit and dirty state of the repository at build time.
+- Add `HoneeGetVersion()` to access the semantic version of HONEE at runtime.
 - Add `HoneeGetBuildConfiguration()` function for retrieving build configuration info.
 - Extend `BCDefinition` to handle boundary integral setup (`BCDefinition{Get,Set}DM()`, `BCDefinition{Get,Set}Context()`, `BCDefinitionSetIFunction()`, `BCDefinitionSetIJacobian()`, and `BCDefinitionAddOperators()`)
+- Add `HoneeSetContainer()`, `HoneeGetContainer()`, and `HoneeHasContainer()` for adding misc structs to a `Honee` object
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
 - Move `Honee` typedef to `include/honee.h`
 - Remove `SimpleBC` struct
+- Convert `Honee` to a `PetscObject`
 
 ### Breaking changes
 - Deprecate `-continue` and `-continue_time_filename`. Continuing from file controlled by `-continue_filename`

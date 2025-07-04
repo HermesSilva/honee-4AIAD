@@ -11,6 +11,26 @@
 
 #include <navierstokes.h>
 
+static PetscErrorCode PRINT_EULER_VORTEX(Honee honee, ProblemData problem, AppCtx app_ctx) {
+  MPI_Comm     comm = honee->comm;
+  Ceed         ceed = honee->ceed;
+  EulerContext euler_ctx;
+
+  PetscFunctionBeginUser;
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &euler_ctx));
+  PetscCall(PetscPrintf(comm,
+                        "  Problem:\n"
+                        "    Problem Name                       : %s\n"
+                        "    Test Case                          : %s\n"
+                        "    Background Velocity                : %f,%f,%f\n"
+                        "    Stabilization                      : %s\n",
+                        app_ctx->problem_name, EulerTestTypes[euler_ctx->euler_test], euler_ctx->mean_velocity[0], euler_ctx->mean_velocity[1],
+                        euler_ctx->mean_velocity[2], StabilizationTypes[euler_ctx->stabilization]));
+
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &euler_ctx));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode EulerVortexOutflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
   HoneeBCStruct honee_bc;
 
@@ -178,25 +198,5 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
     }
   }
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&euler_qfctx));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-PetscErrorCode PRINT_EULER_VORTEX(Honee honee, ProblemData problem, AppCtx app_ctx) {
-  MPI_Comm     comm = honee->comm;
-  Ceed         ceed = honee->ceed;
-  EulerContext euler_ctx;
-
-  PetscFunctionBeginUser;
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &euler_ctx));
-  PetscCall(PetscPrintf(comm,
-                        "  Problem:\n"
-                        "    Problem Name                       : %s\n"
-                        "    Test Case                          : %s\n"
-                        "    Background Velocity                : %f,%f,%f\n"
-                        "    Stabilization                      : %s\n",
-                        app_ctx->problem_name, EulerTestTypes[euler_ctx->euler_test], euler_ctx->mean_velocity[0], euler_ctx->mean_velocity[1],
-                        euler_ctx->mean_velocity[2], StabilizationTypes[euler_ctx->stabilization]));
-
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &euler_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
