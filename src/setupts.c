@@ -10,6 +10,7 @@
 
 #include <differential_filter.h>
 #include <navierstokes.h>
+#include <spanstats.h>
 #include "../qfunctions/newtonian_state.h"
 
 // @brief Insert Boundary values if it's a new time

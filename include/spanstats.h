@@ -37,3 +37,9 @@ PetscErrorCode SpanwiseStatisticsCollect(Honee honee, SpanStatsCtx spanstats, Pe
 PetscErrorCode SpanwiseStatisticsProcess(Honee honee, SpanStatsCtx spanstats, Vec stats);
 
 PetscErrorCode SpanStatsCtxDestroy(void **ctx);
+
+PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *ctx);
+PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
+
+PetscErrorCode SpanwiseStatisticsSetup_CflPe(TS ts, PetscViewerAndFormat *ctx);
+PetscErrorCode TSMonitor_SpanwiseStatisticsCflPe(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);

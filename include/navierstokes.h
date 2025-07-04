@@ -329,15 +329,6 @@ PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_siz
 PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume);
 
 // -----------------------------------------------------------------------------
-// Turbulence Statistics Collection Functions
-// -----------------------------------------------------------------------------
-PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *ctx);
-PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
-
-PetscErrorCode SpanwiseStatisticsSetup_CflPe(TS ts, PetscViewerAndFormat *ctx);
-PetscErrorCode TSMonitor_SpanwiseStatisticsCflPe(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
-
-// -----------------------------------------------------------------------------
 // Data-Driven Subgrid Stress (DD-SGS) Modeling Functions
 // -----------------------------------------------------------------------------
 PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem);
