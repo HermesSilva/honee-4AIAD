@@ -202,8 +202,8 @@ PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *c
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// TSMonitor for the statistics collection and processing
-PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx) {
+// @brief TSMonitor for collection and processing of turbulence statistics
+PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx) {
   Honee             honee;
   Vec               stats;
   TSConvergedReason reason;
