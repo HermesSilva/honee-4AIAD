@@ -22,6 +22,8 @@ typedef struct {
   char                 *prefix;
 } *SpanStatsCtx;
 
+PetscErrorCode SpanStatsCtxDestroy(SpanStatsCtx *spanstats);
+
 typedef struct {
   CeedElemRestriction elem_restr_parent_x, elem_restr_parent_stats, elem_restr_parent_colloc, elem_restr_child_colloc;
   CeedBasis           basis_x, basis_stats;
@@ -35,8 +37,6 @@ PetscErrorCode SpanwiseStatisticsSetupFinalize(TS ts, Honee honee, SpanStatsCtx 
 
 PetscErrorCode SpanwiseStatisticsCollect(Honee honee, SpanStatsCtx spanstats, PetscScalar solution_time, Vec Q);
 PetscErrorCode SpanwiseStatisticsProcess(Honee honee, SpanStatsCtx spanstats, Vec stats);
-
-PetscErrorCode SpanStatsCtxDestroy(void **ctx);
 
 PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *ctx);
 PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);

@@ -30,7 +30,8 @@ PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData *sgs_dd_train) {
   PetscCall(NodalProjectionDataDestroy(&sgs_dd_train_->filtered_grad_velo_proj));
   PetscCall(DMDestroy(&sgs_dd_train_->dm_dd_training));
   PetscCall(DifferentialFilterDataDestroy(&sgs_dd_train_->diff_filter));
-  PetscCall(PetscFree(sgs_dd_train));
+  PetscCall(PetscFree(sgs_dd_train_));
+  *sgs_dd_train = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

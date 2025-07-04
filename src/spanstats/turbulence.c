@@ -196,7 +196,7 @@ PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *c
   }
 
   ctx->data         = spanstats;
-  ctx->data_destroy = SpanStatsCtxDestroy;
+  ctx->data_destroy = (PetscCtxDestroyFn *)SpanStatsCtxDestroy;
 
   PetscCall(SpanwiseStatisticsSetupFinalize(ts, honee, spanstats, ctx, &stats_setup_data));
   PetscFunctionReturn(PETSC_SUCCESS);

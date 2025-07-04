@@ -15,14 +15,14 @@ typedef struct {
   PetscBool            is_header_written;
 } *MonitorTotalKE;
 
-PetscErrorCode MonitorTotalKEDestroy(void **ctx) {
-  MonitorTotalKE monitor_ctx = *(MonitorTotalKE *)ctx;
+static PetscErrorCode MonitorTotalKEDestroy(MonitorTotalKE *monitor_ctx) {
+  MonitorTotalKE monitor_ctx_ = *monitor_ctx;
 
   PetscFunctionBeginUser;
-  PetscCall(OperatorApplyContextDestroy(monitor_ctx->op_monitor_ctx));
-  PetscCall(VecDestroy(&monitor_ctx->values));
-  PetscCall(PetscFree(monitor_ctx->sum_values));
-  PetscCall(PetscFree(monitor_ctx));
+  PetscCall(OperatorApplyContextDestroy(monitor_ctx_->op_monitor_ctx));
+  PetscCall(VecDestroy(&monitor_ctx_->values));
+  PetscCall(PetscFree(monitor_ctx_->sum_values));
+  PetscCall(PetscFree(monitor_ctx_));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -122,7 +122,7 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
   monitor_ctx->tab_level = tab_level + 1;
 
   ctx->data         = monitor_ctx;
-  ctx->data_destroy = MonitorTotalKEDestroy;
+  ctx->data_destroy = (PetscCtxDestroyFn *)MonitorTotalKEDestroy;
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&newt_qfctx));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));

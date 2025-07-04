@@ -170,7 +170,7 @@ PetscErrorCode SpanwiseStatisticsSetup_CflPe(TS ts, PetscViewerAndFormat *ctx) {
   PetscCall(CreateStatisticCollectionOperator(honee, spanstats, stats_setup_data, honee->problem_data));
 
   ctx->data         = spanstats;
-  ctx->data_destroy = SpanStatsCtxDestroy;
+  ctx->data_destroy = (PetscCtxDestroyFn *)SpanStatsCtxDestroy;
 
   PetscCall(SpanwiseStatisticsSetupFinalize(ts, honee, spanstats, ctx, &stats_setup_data));
   PetscFunctionReturn(PETSC_SUCCESS);
