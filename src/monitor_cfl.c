@@ -94,6 +94,18 @@ PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx) {
   PetscCheck(qf_monitor, PetscObjectComm((PetscObject)ts), PETSC_ERR_SUP,
              "Could not create CFL monitor QFunction for dim %" PetscInt_FMT " and state variable %s", dim, StateVariables[honee->phys->state_var]);
 
+  PetscBool is_advection;
+  PetscCall(PetscStrcmp("advection", honee->app_ctx->problem_name, &is_advection));
+  if (is_advection) {
+    NewtonianIdealGasContext newt_ctx;
+
+    PetscCall(PetscNew(&newt_ctx));
+    PetscCallCeed(ceed, CeedQFunctionContextDestroy(&newt_qfctx));
+    PetscCallCeed(ceed, CeedQFunctionContextCreate(ceed, &newt_qfctx));
+    PetscCallCeed(ceed, CeedQFunctionContextSetData(newt_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*newt_ctx), newt_ctx));
+    PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(newt_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  }
+
   PetscCallCeed(ceed, CeedQFunctionSetContext(qf_monitor, newt_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_monitor, "q", num_comp_q, CEED_EVAL_INTERP));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_monitor, "q_data", q_data_size, CEED_EVAL_NONE));
