@@ -38,6 +38,13 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
   PetscCall(DMSetVecType(*dm, vec_type));
   PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_plex_simplex", "0"));
   PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_localize", "0"));  // Delay localization until DMSetupByOrderEnd_FEM
+  {  // Use Mat graph generation for partitioning. See https://gitlab.com/petsc/petsc/-/merge_requests/8336
+    PetscBool   distribute = PETSC_FALSE;
+    PetscMPIInt num_ranks;
+    PetscCall(DMPlexDistributeGetDefault(*dm, &distribute));
+    PetscCallMPI(MPI_Comm_size(comm, &num_ranks));
+    if (distribute && num_ranks > 1) PetscCall(HoneeOptionsSetValueDefault(NULL, "-dm_plex_csr_alg", "mat"));
+  }
   PetscCall(DMSetSparseLocalize(*dm, PETSC_FALSE));
   PetscCall(DMSetBlockingType(*dm, DM_BLOCKING_FIELD_NODE));
   PetscCall(DMPlexSetPartitionBalance(*dm, PETSC_TRUE));
