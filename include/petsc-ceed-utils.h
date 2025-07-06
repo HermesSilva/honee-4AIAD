@@ -55,7 +55,7 @@ static inline CeedMemType MemTypePetscToCeed(PetscMemType mem_type) { return Pet
 
 /**
   @brief Translate array of `PetscInt` to `CeedInt`.
-    If the types differ, `array_petsc` is freed with `PetscFree()` and `array_ceed` is allocated with `PetscMalloc1()`.
+    If the types differ, `array_ceed` is freed with `free()` and `array_petsc` is allocated with `malloc()`.
     Caller is responsible for freeing `array_ceed` with `PetscFree()`.
 
   Not collective across MPI processes.
