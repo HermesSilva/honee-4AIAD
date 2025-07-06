@@ -44,8 +44,9 @@ typedef enum {
   TESTTYPE_SOLVER         = 1,
   TESTTYPE_TURB_SPANSTATS = 2,
   TESTTYPE_DIFF_FILTER    = 3,
+  TESTTYPE_SPANSTATS      = 4,
 } TestType;
-static const char *const TestTypes[] = {"NONE", "SOLVER", "TURB_SPANSTATS", "DIFF_FILTER", "TestType", "TESTTYPE_", NULL};
+static const char *const TestTypes[] = {"NONE", "SOLVER", "TURB_SPANSTATS", "DIFF_FILTER", "SPANSTATS", "TestType", "TESTTYPE_", NULL};
 
 // Subgrid-Stress mode type
 typedef enum {
@@ -327,12 +328,6 @@ PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q
 PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc);
 PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_size, CeedQFunction *qf);
 PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume);
-
-// -----------------------------------------------------------------------------
-// Turbulence Statistics Collection Functions
-// -----------------------------------------------------------------------------
-PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *ctx);
-PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
 
 // -----------------------------------------------------------------------------
 // Data-Driven Subgrid Stress (DD-SGS) Modeling Functions

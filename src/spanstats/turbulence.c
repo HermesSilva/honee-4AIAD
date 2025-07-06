@@ -1,13 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 /// @file
-/// Functions for setting up and performing spanwise-statistics collection
-///
-/// "Parent" refers to the 2D plane on which statistics are collected *onto*.
-/// "Child" refers to the 3D domain where statistics are gathered *from*.
-/// Each quadrature point on the parent plane has several children in the child domain that it performs spanwise averaging with.
+/// Functions for setting up and performing spanwise-statistics collection of turbulence quantities
 
-#include "../qfunctions/turb_spanstats.h"
+#include "../../qfunctions/spanstats/turbulence.h"
 
 #include <ceed.h>
 #include <petscdmplex.h>
@@ -17,7 +13,7 @@
 #include <navierstokes.h>
 #include <petsc_ops.h>
 
-// Create CeedOperator for statistics collection
+// @brief Create CeedOperator for statistics collection
 static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data, ProblemData problem) {
   Ceed                        ceed           = honee->ceed;
   CeedInt                     num_comp_stats = spanstats->num_comp_stats, num_comp_x, num_comp_q, q_data_size;
@@ -104,7 +100,7 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// Creates operator for calculating error of method of manufactured solution (MMS) test
+// @brief Creates operator for calculating error of method of manufactured solution (MMS) test
 static PetscErrorCode SetupMMSErrorChecking(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data) {
   Ceed                ceed           = honee->ceed;
   CeedInt             num_comp_stats = spanstats->num_comp_stats, num_comp_x, q_data_size;
@@ -146,7 +142,7 @@ static PetscErrorCode SetupMMSErrorChecking(Honee honee, SpanStatsCtx spanstats,
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// Setup for statistics collection
+// @brief Setup for statistics collection for turbulence quantities
 PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *ctx) {
   Honee              honee;
   SpanStatsSetupData stats_setup_data;
@@ -200,14 +196,14 @@ PetscErrorCode SpanwiseStatisticsSetup_Turbulence(TS ts, PetscViewerAndFormat *c
   }
 
   ctx->data         = spanstats;
-  ctx->data_destroy = SpanStatsCtxDestroy;
+  ctx->data_destroy = (PetscCtxDestroyFn *)SpanStatsCtxDestroy;
 
   PetscCall(SpanwiseStatisticsSetupFinalize(ts, honee, spanstats, ctx, &stats_setup_data));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// TSMonitor for the statistics collection and processing
-PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx) {
+// @brief TSMonitor for collection and processing of turbulence statistics
+PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx) {
   Honee             honee;
   Vec               stats;
   TSConvergedReason reason;
@@ -239,12 +235,13 @@ PetscErrorCode TSMonitor_TurbulenceSpanwiseStatistics(TS ts, PetscInt steps, Pet
           CeedScalar  second = honee->units->second;
           const char *filename;
 
-          PetscCall(PetscViewerFileGetName(ctx->viewer, &filename););
+          PetscCall(PetscViewerFileGetName(ctx->viewer, &filename));
           PetscCall(PetscObjectGetTabLevel((PetscObject)ts, &tab_level));
           PetscCall(PetscViewerASCIIAddTab(viewer, tab_level + 1));
           if (filename) {
             PetscCall(PetscViewerASCIIPrintf(
-                viewer, "Spanwise statistics written to %s for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
+                viewer,
+                "Spanwise turbulent statistics written to %s for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
                 filename, spanstats->initial_solution_time / second, solution_time / second, spanstats->initial_solution_step, steps));
           } else {
             PetscCall(PetscViewerASCIIPrintf(

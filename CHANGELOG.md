@@ -32,6 +32,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `HoneeGetBuildConfiguration()` function for retrieving build configuration info.
 - Extend `BCDefinition` to handle boundary integral setup (`BCDefinition{Get,Set}DM()`, `BCDefinition{Get,Set}Context()`, `BCDefinitionSetIFunction()`, `BCDefinitionSetIJacobian()`, and `BCDefinitionAddOperators()`)
 - Add `HoneeSetContainer()`, `HoneeGetContainer()`, and `HoneeHasContainer()` for adding misc structs to a `Honee` object
+- Add `-ts_monitor_spanstats_cflpe` to calculate the spanwise statistics of CFL and Peclet number
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic

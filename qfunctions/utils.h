@@ -49,6 +49,9 @@ CEED_QFUNCTION_HELPER CeedScalar DotN(const CeedScalar *u, const CeedScalar *v, 
 // @brief Dot product of 3 element vectors
 CEED_QFUNCTION_HELPER CeedScalar Dot3(const CeedScalar *u, const CeedScalar *v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; }
 
+// @brief Dot product of 2 element vectors
+CEED_QFUNCTION_HELPER CeedScalar Dot2(const CeedScalar *u, const CeedScalar *v) { return u[0] * v[0] + u[1] * v[1]; }
+
 // @brief \ell^2 norm of 3 element vectors
 CEED_QFUNCTION_HELPER CeedScalar Norm3(const CeedScalar *u) { return sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]); }
 
@@ -85,6 +88,11 @@ CEED_QFUNCTION_HELPER void MatVecNM(const CeedScalar *A, const CeedScalar *x, co
 // @brief 3x3 Matrix vector product  b = Ax + b.
 CEED_QFUNCTION_HELPER void MatVec3(const CeedScalar A[3][3], const CeedScalar x[3], const CeedTransposeMode transpose_A, CeedScalar b[3]) {
   MatVecNM((const CeedScalar *)A, (const CeedScalar *)x, 3, 3, transpose_A, (CeedScalar *)b);
+}
+
+// @brief 2x2 Matrix vector product  b = Ax + b.
+CEED_QFUNCTION_HELPER void MatVec2(const CeedScalar A[2][2], const CeedScalar x[2], const CeedTransposeMode transpose_A, CeedScalar b[2]) {
+  MatVecNM((const CeedScalar *)A, (const CeedScalar *)x, 2, 2, transpose_A, (CeedScalar *)b);
 }
 
 // @brief Matrix-Matrix product, B = DA + B, where D is diagonal.
@@ -153,6 +161,53 @@ CEED_QFUNCTION_HELPER void MatMatN(const CeedScalar *A, const CeedScalar *B, con
 CEED_QFUNCTION_HELPER void MatMat3(const CeedScalar A[3][3], const CeedScalar B[3][3], const CeedTransposeMode transpose_A,
                                    const CeedTransposeMode transpose_B, CeedScalar C[3][3]) {
   MatMatN((const CeedScalar *)A, (const CeedScalar *)B, 3, transpose_A, transpose_B, (CeedScalar *)C);
+}
+
+// @brief 2x2 Matrix-Matrix product, C = AB + C
+CEED_QFUNCTION_HELPER void MatMat2(const CeedScalar A[2][2], const CeedScalar B[2][2], const CeedTransposeMode transpose_A,
+                                   const CeedTransposeMode transpose_B, CeedScalar C[2][2]) {
+  MatMatN((const CeedScalar *)A, (const CeedScalar *)B, 2, transpose_A, transpose_B, (CeedScalar *)C);
+}
+
+/**
+ * @brief Calculate inverse of 2x2 matrix
+ *
+ * @param[in]  A        Input matrix
+ * @param[out] detJ_ptr Determinate of A, may be NULL is not desired
+ * @param[out] A_inv    Output matrix inverse
+ */
+CEED_QFUNCTION_HELPER void MatInv2(const CeedScalar A[2][2], CeedScalar A_inv[2][2], CeedScalar *detJ_ptr) {
+  const CeedScalar detJ = A[0][0] * A[1][1] - A[1][0] * A[0][1];
+
+  A_inv[0][0] = A[1][1] / detJ;
+  A_inv[0][1] = -A[0][1] / detJ;
+  A_inv[1][0] = -A[1][0] / detJ;
+  A_inv[1][1] = A[0][0] / detJ;
+  if (detJ_ptr) *detJ_ptr = detJ;
+}
+
+/**
+ * @brief Calculate inverse of 3x3 matrix
+ *
+ * @param[in]  A        Input matrix
+ * @param[out] detJ_ptr Determinate of A, may be NULL is not desired
+ * @param[out] A_inv    Output matrix inverse
+ */
+CEED_QFUNCTION_HELPER void MatInv3(const CeedScalar A[3][3], CeedScalar A_inv[3][3], CeedScalar *detJ_ptr) {
+  // Compute Adjugate of dxdX
+  A_inv[0][0] = A[1][1] * A[2][2] - A[1][2] * A[2][1];
+  A_inv[0][1] = A[0][2] * A[2][1] - A[0][1] * A[2][2];
+  A_inv[0][2] = A[0][1] * A[1][2] - A[0][2] * A[1][1];
+  A_inv[1][0] = A[1][2] * A[2][0] - A[1][0] * A[2][2];
+  A_inv[1][1] = A[0][0] * A[2][2] - A[0][2] * A[2][0];
+  A_inv[1][2] = A[0][2] * A[1][0] - A[0][0] * A[1][2];
+  A_inv[2][0] = A[1][0] * A[2][1] - A[1][1] * A[2][0];
+  A_inv[2][1] = A[0][1] * A[2][0] - A[0][0] * A[2][1];
+  A_inv[2][2] = A[0][0] * A[1][1] - A[0][1] * A[1][0];
+
+  const CeedScalar detJ = A[0][0] * A_inv[0][0] + A[1][0] * A_inv[0][1] + A[2][0] * A_inv[0][2];
+  ScaleN((CeedScalar *)A_inv, 1 / detJ, 9);
+  if (detJ_ptr) *detJ_ptr = detJ;
 }
 
 /**

@@ -164,6 +164,11 @@ latex_macros = r"""
 \def \tcolon {\!:\!}
 \def \trace {\operatorname{trace}}
 \def \sign {\operatorname{sign}}
+\def \Pe {\mathrm{Pe}}
+\def \CFL {\mathrm{CFL}}
+\def \gbar #1{\overline{g}_{#1}}
+\def \mean {\braket}
+\def \dt {\Delta t}
 """
 
 # Translate LaTeX macros to KaTeX and add to options for HTML builder

@@ -15,23 +15,24 @@
 #include <navierstokes.h>
 #include <petsc_ops.h>
 
-PetscErrorCode SpanStatsCtxDestroy(void **ctx) {
-  SpanStatsCtx spanstats = *(SpanStatsCtx *)ctx;
+PetscErrorCode SpanStatsCtxDestroy(SpanStatsCtx *spanstats) {
+  SpanStatsCtx spanstats_ = *spanstats;
 
   PetscFunctionBeginUser;
-  if (spanstats == NULL) PetscFunctionReturn(PETSC_SUCCESS);
-  PetscCall(VecDestroy(&spanstats->Child_Stats_loc));
-  PetscCall(VecDestroy(&spanstats->Parent_Stats_loc));
+  if (spanstats_ == NULL) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(VecDestroy(&spanstats_->Child_Stats_loc));
+  PetscCall(VecDestroy(&spanstats_->Parent_Stats_loc));
 
-  PetscCall(OperatorApplyContextDestroy(spanstats->op_stats_collect_ctx));
-  PetscCall(OperatorApplyContextDestroy(spanstats->op_proj_rhs_ctx));
-  PetscCall(OperatorApplyContextDestroy(spanstats->mms_error_ctx));
+  PetscCall(OperatorApplyContextDestroy(spanstats_->op_stats_collect_ctx));
+  PetscCall(OperatorApplyContextDestroy(spanstats_->op_proj_rhs_ctx));
+  PetscCall(OperatorApplyContextDestroy(spanstats_->mms_error_ctx));
 
-  PetscCall(KSPDestroy(&spanstats->ksp));
-  PetscCall(PetscSFDestroy(&spanstats->sf));
-  PetscCall(DMDestroy(&spanstats->dm));
-  PetscCall(PetscFree(spanstats->prefix));
-  PetscCall(PetscFree(spanstats));
+  PetscCall(KSPDestroy(&spanstats_->ksp));
+  PetscCall(PetscSFDestroy(&spanstats_->sf));
+  PetscCall(DMDestroy(&spanstats_->dm));
+  PetscCall(PetscFree(spanstats_->prefix));
+  PetscCall(PetscFree(spanstats_));
+  *spanstats = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

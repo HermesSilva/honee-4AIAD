@@ -35,6 +35,9 @@ PetscErrorCode HoneeMassQFunctionCreate(Ceed ceed, CeedInt N, CeedInt q_data_siz
     case 5:
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_5, Mass_5_loc, qf));
       break;
+    case 6:
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_6, Mass_6_loc, qf));
+      break;
     case 7:
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, Mass_7, Mass_7_loc, qf));
       break;

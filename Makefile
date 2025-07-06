@@ -76,7 +76,7 @@ OBJDIR := build
 SRCDIR := src
 PROBLEMDIR := problems
 
-src.c := examples/navierstokes.c $(sort $(wildcard $(PROBLEMDIR)/*.c)) $(sort $(wildcard $(SRCDIR)/*.c))
+src.c := examples/navierstokes.c $(filter-out $(wildcard **/smartsim/*), $(sort $(wildcard $(PROBLEMDIR)/*.c)) $(sort $(wildcard $(SRCDIR)/*.c)) $(sort $(wildcard $(SRCDIR)/**/*.c)))
 src.o = $(src.c:%.c=$(OBJDIR)/%.o) $(src.cpp:%.cpp=$(OBJDIR)/%.o)
 
 # Path to install directory for SmartRedis. Example: /software/smartredis/install
