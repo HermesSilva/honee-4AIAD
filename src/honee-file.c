@@ -43,7 +43,7 @@ static PetscErrorCode BinaryReadIntoInt(PetscViewer viewer, PetscInt *out, Petsc
   } else if (file_type == PETSC_INT64) {
     PetscInt64 val;
     PetscCall(PetscViewerBinaryRead(viewer, &val, 1, NULL, PETSC_INT64));
-    *out = val;
+    PetscCall(PetscIntCast(val, out));
   } else {
     PetscCall(PetscViewerBinaryRead(viewer, out, 1, NULL, PETSC_INT));
   }
@@ -126,30 +126,45 @@ PetscErrorCode HoneeLoadInitialCondition(const char filename[], PetscInt *soluti
   @param[out] step_number Timestep number the Vec was written at, or `NULL`. Set to 0 if legacy file format.
 **/
 PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, PetscInt *step_number) {
-  PetscInt      file_step_number;
-  PetscInt32    token;
-  PetscReal     file_time;
-  PetscDataType file_type = PETSC_INT32;
-  MPI_Comm      comm      = PetscObjectComm((PetscObject)viewer);
+  PetscInt    file_step_number;
+  PetscReal   file_time;
+  PetscInt32  token;
+  MPI_Comm    comm = PetscObjectComm((PetscObject)viewer);
+  const char *filename;
 
   PetscFunctionBeginUser;
+  PetscCall(PetscViewerFileGetName(viewer, &filename));
   PetscCall(PetscViewerBinaryRead(viewer, &token, 1, NULL, PETSC_INT32));
-  if (token == HONEE_FILE_TOKEN_32 || token == HONEE_FILE_TOKEN_64 ||
-      token == HONEE_FILE_TOKEN) {  // New style format; we're reading a file with step number and time in the header
+  if (token == HONEE_FILE_TOKEN_32 || token == HONEE_FILE_TOKEN_64 || token == HONEE_FILE_TOKEN) {
+    // HONEE formatted file; we're reading a file with step number and time in the header
+    PetscDataType file_type = PETSC_INT32;
     if (token == HONEE_FILE_TOKEN_32) file_type = PETSC_INT32;
     else if (token == HONEE_FILE_TOKEN_64) file_type = PETSC_INT64;
     PetscCall(BinaryReadIntoInt(viewer, &file_step_number, file_type));
     PetscCall(PetscViewerBinaryRead(viewer, &file_time, 1, NULL, PETSC_REAL));
-  } else if (token == VEC_FILE_CLASSID) {  // Legacy format of just the vector, encoded as [VEC_FILE_CLASSID, length, ]
+  } else {
+    // Legacy format of just the vector, encoded as [VEC_FILE_CLASSID, length, ]
     // NOTE: Only used for regression testing now
     PetscInt length, N;
-    PetscCall(BinaryReadIntoInt(viewer, &length, file_type));
+
     PetscCall(VecGetSize(Q, &N));
-    PetscCheck(length == N, comm, PETSC_ERR_ARG_INCOMP, "File Vec has length %" PetscInt_FMT " but DM has global Vec size %" PetscInt_FMT, length, N);
+    if (token == VEC_FILE_CLASSID) {
+      PetscCall(BinaryReadIntoInt(viewer, &length, PETSC_INT32));
+    } else {  // See `VecLoad_Binary()` in PETSc for source code reference of how to handle Vecs written with 64-bit PETSc
+      PetscInt32 token2;
+
+      PetscCall(PetscViewerBinaryRead(viewer, &token2, 1, NULL, PETSC_INT32));
+      token = (PetscInt)((uint64_t)token << 32) + token2;  // Reconstruct token
+      PetscCheck(token == VEC_FILE_CLASSID, comm, PETSC_ERR_FILE_UNEXPECTED, "Not a HONEE header token or a PETSc Vec in file '%s'", filename);
+      PetscCall(BinaryReadIntoInt(viewer, &length, PETSC_INT64));
+    }
+
+    PetscCheck(length == N, comm, PETSC_ERR_ARG_INCOMP, "File Vec '%s' has length %" PetscInt_FMT " but DM has global Vec size %" PetscInt_FMT,
+               filename, length, N);
     PetscCall(PetscViewerBinarySetSkipHeader(viewer, PETSC_TRUE));
     file_time        = 0;
     file_step_number = 0;
-  } else SETERRQ(comm, PETSC_ERR_FILE_UNEXPECTED, "Not a HONEE header token or a PETSc Vec in file");
+  }
 
   if (time) *time = file_time;
   if (step_number) *step_number = file_step_number;
