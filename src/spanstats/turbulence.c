@@ -235,7 +235,7 @@ PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, Pet
           CeedScalar  second = honee->units->second;
           const char *filename;
 
-          PetscCall(PetscViewerFileGetName(ctx->viewer, &filename););
+          PetscCall(PetscViewerFileGetName(ctx->viewer, &filename));
           PetscCall(PetscObjectGetTabLevel((PetscObject)ts, &tab_level));
           PetscCall(PetscViewerASCIIAddTab(viewer, tab_level + 1));
           if (filename) {
