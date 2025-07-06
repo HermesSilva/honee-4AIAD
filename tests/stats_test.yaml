@@ -37,6 +37,4 @@ stg:
   mean_only: true
   strong: true
 
-ts_monitor_spanstats_turbulence:
-
 continue_filename: tests/output/turb-spanstats-IC.bin
