@@ -350,37 +350,63 @@ PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_pr
   PetscCall(PetscLogEventBegin(HONEE_DivDiffFluxProjection, Q_loc, 0, 0, 0));
   switch (diff_flux_proj->method) {
     case DIV_DIFF_FLUX_PROJ_DIRECT: {
-      Vec DivDiffFlux;
+      Vec DivDiffFlux, RHS;
 
       PetscCall(DMGetGlobalVector(projection->dm, &DivDiffFlux));
+      PetscCall(DMGetGlobalVector(projection->dm, &RHS));
       if (diff_flux_proj->ceed_vec_has_array) {
         PetscCall(VecReadCeedToPetsc(diff_flux_proj->div_diff_flux_ceed, diff_flux_proj->DivDiffFlux_memtype, diff_flux_proj->DivDiffFlux_loc));
         diff_flux_proj->ceed_vec_has_array = PETSC_FALSE;
       }
-      PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, DivDiffFlux, projection->l2_rhs_ctx));
+      PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, RHS, projection->l2_rhs_ctx));
       PetscCall(VecViewFromOptions(DivDiffFlux, NULL, "-div_diff_flux_projection_rhs_view"));
 
-      PetscCall(KSPSolve(projection->ksp, DivDiffFlux, DivDiffFlux));
+      {
+        // Run PCApply manually if using ksp_type preonly -pc_type jacobi
+        // This is to avoid an AllReduce call in KSPSolve_Preonly, which causes significant slowdowns for lumped mass matrix solves.
+        // See https://gitlab.com/petsc/petsc/-/merge_requests/8048 for more details and a possible fix
+        PC        pc;
+        PetscBool ispreonly, isjacobi;
+        PetscCall(KSPGetPC(projection->ksp, &pc));
+        PetscCall(PetscObjectTypeCompare((PetscObject)projection->ksp, KSPPREONLY, &ispreonly));
+        PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCJACOBI, &isjacobi));
+        if (ispreonly && isjacobi) PetscCall(PCApply(pc, RHS, DivDiffFlux));
+        else PetscCall(KSPSolve(projection->ksp, RHS, DivDiffFlux));
+      }
       PetscCall(VecViewFromOptions(DivDiffFlux, NULL, "-div_diff_flux_projection_view"));
 
       PetscCall(DMGlobalToLocal(projection->dm, DivDiffFlux, INSERT_VALUES, diff_flux_proj->DivDiffFlux_loc));
       PetscCall(VecReadPetscToCeed(diff_flux_proj->DivDiffFlux_loc, &diff_flux_proj->DivDiffFlux_memtype, diff_flux_proj->div_diff_flux_ceed));
       diff_flux_proj->ceed_vec_has_array = PETSC_TRUE;
 
+      PetscCall(DMRestoreGlobalVector(projection->dm, &RHS));
       PetscCall(DMRestoreGlobalVector(projection->dm, &DivDiffFlux));
       break;
     }
     case DIV_DIFF_FLUX_PROJ_INDIRECT: {
-      Vec DiffFlux;
+      Vec DiffFlux, RHS;
 
       PetscCall(DMGetGlobalVector(projection->dm, &DiffFlux));
-      PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, DiffFlux, projection->l2_rhs_ctx));
+      PetscCall(DMGetGlobalVector(projection->dm, &RHS));
+      PetscCall(ApplyCeedOperatorLocalToGlobal(Q_loc, RHS, projection->l2_rhs_ctx));
       PetscCall(VecViewFromOptions(DiffFlux, NULL, "-div_diff_flux_projection_rhs_view"));
 
-      PetscCall(KSPSolve(projection->ksp, DiffFlux, DiffFlux));
+      {
+        // Run PCApply manually if using -ksp_type preonly -pc_type jacobi
+        // This is to avoid an AllReduce call in KSPSolve_Preonly, which causes significant slowdowns for lumped mass matrix solves.
+        // See https://gitlab.com/petsc/petsc/-/merge_requests/8048 for more details and a possible fix
+        PC        pc;
+        PetscBool ispreonly, isjacobi;
+        PetscCall(KSPGetPC(projection->ksp, &pc));
+        PetscCall(PetscObjectTypeCompare((PetscObject)projection->ksp, KSPPREONLY, &ispreonly));
+        PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCJACOBI, &isjacobi));
+        if (ispreonly && isjacobi) PetscCall(PCApply(pc, RHS, DiffFlux));
+        else PetscCall(KSPSolve(projection->ksp, RHS, DiffFlux));
+      }
       PetscCall(VecViewFromOptions(DiffFlux, NULL, "-div_diff_flux_projection_view"));
 
       PetscCall(ApplyCeedOperatorGlobalToLocal(DiffFlux, NULL, diff_flux_proj->calc_div_diff_flux));
+      PetscCall(DMRestoreGlobalVector(projection->dm, &RHS));
       PetscCall(DMRestoreGlobalVector(projection->dm, &DiffFlux));
     } break;
     case DIV_DIFF_FLUX_PROJ_NONE:
