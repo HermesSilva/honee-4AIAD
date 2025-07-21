@@ -192,7 +192,7 @@ GIT_DESCRIBE := $(shell git -c safe.directory=$PWD describe --always --dirty 2>/
 $(OBJDIR)/src/honee-config.o: Makefile
 $(OBJDIR)/src/honee-config.o src/honee-config.c.tidy: CONFIGFLAGS += -DHONEE_GIT_VERSION="\"$(GIT_DESCRIBE)\""
 $(OBJDIR)/src/honee-config.o src/honee-config.c.tidy: CONFIGFLAGS += -DHONEE_BUILD_CONFIGURATION="\"// Build Configuration:$(foreach v,$(CONFIG_VARS),\n$(v) = $($(v)))\""
- 
+
 $(OBJDIR)/%.o : %.c | $$(@D)/.DIR
 	$(call quiet,CC) $(CPPFLAGS) $(CFLAGS) $(CONFIGFLAGS) -c -o $@ $(abspath $<)
 
@@ -318,7 +318,7 @@ export NPROC_POOL
 JUNIT_BATCH ?= ''
 
 run-% : $(OBJDIR)/%
-	@$(PYTHON) tests/junit.py --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) $(<:$(OBJDIR)/%=%)
+	@$(PYTHON) tests/junit.py --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis-dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has-torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) --search '$(subsearch)' $(<:$(OBJDIR)/%=%)
 
 # The test and prove targets can be controlled via pattern searches. The default
 # is to run all tests and examples. Examples of finer grained control:
@@ -326,6 +326,7 @@ run-% : $(OBJDIR)/%
 #   make prove search='t3'    # t3xx series tests
 #   make junit search='t ex'  # core tests and examples
 search    ?= navierstokes
+subsearch ?= .*
 realsearch = $(search:%=%%)
 matched    = $(foreach pattern,$(realsearch),$(filter $(OBJDIR)/$(pattern),$(tests) $(examples)))
 
@@ -339,7 +340,7 @@ prove   : $(matched)
 	$(info Running unit tests)
 	$(info - Testing with libCEED backends: $(CEED_BACKENDS))
 	$(info - Testing on $(NPROC_TEST) processes)
-	$(PROVE) $(PROVE_OPTS) --exec '$(PYTHON) tests/junit.py --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL)' $(matched:$(OBJDIR)/%=%)
+	$(PROVE) $(PROVE_OPTS) --exec '$(PYTHON) tests/junit.py' $(matched:$(OBJDIR)/%=%) :: --ceed-backends $(CEED_BACKENDS) --mode tap $(if $(SMARTREDIS_DIR),--smartredis-dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has-torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) --search '$(subsearch)'
 
 prv     : ;@$(MAKE) $(MFLAGS) V=$(V) prove
 
@@ -348,7 +349,7 @@ prove-all :
 
 # Test with JUNIT output
 junit-% : $(OBJDIR)/%
-	@printf "  %10s %s\n" TEST $(<:$(OBJDIR)/%=%); $(PYTHON) tests/junit.py --junit-batch $(JUNIT_BATCH) --ceed-backends $(CEED_BACKENDS) $(if $(SMARTREDIS_DIR),--smartredis_dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has_torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) $(<:$(OBJDIR)/%=%)
+	@printf "  %10s %s\n" TEST $(<:$(OBJDIR)/%=%); $(PYTHON) tests/junit.py --junit-batch $(JUNIT_BATCH) --ceed-backends $(CEED_BACKENDS) $(if $(SMARTREDIS_DIR),--smartredis-dir $(SMARTREDIS_DIR) ) $(if $(USE_TORCH),--has-torch $(USE_TORCH) )--nproc $(NPROC_TEST) --pool-size $(NPROC_POOL) --search '$(subsearch)' $(<:$(OBJDIR)/%=%)
 
 junit   : $(matched:$(OBJDIR)/%=junit-%)
 
