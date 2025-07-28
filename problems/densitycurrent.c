@@ -70,16 +70,14 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx) {
 
   PetscOptionsEnd();
 
-  PetscScalar meter  = honee->units->meter;
-  PetscScalar second = honee->units->second;
-  PetscScalar Kelvin = honee->units->Kelvin;
-  PetscScalar Pascal = honee->units->Pascal;
-  rc                 = fabs(rc) * meter;
-  theta0 *= Kelvin;
-  thetaC *= Kelvin;
-  P0 *= Pascal;
-  N *= (1. / second);
-  for (PetscInt i = 0; i < dim; i++) center[i] *= meter;
+  Units units = honee->units;
+
+  rc = fabs(rc) * units->meter;
+  theta0 *= units->Kelvin;
+  thetaC *= units->Kelvin;
+  P0 *= units->Pascal;
+  N *= (1. / units->second);
+  for (PetscInt i = 0; i < dim; i++) center[i] *= units->meter;
 
   density_current_ctx->theta0 = theta0;
   density_current_ctx->thetaC = thetaC;

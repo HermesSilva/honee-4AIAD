@@ -70,14 +70,11 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscOptionsReal("-body_force_scale", "Multiplier for body force", NULL, body_force_scale = 1, &body_force_scale, NULL));
   PetscOptionsEnd();
 
-  PetscScalar meter  = honee->units->meter;
-  PetscScalar second = honee->units->second;
-  PetscScalar Kelvin = honee->units->Kelvin;
-  PetscScalar Pascal = honee->units->Pascal;
+  Units units = honee->units;
 
-  theta0 *= Kelvin;
-  P0 *= Pascal;
-  umax *= meter / second;
+  theta0 *= units->Kelvin;
+  P0 *= units->Pascal;
+  umax *= units->meter / units->second;
 
   //-- Setup Problem information
   CeedScalar H, center;
@@ -86,8 +83,8 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
     PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
     for (PetscInt i = 0; i < 3; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
-    H      = 0.5 * domain_size[1] * meter;
-    center = H + domain_min[1] * meter;
+    H      = 0.5 * domain_size[1] * units->meter;
+    center = H + domain_min[1] * units->meter;
   }
 
   // Some properties depend on parameters from NewtonianIdealGas

@@ -10,7 +10,6 @@ dm_plex:
 
 bc_inflow: 1,2,3,4,5,6
 
-units_kilogram: 1e-9
 ksp:
   atol: 1e-4
   rtol: 1e-3
