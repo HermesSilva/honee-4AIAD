@@ -90,12 +90,6 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
   // ------------------------------------------------------
-  //             Create the PETSc context
-  // ------------------------------------------------------
-  PetscScalar meter  = 1e-2;  // 1 meter in scaled length units
-  PetscScalar second = 1e-2;  // 1 second in scaled time units
-
-  // ------------------------------------------------------
   //              Command line Options
   // ------------------------------------------------------
   PetscOptionsBegin(comm, NULL, "Options for EULER_VORTEX problem", NULL);
@@ -112,11 +106,6 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
                              (PetscEnum *)&euler_test, NULL));
   PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
   PetscCall(PetscOptionsScalar("-c_tau", "Stabilization constant", NULL, c_tau, &c_tau, NULL));
-  // -- Units
-  PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, meter, &meter, NULL));
-  meter = fabs(meter);
-  PetscCall(PetscOptionsScalar("-units_second", "1 second in scaled time units", NULL, second, &second, NULL));
-  second = fabs(second);
 
   // -- Warnings
   if (stab == STAB_SUPG && !implicit) {
@@ -129,19 +118,14 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   PetscOptionsEnd();
 
   // ------------------------------------------------------
-  //           Set up the PETSc context
-  // ------------------------------------------------------
-  honee->units->meter  = meter;
-  honee->units->second = second;
-
-  // ------------------------------------------------------
   //           Set up the libCEED context
   // ------------------------------------------------------
   // -- Scale variables to desired units
+  Units units = honee->units;
   for (PetscInt i = 0; i < 3; i++) {
-    center[i] *= meter;
-    domain_size[i] *= meter;
-    mean_velocity[i] *= (meter / second);
+    center[i] *= units->meter;
+    domain_size[i] *= units->meter;
+    mean_velocity[i] *= (units->meter / units->second);
   }
 
   // -- QFunction Context

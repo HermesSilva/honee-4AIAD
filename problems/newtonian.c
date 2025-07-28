@@ -456,15 +456,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscBool      idl_enable = PETSC_FALSE;
 
   // ------------------------------------------------------
-  //             Create the PETSc context
-  // ------------------------------------------------------
-  PetscScalar meter    = 1;  // 1 meter in scaled length units
-  PetscScalar kilogram = 1;  // 1 kilogram in scaled mass units
-  PetscScalar second   = 1;  // 1 second in scaled time units
-  PetscScalar Kelvin   = 1;  // 1 Kelvin in scaled temperature units
-  PetscScalar W_per_m_K, Pascal, J_per_kg_K, m_per_squared_s;
-
-  // ------------------------------------------------------
   //              Command line Options
   // ------------------------------------------------------
   PetscBool given_option = PETSC_FALSE;
@@ -529,16 +520,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscOptionsScalarArray("-reference_velocity", "Reference/initial velocity", NULL, reference.velocity, &dim, NULL));
   PetscCall(PetscOptionsScalar("-reference_temperature", "Reference/initial temperature", NULL, reference.temperature, &reference.temperature, NULL));
 
-  // -- Units
-  PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, meter, &meter, NULL));
-  meter = fabs(meter);
-  PetscCall(PetscOptionsScalar("-units_kilogram", "1 kilogram in scaled mass units", NULL, kilogram, &kilogram, NULL));
-  kilogram = fabs(kilogram);
-  PetscCall(PetscOptionsScalar("-units_second", "1 second in scaled time units", NULL, second, &second, NULL));
-  second = fabs(second);
-  PetscCall(PetscOptionsScalar("-units_Kelvin", "1 Kelvin in scaled temperature units", NULL, Kelvin, &Kelvin, NULL));
-  Kelvin = fabs(Kelvin);
-
   // -- Warnings
   PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
              "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
@@ -558,36 +539,19 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   if (stab == STAB_SUPG && !implicit) problem->create_mass_operator = CreateKSPMassOperator_NewtonianStabilized;
 
   // ------------------------------------------------------
-  //           Set up the PETSc context
-  // ------------------------------------------------------
-  // -- Define derived units
-  Pascal          = kilogram / (meter * PetscSqr(second));
-  J_per_kg_K      = PetscSqr(meter) / (PetscSqr(second) * Kelvin);
-  m_per_squared_s = meter / PetscSqr(second);
-  W_per_m_K       = kilogram * meter / (pow(second, 3) * Kelvin);
-
-  honee->units->meter           = meter;
-  honee->units->kilogram        = kilogram;
-  honee->units->second          = second;
-  honee->units->Kelvin          = Kelvin;
-  honee->units->Pascal          = Pascal;
-  honee->units->J_per_kg_K      = J_per_kg_K;
-  honee->units->m_per_squared_s = m_per_squared_s;
-  honee->units->W_per_m_K       = W_per_m_K;
-
-  // ------------------------------------------------------
   //           Set up the QFunction context
   // ------------------------------------------------------
   // -- Scale variables to desired units
-  cv *= J_per_kg_K;
-  cp *= J_per_kg_K;
-  mu *= Pascal * second;
-  k *= W_per_m_K;
-  for (PetscInt i = 0; i < 3; i++) domain_size[i] *= meter;
-  for (PetscInt i = 0; i < 3; i++) g[i] *= m_per_squared_s;
-  reference.pressure *= Pascal;
-  for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= meter / second;
-  reference.temperature *= Kelvin;
+  Units units = honee->units;
+  cv *= units->J_per_kg_K;
+  cp *= units->J_per_kg_K;
+  mu *= units->Pascal * units->second;
+  k *= units->W_per_m_K;
+  for (PetscInt i = 0; i < 3; i++) domain_size[i] *= units->meter;
+  for (PetscInt i = 0; i < 3; i++) g[i] *= units->m_per_squared_s;
+  reference.pressure *= units->Pascal;
+  for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= units->meter / units->second;
+  reference.temperature *= units->Kelvin;
 
   // -- Solver Settings
   honee->phys->implicit  = implicit;
@@ -609,9 +573,9 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   newtonian_ig_ctx->is_implicit     = implicit;
   newtonian_ig_ctx->state_var       = state_var;
   newtonian_ig_ctx->idl_enable      = idl_enable;
-  newtonian_ig_ctx->idl_amplitude   = 1 / (idl_decay_time * second);
-  newtonian_ig_ctx->idl_start       = idl_start * meter;
-  newtonian_ig_ctx->idl_length      = idl_length * meter;
+  newtonian_ig_ctx->idl_amplitude   = 1 / (idl_decay_time * units->second);
+  newtonian_ig_ctx->idl_start       = idl_start * units->meter;
+  newtonian_ig_ctx->idl_length      = idl_length * units->meter;
   newtonian_ig_ctx->idl_pressure    = idl_pressure;
   newtonian_ig_ctx->divFdiff_method = honee->app_ctx->divFdiffproj_method;
   PetscCall(PetscArraycpy(newtonian_ig_ctx->g, g, 3));

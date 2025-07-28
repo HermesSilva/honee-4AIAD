@@ -116,17 +116,14 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
   FreestreamContext    freestream_ctx;
   CeedQFunctionContext freestream_qfctx;
   RiemannFluxType      flux_type = RIEMANN_HLLC;
-  PetscScalar          meter     = honee->units->meter;
-  PetscScalar          second    = honee->units->second;
-  PetscScalar          Kelvin    = honee->units->Kelvin;
-  PetscScalar          Pascal    = honee->units->Pascal;
+  Units                units     = honee->units;
   FreestreamHoneeBCCtx freestream_honee_bc;
   HoneeBCStruct        honee_bc;
 
   PetscFunctionBeginUser;
   // Freestream inherits reference state. We re-dimensionalize so the defaults in -help will be visible in SI units.
-  StatePrimitive Y_inf = {.pressure = reference->pressure / Pascal, .velocity = {0}, .temperature = reference->temperature / Kelvin};
-  for (int i = 0; i < 3; i++) Y_inf.velocity[i] = reference->velocity[i] * second / meter;
+  StatePrimitive Y_inf = {.pressure = reference->pressure / units->Pascal, .velocity = {0}, .temperature = reference->temperature / units->Kelvin};
+  for (int i = 0; i < 3; i++) Y_inf.velocity[i] = reference->velocity[i] * units->second / units->meter;
 
   PetscOptionsBegin(comm, NULL, "Options for Freestream boundary condition", NULL);
   PetscCall(PetscOptionsEnum("-freestream_riemann", "Riemann solver to use in freestream boundary condition", NULL, RiemannSolverTypes,
@@ -137,9 +134,9 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
   PetscCall(PetscOptionsScalar("-freestream_temperature", "Temperature at freestream condition", NULL, Y_inf.temperature, &Y_inf.temperature, NULL));
   PetscOptionsEnd();
 
-  Y_inf.pressure *= Pascal;
-  for (int i = 0; i < 3; i++) Y_inf.velocity[i] *= meter / second;
-  Y_inf.temperature *= Kelvin;
+  Y_inf.pressure *= units->Pascal;
+  for (int i = 0; i < 3; i++) Y_inf.velocity[i] *= units->meter / units->second;
+  Y_inf.temperature *= units->Kelvin;
 
   State S_infty = StateFromPrimitive(newtonian_ig_ctx, Y_inf);
 

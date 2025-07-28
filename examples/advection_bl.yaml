@@ -3,10 +3,6 @@ stab: supg
 stab_tau: advdiff_shakib
 degree: 1
 
-units_kilogram: 1
-units_meter: 1
-units_second: 1
-
 wind_type: boundary_layer
 advection_ic_type: boundary_layer
 diffusion_coeff: 5e-4

@@ -117,14 +117,13 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
   OutflowContext       outflow_ctx;
   OutflowType          outflow_type = OUTFLOW_RIEMANN;
   CeedQFunctionContext outflow_qfctx;
-  const PetscScalar    Kelvin = honee->units->Kelvin;
-  const PetscScalar    Pascal = honee->units->Pascal;
+  Units                units = honee->units;
   HoneeBCStruct        honee_bc;
   OutflowHoneeBCCtx    outflow_honee_bc;
 
   PetscFunctionBeginUser;
-  CeedScalar pressure    = reference->pressure / Pascal;
-  CeedScalar temperature = reference->temperature / Kelvin;
+  CeedScalar pressure    = reference->pressure / units->Pascal;
+  CeedScalar temperature = reference->temperature / units->Kelvin;
   CeedScalar recirc = 1, softplus_velocity = 1e-2;
   PetscOptionsBegin(honee->comm, NULL, "Options for Outflow boundary condition", NULL);
   PetscCall(
@@ -138,8 +137,8 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
                                &softplus_velocity, NULL));
   }
   PetscOptionsEnd();
-  pressure *= Pascal;
-  temperature *= Kelvin;
+  pressure *= units->Pascal;
+  temperature *= units->Kelvin;
 
   PetscCall(PetscNew(&outflow_ctx));
   outflow_ctx->gas               = *newtonian_ig_ctx;

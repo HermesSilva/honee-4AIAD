@@ -315,16 +315,13 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscOptionsBool("-stg_use", "Use STG inflow boundary condition", NULL, use_stg, &use_stg, NULL));
   PetscOptionsEnd();
 
-  PetscScalar meter  = honee->units->meter;
-  PetscScalar second = honee->units->second;
-  PetscScalar Kelvin = honee->units->Kelvin;
-  PetscScalar Pascal = honee->units->Pascal;
+  Units units = honee->units;
 
-  T_inf *= Kelvin;
-  T_wall *= Kelvin;
-  P_inf *= Pascal;
-  U_inf *= meter / second;
-  delta0 *= meter;
+  T_inf *= units->Kelvin;
+  T_wall *= units->Kelvin;
+  P_inf *= units->Pascal;
+  U_inf *= units->meter / units->second;
+  delta0 *= units->meter;
 
   if (honee->app_ctx->mesh_transform_type == MESH_TRANSFORM_PLATEMESH) {
     PetscReal *mesh_ynodes  = NULL;

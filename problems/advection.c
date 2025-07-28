@@ -473,14 +473,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
   // ------------------------------------------------------
-  //             Create the PETSc context
-  // ------------------------------------------------------
-  PetscScalar meter    = 1e-2;  // 1 meter in scaled length units
-  PetscScalar kilogram = 1e-6;  // 1 kilogram in scaled mass units
-  PetscScalar second   = 1e-2;  // 1 second in scaled time units
-  PetscScalar Joule;
-
-  // ------------------------------------------------------
   //              Command line Options
   // ------------------------------------------------------
   PetscOptionsBegin(comm, NULL, "Options for ADVECTION problem", NULL);
@@ -534,14 +526,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
       break;
   }
 
-  // -- Units
-  PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, meter, &meter, NULL));
-  meter = fabs(meter);
-  PetscCall(PetscOptionsScalar("-units_kilogram", "1 kilogram in scaled mass units", NULL, kilogram, &kilogram, NULL));
-  kilogram = fabs(kilogram);
-  PetscCall(PetscOptionsScalar("-units_second", "1 second in scaled time units", NULL, second, &second, NULL));
-  second = fabs(second);
-
   // -- Warnings
   if (wind_type == ADVDIF_WIND_ROTATION && user_wind) {
     PetscCall(PetscPrintf(comm, "Warning! Use -wind_translation only with -wind_type translation\n"));
@@ -559,25 +543,15 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   if (stab == STAB_SUPG) problem->create_mass_operator = CreateKSPMassOperator_AdvectionStabilized;
 
   // ------------------------------------------------------
-  //           Set up the PETSc context
-  // ------------------------------------------------------
-  // -- Define derived units
-  Joule = kilogram * PetscSqr(meter) / PetscSqr(second);
-
-  honee->units->meter    = meter;
-  honee->units->kilogram = kilogram;
-  honee->units->second   = second;
-  honee->units->Joule    = Joule;
-
-  // ------------------------------------------------------
   //           Set up the QFunction contexts
   // ------------------------------------------------------
   // -- Scale variables to desired units
-  E_wind *= Joule;
-  rc = fabs(rc) * meter;
+  Units units = honee->units;
+  E_wind *= units->Joule;
+  rc = fabs(rc) * units->meter;
   for (PetscInt i = 0; i < dim; i++) {
-    wind[i] *= (meter / second);
-    domain_size[i] *= meter;
+    wind[i] *= (units->meter / units->second);
+    domain_size[i] *= units->meter;
   }
 
   // -- Setup Context
