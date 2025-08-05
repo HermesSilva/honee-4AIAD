@@ -244,8 +244,8 @@ noether-cpu-int64:
     - export SMARTREDIS_DIR=/projects/honee/SmartSim/smartredis/install
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial-int64" junit search=navierstokes
     # - spack unload py-torch@2.3+cuda && export USE_TORCH=0
-    - source /home/phypid/SmartSimTestingSoftware/bin/activate
-    - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search="test-py-smartsim_regression_framework"
+    - source /projects/honee/SmartSim/venv/bin/activate
+    - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial-int64" junit search="test-smartsim"
     # Report status
     - touch .SUCCESS
   after_script:
