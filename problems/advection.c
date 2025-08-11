@@ -374,6 +374,8 @@ static PetscErrorCode AdvectionInflowBCSetup_CreateIFunctionQF(BCDefinition bc_d
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static const char *const component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
+
 PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   AdvDifWindType             wind_type;
   AdvDifICType               advectionic_type;
@@ -419,6 +421,10 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
       problem->compute_exact_solution_error    = PETSC_FALSE;
       break;
   }
+
+  problem->num_components = 5;
+  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
+  for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
 
   PetscCall(DivDiffFluxProjectionCreate(honee, 1, &honee->diff_flux_proj));
   if (honee->diff_flux_proj) {

@@ -107,30 +107,8 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
   PetscSection section;
   PetscCall(DMGetLocalSection(dm, &section));
   PetscCall(PetscSectionSetFieldName(section, 0, ""));
-  switch (phys->state_var) {
-    case STATEVAR_CONSERVATIVE:
-      PetscCall(PetscSectionSetComponentName(section, 0, 0, "Density"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 1, "MomentumX"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 2, "MomentumY"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 3, "MomentumZ"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 4, "TotalEnergy"));
-      break;
-
-    case STATEVAR_PRIMITIVE:
-      PetscCall(PetscSectionSetComponentName(section, 0, 0, "Pressure"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 1, "VelocityX"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 2, "VelocityY"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 3, "VelocityZ"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 4, "Temperature"));
-      break;
-
-    case STATEVAR_ENTROPY:
-      PetscCall(PetscSectionSetComponentName(section, 0, 0, "EntropyDensity"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 1, "EntropyMomentumX"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 2, "EntropyMomentumY"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 3, "EntropyMomentumZ"));
-      PetscCall(PetscSectionSetComponentName(section, 0, 4, "EntropyTotalEnergy"));
-      break;
+  for (PetscInt i = 0; i < problem->num_components; i++) {
+    PetscCall(PetscSectionSetComponentName(section, 0, i, problem->component_names[i]));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

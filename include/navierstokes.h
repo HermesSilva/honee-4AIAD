@@ -243,12 +243,19 @@ typedef struct {
 
 // Problem specific data
 struct ProblemData_private {
+  // DM Field Settings
+  PetscInt num_components;
+  char   **component_names;
+
   CeedInt              num_comps_jac_data;
   ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian;
   bool                 compute_exact_solution_error;
   PetscBool            set_bc_from_ics, use_strong_bc_ceed;
-  PetscCount           num_bc_defs;
-  BCDefinition        *bc_defs;
+
+  // BC Definitions
+  PetscCount    num_bc_defs;
+  BCDefinition *bc_defs;
+
   PetscErrorCode (*print_info)(Honee, ProblemData, AppCtx);
   PetscErrorCode (*create_mass_operator)(Honee, CeedOperator *);
 };

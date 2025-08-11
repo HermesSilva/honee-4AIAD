@@ -49,6 +49,8 @@ static PetscErrorCode EulerVortexInflowBCSetup_CreateIFunctionQF(BCDefinition bc
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static const char *const component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
+
 PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   EulerTestType        euler_test;
   Honee                honee = *(Honee *)ctx;
@@ -75,6 +77,10 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   problem->num_comps_jac_data              = 0;
   problem->compute_exact_solution_error    = PETSC_TRUE;
   problem->print_info                      = PRINT_EULER_VORTEX;
+
+  problem->num_components = 5;
+  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
+  for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
 
   // ------------------------------------------------------
   //             Create the libCEED context

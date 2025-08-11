@@ -130,10 +130,15 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
     PetscCall(BCDefinitionDestroy(&problem->bc_defs[i]));
   }
   PetscCall(PetscFree(problem->bc_defs));
-  PetscCall(PetscFree(honee_->units));
+  for (PetscInt i = 0; i < problem->num_components; i++) {
+    PetscCall(PetscFree(problem->component_names[i]));
+  }
+  PetscCall(PetscFree(problem->component_names));
   PetscCall(PetscFree(problem));
+  PetscCall(PetscFree(honee_->units));
   PetscCall(PetscFree(honee_->phys));
   PetscCall(PetscFree(app_ctx));
+
   PetscCall(PetscHeaderDestroy(&honee_));
   *honee = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
