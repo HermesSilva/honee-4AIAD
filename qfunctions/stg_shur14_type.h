@@ -23,7 +23,7 @@ struct STGShur14Context_ {
   CeedScalar                       dx;                  // !< dx used for h calculation
   CeedScalar                       h_scale_factor;      // !< Scales the element size
   bool                             prescribe_T;         // !< Prescribe temperature weakly
-  bool                             use_fluctuating_IC;  // !< Only apply the mean profile
+  bool                             use_fluctuating_IC;  // !< set fluctuations through the domain as an initial condition
   struct NewtonianIdealGasContext_ newtonian_ctx;
 
   struct {

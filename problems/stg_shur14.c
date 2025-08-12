@@ -161,21 +161,25 @@ static PetscErrorCode ReadStgRand(const MPI_Comm comm, const char path[PETSC_MAX
  */
 PetscErrorCode GetStgContextData(const MPI_Comm comm, const DM dm, char stg_inflow_path[PETSC_MAX_PATH_LEN], char stg_rand_path[PETSC_MAX_PATH_LEN],
                                  StgShur14Context *stg_ctx) {
-  PetscInt nmodes, nprofs;
+  PetscInt nmodes = 0, nprofs;
 
   PetscFunctionBeginUser;
-  PetscCall(PhastaDatFileGetNRows(comm, stg_rand_path, &nmodes));
   PetscCall(PhastaDatFileGetNRows(comm, stg_inflow_path, &nprofs));
-  PetscCheck(nmodes < STG_NMODES_MAX, comm, PETSC_ERR_SUP,
-             "Number of wavemodes in %s (%" PetscInt_FMT ") exceeds STG_NMODES_MAX (%d). Change size of STG_NMODES_MAX and recompile", stg_rand_path,
-             nmodes, STG_NMODES_MAX);
+  const PetscBool need_rand = (!(*stg_ctx)->mean_only) || (*stg_ctx)->use_fluctuating_IC;
+  if (need_rand) {
+    PetscCall(PhastaDatFileGetNRows(comm, stg_rand_path, &nmodes));
+    PetscCheck(nmodes < STG_NMODES_MAX, comm, PETSC_ERR_SUP,
+               "Number of wavemodes in %s (%" PetscInt_FMT ") exceeds STG_NMODES_MAX (%d). Change size of STG_NMODES_MAX and recompile",
+               stg_rand_path, nmodes, STG_NMODES_MAX);
+  }
 
   {
     StgShur14Context temp_ctx;
-    PetscCall(PetscCalloc1(1, &temp_ctx));
-    *temp_ctx                   = **stg_ctx;
-    temp_ctx->nmodes            = nmodes;
-    temp_ctx->nprofs            = nprofs;
+    PetscCall(PetscNew(&temp_ctx));
+    *temp_ctx        = **stg_ctx;
+    temp_ctx->nmodes = nmodes;
+    temp_ctx->nprofs = nprofs;
+    // nmode = 0 if random numbers are not read from file, therefore offsets will be correctly handled
     temp_ctx->offsets.sigma     = 0;
     temp_ctx->offsets.d         = nmodes * 3;
     temp_ctx->offsets.phi       = temp_ctx->offsets.d + nmodes * 3;
@@ -194,9 +198,8 @@ PetscErrorCode GetStgContextData(const MPI_Comm comm, const DM dm, char stg_infl
   }
 
   PetscCall(ReadStgInflow(comm, stg_inflow_path, *stg_ctx));
-  PetscCall(ReadStgRand(comm, stg_rand_path, *stg_ctx));
-
-  {  // -- Calculate kappa
+  if (need_rand) {
+    PetscCall(ReadStgRand(comm, stg_rand_path, *stg_ctx));
     CeedScalar *kappa     = &(*stg_ctx)->data[(*stg_ctx)->offsets.kappa];
     CeedScalar *wall_dist = &(*stg_ctx)->data[(*stg_ctx)->offsets.wall_dist];
     CeedScalar *lt        = &(*stg_ctx)->data[(*stg_ctx)->offsets.lt];
@@ -244,7 +247,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
   PetscFunctionBeginUser;
   PetscOptionsBegin(comm, NULL, "STG Boundary Condition Options", NULL);
   PetscCall(PetscOptionsString("-stg_inflow_path", "Path to STGInflow.dat", NULL, stg_inflow_path, stg_inflow_path, sizeof(stg_inflow_path), NULL));
-  PetscCall(PetscOptionsString("-stg_rand_path", "Path to STGInflow.dat", NULL, stg_rand_path, stg_rand_path, sizeof(stg_rand_path), NULL));
+  PetscCall(PetscOptionsString("-stg_rand_path", "Path to STGRand.dat", NULL, stg_rand_path, stg_rand_path, sizeof(stg_rand_path), NULL));
   PetscCall(PetscOptionsReal("-stg_alpha", "Growth rate of the wavemodes", NULL, alpha, &alpha, NULL));
   PetscCall(PetscOptionsReal("-stg_u0", "Advective velocity for the fluctuations", NULL, u0, &u0, NULL));
   PetscCall(PetscOptionsBool("-stg_mean_only", "Only apply mean profile", NULL, mean_only, &mean_only, NULL));
