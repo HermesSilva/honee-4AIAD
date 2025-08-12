@@ -89,7 +89,7 @@ static PetscErrorCode CreateKSPMass(Honee honee, ProblemData problem) {
 }
 
 PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem) {
-  const PetscInt      num_comp_q = 5;
+  const PetscInt      num_comp_q = problem->num_components;
   PetscInt            dim;
   CeedInt             num_comps_jac_data = problem->num_comps_jac_data, num_comp_x, q_data_size_vol;
   CeedElemRestriction elem_restr_jd_i    = NULL, elem_restr_qd;

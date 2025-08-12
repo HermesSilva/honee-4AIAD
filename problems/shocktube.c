@@ -22,6 +22,8 @@ static PetscErrorCode PRINT_SHOCKTUBE(Honee honee, ProblemData problem, AppCtx a
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static const char *const component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
+
 PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   SetupContextShock    setup_context;
   Honee                honee = *(Honee *)ctx;
@@ -49,6 +51,10 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   problem->num_comps_jac_data              = 0;
   problem->compute_exact_solution_error    = PETSC_FALSE;
   problem->print_info                      = PRINT_SHOCKTUBE;
+
+  problem->num_components = 5;
+  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
+  for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
 
   // ------------------------------------------------------
   //             Create the QFunction context

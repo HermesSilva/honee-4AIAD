@@ -363,6 +363,11 @@ static PetscErrorCode BoundaryIntegralBCSetup_CreateIJacobianQF(BCDefinition bc_
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static const char *const conservative_component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
+static const char *const primitive_component_names[]    = {"Pressure", "VelocityX", "VelocityY", "VelocityZ", "Temperature"};
+static const char *const entropy_component_names[]      = {"EntropyDensity", "EntropyMomentumX", "EntropyMomentumY", "EntropyMomentumZ",
+                                                           "EntropyTotalEnergy"};
+
 PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   SetupContext             setup_context;
   Honee                    honee  = *(Honee *)ctx;
@@ -386,6 +391,20 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   problem->num_comps_jac_data           = 14;
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
+
+  problem->num_components = 5;
+  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(conservative_component_names[i], &problem->component_names[i]));
+      break;
+    case STATEVAR_PRIMITIVE:
+      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(primitive_component_names[i], &problem->component_names[i]));
+      break;
+    case STATEVAR_ENTROPY:
+      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(entropy_component_names[i], &problem->component_names[i]));
+      break;
+  }
 
   PetscCall(DivDiffFluxProjectionCreate(honee, 4, &honee->diff_flux_proj));
   if (honee->diff_flux_proj) {
