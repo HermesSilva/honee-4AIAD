@@ -46,6 +46,11 @@ CEED_QFUNCTION_HELPER CeedScalar DotN(const CeedScalar *u, const CeedScalar *v, 
   return output;
 }
 
+// @brief y = \alpha x + y
+CEED_QFUNCTION_HELPER void AXPY(CeedScalar alpha, const CeedScalar *x, CeedScalar *y, CeedInt N) {
+  CeedPragmaSIMD for (CeedInt i = 0; i < N; i++) y[i] += alpha * x[i];
+}
+
 // @brief Dot product of 3 element vectors
 CEED_QFUNCTION_HELPER CeedScalar Dot3(const CeedScalar *u, const CeedScalar *v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; }
 
