@@ -10,16 +10,6 @@
 #include "stabilization.h"
 #include "utils.h"
 
-CEED_QFUNCTION_HELPER void InternalDampingLayer(const NewtonianIdealGasContext context, const State s, const CeedScalar sigma, CeedScalar damp_Y[5],
-                                                CeedScalar damp_residual[5]) {
-  ScaleN(damp_Y, sigma, 5);
-  State damp_s = StateFromY_fwd(context, s, damp_Y);
-
-  CeedScalar U[5];
-  UnpackState_U(damp_s.U, U);
-  for (int i = 0; i < 5; i++) damp_residual[i] += U[i];
-}
-
 // *****************************************************************************
 // This QFunction sets a "still" initial condition for generic Newtonian IG problems
 // *****************************************************************************
@@ -90,6 +80,28 @@ CEED_QFUNCTION_HELPER int MassFunction_Newtonian(void *ctx, CeedInt Q, const Cee
 
 CEED_QFUNCTION(MassFunction_Newtonian_Conserv)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
   return MassFunction_Newtonian(ctx, Q, in, out, STATEVAR_CONSERVATIVE);
+}
+
+//TODO: Document function
+CEED_QFUNCTION_HELPER void InternalDampingLayer_Residual(const NewtonianIdealGasContext context, const State s, const CeedScalar sigma,
+                                                         CeedScalar damp_Y[5], CeedScalar damp_residual[5]) {
+  ScaleN(damp_Y, sigma, 5);
+  State damp_s = StateFromY_fwd(context, s, damp_Y);
+
+  CeedScalar U[5];
+  UnpackState_U(damp_s.U, U);
+  for (int i = 0; i < 5; i++) damp_residual[i] += U[i];
+}
+
+//TODO: Document function (label v_i and dv_i as [inout])
+CEED_QFUNCTION_HELPER void InternalDampingLayer_IFunction_Integrand(const State s, const NewtonianIdealGasContext context, CeedScalar amplitude,
+                                                                    CeedScalar length, CeedScalar start, CeedScalar location, CeedScalar pressure,
+                                                                    CeedScalar v_i[5], CeedScalar *sigma) {
+  const CeedScalar sigma_                    = LinearRampCoefficient(amplitude, length, start, location);
+  CeedScalar damp_state[5] = {s.Y.pressure - pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
+  InternalDampingLayer_Residual(context, s, sigma_, damp_state, idl_residual);
+  AXPY(1, idl_residual, v_i, 5);
+  *sigma = sigma_;
 }
 
 // *****************************************************************************
@@ -186,7 +198,7 @@ CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *co
     if (context->idl_enable) {
       const CeedScalar sigma         = LinearRampCoefficient(context->idl_amplitude, context->idl_length, context->idl_start, x_i[0]);
       CeedScalar       damp_state[5] = {s.Y.pressure - idl_pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
-      InternalDampingLayer(context, s, sigma, damp_state, idl_residual);
+      InternalDampingLayer_Residual(context, s, sigma, damp_state, idl_residual);
       for (int j = 0; j < 5; j++) v[j][i] -= wdetJ * idl_residual[j];
     }
 
@@ -213,6 +225,40 @@ CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *co
 //  SUPG = Galerkin + grad(v) . ( Ai^T * Tau * (q_dot + Aj q,j - body force) )
 //                                       (diffusive terms will be added later)
 // *****************************************************************************
+//TODO: Document function (label v_i and dv_i as [inout])
+CEED_QFUNCTION_HELPER void IFunction_Newtonian_Integrand(const State s, const State grad_s[3], const State s_dot, const CeedScalar divFdiff_i[5],
+                                                         const CeedScalar x_i[3], const NewtonianIdealGasContext context, const CeedScalar dXdx[3][3],
+                                                         CeedScalar v_i[5], CeedScalar dv_i[5][3], CeedScalar kmstress[6], CeedScalar Tau_d[3]) {
+  const CeedScalar *g  = context->g;
+  const CeedScalar  dt = context->dt;
+
+  CeedScalar strain_rate[6], stress[3][3], Fe[3];
+  KMStrainRate_State(grad_s, strain_rate);
+  NewtonianStress(context, strain_rate, kmstress);
+  KMUnpack(kmstress, stress);
+  ViscousEnergyFlux(context, s.Y, grad_s, stress, Fe);
+
+  StateConservative F_inviscid[3];
+  FluxInviscid(context, s, F_inviscid);
+
+  // Total flux
+  CeedScalar Flux[5][3];
+  FluxTotal(F_inviscid, stress, Fe, Flux);
+
+  AXPY(-1, (CeedScalar *)Flux, (CeedScalar *)dv_i, 15);
+
+  const CeedScalar body_force[5] = {0, s.U.density * g[0], s.U.density * g[1], s.U.density * g[2], Dot3(s.U.momentum, g)};
+
+  // -- Stabilization method: none (Galerkin), SU, or SUPG
+  CeedScalar stab[5][3], U_dot[5] = {0};
+  UnpackState_U(s_dot.U, U_dot);
+
+  for (CeedInt j = 0; j < 5; j++) v_i[j] += U_dot[j] - body_force[j];
+  Tau_diagPrim(context, s, dXdx, dt, Tau_d);
+  Stabilization(context, s, Tau_d, grad_s, U_dot, body_force, divFdiff_i, stab);
+  AXPY(1, (CeedScalar *)stab, (CeedScalar *)dv_i, 15);
+}
+
 CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
   NewtonianIdealGasContext context      = (NewtonianIdealGasContext)ctx;
   const bool               use_divFdiff = context->divFdiff_method != DIV_DIFF_FLUX_PROJ_NONE;
@@ -227,71 +273,38 @@ CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedSc
   CeedScalar(*Grad_v)[5][CEED_Q_VLA]      = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
   CeedScalar(*jac_data)                   = out[2];
 
-  const CeedScalar *g            = context->g;
-  const CeedScalar  dt           = context->dt;
-  const CeedScalar  idl_pressure = context->idl_pressure;
-
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    const CeedScalar qi[5]  = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
-    const CeedScalar x_i[3] = {x[0][i], x[1][i], x[2][i]};
-    const State      s      = StateFromQ(context, qi, state_var);
+    const CeedScalar qi[5]     = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
+    const CeedScalar qi_dot[5] = {q_dot[0][i], q_dot[1][i], q_dot[2][i], q_dot[3][i], q_dot[4][i]};
+    const CeedScalar x_i[3]    = {x[0][i], x[1][i], x[2][i]};
+    const State      s         = StateFromQ(context, qi, state_var);
+    const State      s_dot     = StateFromQ_fwd(context, s, qi_dot, state_var);
 
     CeedScalar wdetJ, dXdx[3][3];
     QdataUnpack_3D(Q, i, q_data, &wdetJ, dXdx);
     State grad_s[3];
     StatePhysicalGradientFromReference(Q, i, context, s, state_var, Grad_q, dXdx, grad_s);
-
-    CeedScalar strain_rate[6], kmstress[6], stress[3][3], Fe[3];
-    KMStrainRate_State(grad_s, strain_rate);
-    NewtonianStress(context, strain_rate, kmstress);
-    KMUnpack(kmstress, stress);
-    ViscousEnergyFlux(context, s.Y, grad_s, stress, Fe);
-
-    StateConservative F_inviscid[3];
-    FluxInviscid(context, s, F_inviscid);
-
-    // Total flux
-    CeedScalar Flux[5][3];
-    FluxTotal(F_inviscid, stress, Fe, Flux);
-
-    for (CeedInt j = 0; j < 5; j++) {
-      for (CeedInt k = 0; k < 3; k++) {
-        Grad_v[k][j][i] = -wdetJ * (dXdx[k][0] * Flux[j][0] + dXdx[k][1] * Flux[j][1] + dXdx[k][2] * Flux[j][2]);
-      }
-    }
-
-    const CeedScalar body_force[5] = {0, s.U.density * g[0], s.U.density * g[1], s.U.density * g[2], Dot3(s.U.momentum, g)};
-
-    // -- Stabilization method: none (Galerkin), SU, or SUPG
-    CeedScalar Tau_d[3], stab[5][3], U_dot[5] = {0}, qi_dot[5];
-    for (int j = 0; j < 5; j++) qi_dot[j] = q_dot[j][i];
-    State s_dot = StateFromQ_fwd(context, s, qi_dot, state_var);
-    UnpackState_U(s_dot.U, U_dot);
-
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJ * (U_dot[j] - body_force[j]);
-    if (context->idl_enable) {
-      const CeedScalar sigma = LinearRampCoefficient(context->idl_amplitude, context->idl_length, context->idl_start, x_i[0]);
-      StoredValuesPack(Q, i, 14, 1, &sigma, jac_data);
-      CeedScalar damp_state[5] = {s.Y.pressure - idl_pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
-      InternalDampingLayer(context, s, sigma, damp_state, idl_residual);
-      for (int j = 0; j < 5; j++) v[j][i] += wdetJ * idl_residual[j];
-    }
-
     CeedScalar divFdiff_i[5] = {0.};
-    if (use_divFdiff) {
+    if (use_divFdiff)
       for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
-    }
-    Tau_diagPrim(context, s, dXdx, dt, Tau_d);
-    Stabilization(context, s, Tau_d, grad_s, U_dot, body_force, divFdiff_i, stab);
 
+    CeedScalar v_i[5] = {0.}, dv_i[5][3] = {{0.}}, kmstress[6], Tau_d[3], sigma = 0.;
+    IFunction_Newtonian_Integrand(s, grad_s, s_dot, divFdiff_i, x_i, context, dXdx, v_i, dv_i, kmstress, Tau_d);
+    if (context->idl_enable)
+      InternalDampingLayer_IFunction_Integrand(s, context, context->idl_amplitude, context->idl_length, context->idl_start, x_i[0],
+                                               context->idl_pressure, v_i, &sigma);
+
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJ * v_i[j];
     for (CeedInt j = 0; j < 5; j++) {
       for (CeedInt k = 0; k < 3; k++) {
-        Grad_v[k][j][i] += wdetJ * (stab[j][0] * dXdx[k][0] + stab[j][1] * dXdx[k][1] + stab[j][2] * dXdx[k][2]);
+        Grad_v[k][j][i] = wdetJ * (dv_i[j][0] * dXdx[k][0] + dv_i[j][1] * dXdx[k][1] + dv_i[j][2] * dXdx[k][2]);
       }
     }
+
     StoredValuesPack(Q, i, 0, 5, qi, jac_data);
     StoredValuesPack(Q, i, 5, 6, kmstress, jac_data);
     StoredValuesPack(Q, i, 11, 3, Tau_d, jac_data);
+    if (context->idl_enable) StoredValuesPack(Q, i, 14, 1, &sigma, jac_data);
   }
   return 0;
 }
@@ -366,7 +379,7 @@ CEED_QFUNCTION_HELPER int IJacobian_Newtonian(void *ctx, CeedInt Q, const CeedSc
       const CeedScalar sigma         = jac_data[14 * Q + i];
       CeedScalar       damp_state[5] = {ds.Y.pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
       // This is a Picard-type linearization of the damping and could be replaced by an InternalDampingLayer_fwd that uses s and ds.
-      InternalDampingLayer(context, s, sigma, damp_state, idl_residual);
+      InternalDampingLayer_Residual(context, s, sigma, damp_state, idl_residual);
       for (int j = 0; j < 5; j++) v[j][i] += wdetJ * idl_residual[j];
     }
 
