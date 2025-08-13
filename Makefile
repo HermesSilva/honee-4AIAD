@@ -26,10 +26,12 @@ CC        = $(call pkgconf, --variable=ccompiler $(petsc.pc) $(ceed.pc))
 CFLAGS    = -std=c99 \
   $(call pkgconf, --variable=cflags_extra $(petsc.pc)) \
   $(call pkgconf, --cflags-only-other $(petsc.pc)) \
-  $(OPT)
+  $(OPT) \
+  $(if $(PEDANTIC),$(PEDANTICFLAGS))
 CPPFLAGS  = $(call pkgconf, --cflags-only-I $(petsc.pc) $(ceed.pc)) \
-  $(call pkgconf, --variable=cflags_dep $(petsc.pc))
-CXX       = $(call pkgconf, --variable=cxxcompiler $(petsc.pc) $(ceed.pc))
+  $(call pkgconf, --variable=cflags_dep $(petsc.pc)) \
+  $(if $(PEDANTIC),$(PEDANTICFLAGS))
+CXX       = $(call pkgconf, --variable=cxxcompiler $(petsc.pc) $(ceed.pc)) $(if $(PEDANTIC),$(PEDANTICFLAGS))
 CXXFLAGS  = -std=c++17 -Wno-deprecated -Wno-tautological-compare
 LDFLAGS   = $(call pkgconf, --libs-only-L --libs-only-other $(petsc.pc) $(ceed.pc))
 LDFLAGS  += $(patsubst -L%, $(call pkgconf, --variable=ldflag_rpath $(petsc.pc))%, $(call pkgconf, --libs-only-L $(petsc.pc) $(ceed.pc)))
