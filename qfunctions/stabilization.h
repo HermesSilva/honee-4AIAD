@@ -10,7 +10,7 @@
 // *****************************************************************************
 // Helper function for computing the variation in primitive variables, given Tau_d
 // *****************************************************************************
-CEED_QFUNCTION_HELPER void dYFromTau(CeedScalar Y[5], CeedScalar Tau_d[3], CeedScalar dY[5]) {
+CEED_QFUNCTION_HELPER void dYFromTau(const CeedScalar Y[5], const CeedScalar Tau_d[3], CeedScalar dY[5]) {
   dY[0] = Tau_d[0] * Y[0];
   dY[1] = Tau_d[1] * Y[1];
   dY[2] = Tau_d[1] * Y[2];
@@ -21,8 +21,8 @@ CEED_QFUNCTION_HELPER void dYFromTau(CeedScalar Y[5], CeedScalar Tau_d[3], CeedS
 // *****************************************************************************
 // Helper functions for computing the stabilization terms
 // *****************************************************************************
-CEED_QFUNCTION_HELPER void StabilizationMatrix(NewtonianIdealGasContext gas, State s, CeedScalar Tau_d[3], CeedScalar strong_residual[5],
-                                               CeedScalar stab[5][3]) {
+CEED_QFUNCTION_HELPER void StabilizationMatrix(const NewtonianIdealGasContext gas, const State s, const CeedScalar Tau_d[3],
+                                               const CeedScalar strong_residual[5], CeedScalar stab[5][3]) {
   CeedScalar        dY[5];
   StateConservative dF[3];
   // Zero stab so all future terms can safely sum into it
@@ -39,8 +39,9 @@ CEED_QFUNCTION_HELPER void StabilizationMatrix(NewtonianIdealGasContext gas, Sta
   }
 }
 
-CEED_QFUNCTION_HELPER void Stabilization(NewtonianIdealGasContext gas, State s, CeedScalar Tau_d[3], State ds[3], CeedScalar U_dot[5],
-                                         const CeedScalar body_force[5], const CeedScalar divFdiff[5], CeedScalar stab[5][3]) {
+CEED_QFUNCTION_HELPER void Stabilization(const NewtonianIdealGasContext gas, const State s, const CeedScalar Tau_d[3], const State ds[3],
+                                         const CeedScalar U_dot[5], const CeedScalar body_force[5], const CeedScalar divFdiff[5],
+                                         CeedScalar stab[5][3]) {
   // -- Stabilization method: none (Galerkin), SU, or SUPG
   CeedScalar strong_residual[5] = {0};
   switch (gas->stabilization) {
