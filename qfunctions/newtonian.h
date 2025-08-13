@@ -119,6 +119,24 @@ CEED_QFUNCTION_HELPER void InternalDampingLayer_IFunction_Integrand(const State 
   *sigma = sigma_;
 }
 
+/**
+  @brief IJacobian integrand for Internal Damping Layer
+ 
+  @note This uses a Picard-type linearization of the damping and could be replaced by an `InternalDampingLayer_fwd` that uses s and ds.
+
+  @param[in]    s         Solution `State`
+  @param[in]    ds        Change in `State` of solution
+  @param[in]    context   Newtonian context
+  @param[in]    sigma     IDL ramp coefficient
+  @param[inout] v_i       Output to be multiplied by weight function, summed into
+**/
+CEED_QFUNCTION_HELPER void InternalDampingLayer_IJacobian_Integrand(const State s, const State ds, const NewtonianIdealGasContext context,
+                                                                    CeedScalar sigma, CeedScalar v_i[5]) {
+  CeedScalar damp_state[5] = {ds.Y.pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
+  InternalDampingLayer_Residual(context, s, sigma, damp_state, idl_residual);
+  AXPY(1, idl_residual, v_i, 5);
+}
+
 // *****************************************************************************
 // This QFunction implements the following formulation of Navier-Stokes with explicit time stepping method
 //
@@ -319,9 +337,8 @@ CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedSc
 
     for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJ * v_i[j];
     for (CeedInt j = 0; j < 5; j++) {
-      for (CeedInt k = 0; k < 3; k++) {
+      for (CeedInt k = 0; k < 3; k++)
         grad_v[k][j][i] = wdetJ * (grad_v_i[j][0] * dXdx[k][0] + grad_v_i[j][1] * dXdx[k][1] + grad_v_i[j][2] * dXdx[k][2]);
-      }
     }
 
     StoredValuesPack(Q, i, 0, 5, q_i, jac_data);
@@ -344,76 +361,92 @@ CEED_QFUNCTION(IFunction_Newtonian_Entropy)(void *ctx, CeedInt Q, const CeedScal
   return IFunction_Newtonian(ctx, Q, in, out, STATEVAR_ENTROPY);
 }
 
-// *****************************************************************************
-// This QFunction implements the jacobian of the Navier-Stokes equations for implicit time stepping method.
-// *****************************************************************************
+/**
+  @brief IJacobian integrand of Navier-Stokes for Newtonian ideal gas
+
+  This is used in the quadrature point loop within a larger QFunction.
+  `v_i` and `dv_i` are summed into (meaning they must be some initialized value).
+  `kmstress` and `Tau_d` are (generally) calculated and stored by the IFunction.
+
+  @param[in]    s          `State` of solution
+  @param[in]    ds         Change in `State` of solution
+  @param[in]    grad_ds     Physical gradient of change in `State` of solution
+  @param[in]    context    Newtonian context
+  @param[in]    kmstress   Viscous stress, in Kelvin-Mandel ordering
+  @param[in]    Tau_d      Diagonal Tau coefficients
+  @param[inout] v_i        Output to be multiplied by weight function, summed into
+  @param[inout] grad_v_i   Output to be multiplied by gradient of weight function, summed into
+**/
+CEED_QFUNCTION_HELPER void IJacobian_Newtonian_Integrand(const State s, const State ds, const State grad_ds[3],
+                                                         const NewtonianIdealGasContext context, const CeedScalar kmstress[6],
+                                                         const CeedScalar Tau_d[3], CeedScalar v_i[5], CeedScalar grad_v_i[5][3]) {
+  const CeedScalar *g = context->g;
+  CeedScalar        dstrain_rate[6], dkmstress[6], stress[3][3], dstress[3][3], dF_visc_energy[3], dF_total[5][3];
+  StateConservative dF_inviscid[3];
+
+  // Advective and viscous fluxes
+  KMStrainRate_State(grad_ds, dstrain_rate);
+  NewtonianStress(context, dstrain_rate, dkmstress);
+  KMUnpack(dkmstress, dstress);
+  KMUnpack(kmstress, stress);
+  ViscousEnergyFlux_fwd(context, s.Y, ds.Y, grad_ds, stress, dstress, dF_visc_energy);
+  FluxInviscid_fwd(context, s, ds, dF_inviscid);
+  FluxTotal(dF_inviscid, dstress, dF_visc_energy, dF_total);
+  AXPY(-1, (CeedScalar *)dF_total, (CeedScalar *)grad_v_i, 15);
+
+  // Body force and time derivative
+  const CeedScalar dbody_force[5] = {0, ds.U.density * g[0], ds.U.density * g[1], ds.U.density * g[2], Dot3(ds.U.momentum, g)};
+  CeedScalar       dU[5], dU_dot[5];
+  UnpackState_U(ds.U, dU);
+  for (CeedInt j = 0; j < 5; j++) {
+    dU_dot[j] = context->ijacobian_time_shift * dU[j];
+    v_i[j]    = dU_dot[j] - dbody_force[j];
+  }
+
+  // Stabilization
+  CeedScalar       dstab[5][3];
+  const CeedScalar zeroFlux[5] = {0.};
+  Stabilization(context, s, Tau_d, grad_ds, dU_dot, dbody_force, zeroFlux, dstab);
+  AXPY(1, (CeedScalar *)dstab, (CeedScalar *)grad_v_i, 15);
+}
+
+// @brief State-independent IJacobian of Navier-Stokes for Newtonian ideal gas
 CEED_QFUNCTION_HELPER int IJacobian_Newtonian(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
   const CeedScalar(*dq)[CEED_Q_VLA]  = (const CeedScalar(*)[CEED_Q_VLA])in[0];
-  const CeedScalar(*Grad_dq)         = in[1];
+  const CeedScalar(*grad_dq)         = in[1];
   const CeedScalar(*q_data)          = in[2];
   const CeedScalar(*jac_data)        = in[3];
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
-  CeedScalar(*Grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
+  CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
   NewtonianIdealGasContext context = (NewtonianIdealGasContext)ctx;
-  const CeedScalar        *g       = context->g;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar wdetJ, dXdx[3][3];
-    QdataUnpack_3D(Q, i, q_data, &wdetJ, dXdx);
-
-    CeedScalar qi[5], kmstress[6], Tau_d[3];
+    const CeedScalar dq_i[5] = {dq[0][i], dq[1][i], dq[2][i], dq[3][i], dq[4][i]};
+    CeedScalar       qi[5], kmstress[6], Tau_d[3];
     StoredValuesUnpack(Q, i, 0, 5, jac_data, qi);
     StoredValuesUnpack(Q, i, 5, 6, jac_data, kmstress);
     StoredValuesUnpack(Q, i, 11, 3, jac_data, Tau_d);
-    State s = StateFromQ(context, qi, state_var);
+    const State s  = StateFromQ(context, qi, state_var);
+    const State ds = StateFromQ_fwd(context, s, dq_i, state_var);
 
-    CeedScalar dqi[5];
-    for (int j = 0; j < 5; j++) dqi[j] = dq[j][i];
-    State ds = StateFromQ_fwd(context, s, dqi, state_var);
-
+    CeedScalar wdetJ, dXdx[3][3];
+    QdataUnpack_3D(Q, i, q_data, &wdetJ, dXdx);
     State grad_ds[3];
-    StatePhysicalGradientFromReference(Q, i, context, s, state_var, Grad_dq, dXdx, grad_ds);
+    StatePhysicalGradientFromReference(Q, i, context, s, state_var, grad_dq, dXdx, grad_ds);
 
-    CeedScalar dstrain_rate[6], dkmstress[6], stress[3][3], dstress[3][3], dFe[3];
-    KMStrainRate_State(grad_ds, dstrain_rate);
-    NewtonianStress(context, dstrain_rate, dkmstress);
-    KMUnpack(dkmstress, dstress);
-    KMUnpack(kmstress, stress);
-    ViscousEnergyFlux_fwd(context, s.Y, ds.Y, grad_ds, stress, dstress, dFe);
-
-    StateConservative dF_inviscid[3];
-    FluxInviscid_fwd(context, s, ds, dF_inviscid);
-
-    // Total flux
-    CeedScalar dFlux[5][3];
-    FluxTotal(dF_inviscid, dstress, dFe, dFlux);
-
-    for (int j = 0; j < 5; j++) {
-      for (int k = 0; k < 3; k++) Grad_v[k][j][i] = -wdetJ * (dXdx[k][0] * dFlux[j][0] + dXdx[k][1] * dFlux[j][1] + dXdx[k][2] * dFlux[j][2]);
-    }
-
-    const CeedScalar dbody_force[5] = {0, ds.U.density * g[0], ds.U.density * g[1], ds.U.density * g[2], Dot3(ds.U.momentum, g)};
-    CeedScalar       dU[5]          = {0.};
-    UnpackState_U(ds.U, dU);
-    for (int j = 0; j < 5; j++) v[j][i] = wdetJ * (context->ijacobian_time_shift * dU[j] - dbody_force[j]);
-
+    CeedScalar v_i[5] = {0.}, grad_v_i[5][3] = {{0.}};
+    IJacobian_Newtonian_Integrand(s, ds, grad_ds, context, kmstress, Tau_d, v_i, grad_v_i);
     if (context->idl_enable) {
-      const CeedScalar sigma         = jac_data[14 * Q + i];
-      CeedScalar       damp_state[5] = {ds.Y.pressure, 0, 0, 0, 0}, idl_residual[5] = {0.};
-      // This is a Picard-type linearization of the damping and could be replaced by an InternalDampingLayer_fwd that uses s and ds.
-      InternalDampingLayer_Residual(context, s, sigma, damp_state, idl_residual);
-      for (int j = 0; j < 5; j++) v[j][i] += wdetJ * idl_residual[j];
+      CeedScalar sigma;
+      StoredValuesUnpack(Q, i, 14, 1, jac_data, &sigma);
+      InternalDampingLayer_IJacobian_Integrand(s, ds, context, sigma, v_i);
+      for (int j = 0; j < 5; j++) v[j][i] += wdetJ * v_i[j];
     }
 
-    // -- Stabilization method: none (Galerkin), SU, or SUPG
-    CeedScalar dstab[5][3], U_dot[5] = {0};
-    for (CeedInt j = 0; j < 5; j++) U_dot[j] = context->ijacobian_time_shift * dU[j];
-    const CeedScalar zeroFlux[5] = {0.};
-    Stabilization(context, s, Tau_d, grad_ds, U_dot, dbody_force, zeroFlux, dstab);
-
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJ * v_i[j];
     for (int j = 0; j < 5; j++) {
-      for (int k = 0; k < 3; k++) Grad_v[k][j][i] += wdetJ * (dstab[j][0] * dXdx[k][0] + dstab[j][1] * dXdx[k][1] + dstab[j][2] * dXdx[k][2]);
+      for (int k = 0; k < 3; k++) grad_v[k][j][i] = wdetJ * (grad_v_i[j][0] * dXdx[k][0] + grad_v_i[j][1] * dXdx[k][1] + grad_v_i[j][2] * dXdx[k][2]);
     }
   }
   return 0;
