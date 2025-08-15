@@ -26,9 +26,7 @@ CEED_QFUNCTION_HELPER void StabilizationMatrix(const NewtonianIdealGasContext ga
   CeedScalar        dY[5];
   StateConservative dF[3];
   // Zero stab so all future terms can safely sum into it
-  for (CeedInt i = 0; i < 5; i++) {
-    for (CeedInt j = 0; j < 3; j++) stab[i][j] = 0;
-  }
+  SetValueN((CeedScalar *)stab, 0, 15);
   dYFromTau(strong_residual, Tau_d, dY);
   State ds = StateFromY_fwd(gas, s, dY);
   FluxInviscid_fwd(gas, s, ds, dF);
