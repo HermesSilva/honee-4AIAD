@@ -329,7 +329,7 @@ CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedSc
     if (use_divFdiff)
       for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
 
-    CeedScalar v_i[5] = {0.}, grad_v_i[5][3] = {{0.}}, kmstress[6], Tau_d[3], sigma;
+    CeedScalar v_i[5] = {0.}, grad_v_i[5][3] = {{0.}}, kmstress[6], Tau_d[3], sigma = 0;
     IFunction_Newtonian_Integrand(s, grad_s, s_dot, divFdiff_i, x_i, context, dXdx, v_i, grad_v_i, kmstress, Tau_d);
     if (context->idl_enable)
       InternalDampingLayer_IFunction_Integrand(s, context, context->idl_amplitude, context->idl_length, context->idl_start, x_i[0],
