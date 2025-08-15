@@ -423,7 +423,7 @@ CEED_QFUNCTION_HELPER State StateFromQ_fwd(NewtonianIdealGasContext gas, State s
   return ds;
 }
 
-CEED_QFUNCTION_HELPER void FluxInviscid(NewtonianIdealGasContext gas, State s, StateConservative Flux[3]) {
+CEED_QFUNCTION_HELPER void FluxInviscid(const NewtonianIdealGasContext gas, const State s, StateConservative Flux[3]) {
   for (CeedInt i = 0; i < 3; i++) {
     Flux[i].density = s.U.momentum[i];
     for (CeedInt j = 0; j < 3; j++) Flux[i].momentum[j] = s.U.momentum[i] * s.Y.velocity[j] + s.Y.pressure * (i == j);
@@ -431,7 +431,7 @@ CEED_QFUNCTION_HELPER void FluxInviscid(NewtonianIdealGasContext gas, State s, S
   }
 }
 
-CEED_QFUNCTION_HELPER void FluxInviscid_fwd(NewtonianIdealGasContext gas, State s, State ds, StateConservative dFlux[3]) {
+CEED_QFUNCTION_HELPER void FluxInviscid_fwd(const NewtonianIdealGasContext gas, const State s, const State ds, StateConservative dFlux[3]) {
   for (CeedInt i = 0; i < 3; i++) {
     dFlux[i].density = ds.U.momentum[i];
     for (CeedInt j = 0; j < 3; j++) {
@@ -441,7 +441,7 @@ CEED_QFUNCTION_HELPER void FluxInviscid_fwd(NewtonianIdealGasContext gas, State 
   }
 }
 
-CEED_QFUNCTION_HELPER StateConservative FluxInviscidDotNormal(NewtonianIdealGasContext gas, State s, const CeedScalar normal[3]) {
+CEED_QFUNCTION_HELPER StateConservative FluxInviscidDotNormal(const NewtonianIdealGasContext gas, const State s, const CeedScalar normal[3]) {
   StateConservative Flux[3], Flux_dot_n = {0};
   FluxInviscid(gas, s, Flux);
   for (CeedInt i = 0; i < 3; i++) {
@@ -452,7 +452,8 @@ CEED_QFUNCTION_HELPER StateConservative FluxInviscidDotNormal(NewtonianIdealGasC
   return Flux_dot_n;
 }
 
-CEED_QFUNCTION_HELPER StateConservative FluxInviscidDotNormal_fwd(NewtonianIdealGasContext gas, State s, State ds, const CeedScalar normal[3]) {
+CEED_QFUNCTION_HELPER StateConservative FluxInviscidDotNormal_fwd(const NewtonianIdealGasContext gas, const State s, const State ds,
+                                                                  const CeedScalar normal[3]) {
   StateConservative dFlux[3], Flux_dot_n = {0};
   FluxInviscid_fwd(gas, s, ds, dFlux);
   for (CeedInt i = 0; i < 3; i++) {
@@ -463,7 +464,7 @@ CEED_QFUNCTION_HELPER StateConservative FluxInviscidDotNormal_fwd(NewtonianIdeal
   return Flux_dot_n;
 }
 
-CEED_QFUNCTION_HELPER void FluxInviscidStrong(NewtonianIdealGasContext gas, State s, State ds[3], CeedScalar strong_conv[5]) {
+CEED_QFUNCTION_HELPER void FluxInviscidStrong(const NewtonianIdealGasContext gas, const State s, const State ds[3], CeedScalar strong_conv[5]) {
   for (CeedInt i = 0; i < 5; i++) strong_conv[i] = 0;
   for (CeedInt i = 0; i < 3; i++) {
     StateConservative dF[3];
@@ -474,7 +475,8 @@ CEED_QFUNCTION_HELPER void FluxInviscidStrong(NewtonianIdealGasContext gas, Stat
   }
 }
 
-CEED_QFUNCTION_HELPER void FluxTotal(const StateConservative F_inviscid[3], CeedScalar stress[3][3], CeedScalar Fe[3], CeedScalar Flux[5][3]) {
+CEED_QFUNCTION_HELPER void FluxTotal(const StateConservative F_inviscid[3], const CeedScalar stress[3][3], const CeedScalar Fe[3],
+                                     CeedScalar Flux[5][3]) {
   for (CeedInt j = 0; j < 3; j++) {
     Flux[0][j] = F_inviscid[j].density;
     for (CeedInt k = 0; k < 3; k++) Flux[k + 1][j] = F_inviscid[j].momentum[k] - stress[k][j];

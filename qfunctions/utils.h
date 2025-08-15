@@ -46,6 +46,11 @@ CEED_QFUNCTION_HELPER CeedScalar DotN(const CeedScalar *u, const CeedScalar *v, 
   return output;
 }
 
+// @brief y = \alpha x + y
+CEED_QFUNCTION_HELPER void AXPY(CeedScalar alpha, const CeedScalar *x, CeedScalar *y, CeedInt N) {
+  CeedPragmaSIMD for (CeedInt i = 0; i < N; i++) y[i] += alpha * x[i];
+}
+
 // @brief Dot product of 3 element vectors
 CEED_QFUNCTION_HELPER CeedScalar Dot3(const CeedScalar *u, const CeedScalar *v) { return u[0] * v[0] + u[1] * v[1] + u[2] * v[2]; }
 
@@ -259,7 +264,26 @@ CEED_QFUNCTION_HELPER void KMMetricTensor(const CeedScalar dXdx[3][3], CeedScala
   KMPack(g_ij, km_g_ij);
 }
 
-// @brief Linear ramp evaluation
+/**
+  @brief Linear ramp evaluation from set amplitude to zero
+
+      ▲
+      │
+     a│-------┬.
+      │       ┊ `-.
+      │       ┊    `-.
+      │       ┊       `-.______
+      └───────┴─────────┴────────> x
+              s        s+l
+
+  where "a" is `amplitude`, "s" is `start`, and "l" is `length`.
+
+  @param[in] amplitude Maximum value of the ramp
+  @param[in] length    Length of the ramp
+  @param[in] start     Location where ramp begins to reduce from `amplitude` to 0
+  @param[in] x         Input location
+  @return Value of linear ramp function
+**/
 CEED_QFUNCTION_HELPER CeedScalar LinearRampCoefficient(CeedScalar amplitude, CeedScalar length, CeedScalar start, CeedScalar x) {
   if (x < start) {
     return amplitude;
