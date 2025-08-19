@@ -6,20 +6,16 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem) __attribute__((weak));
-PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem) {
-  PetscFunctionBeginUser;
-  SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "Must build with SMARTREDIS_DIR set to run %s", __func__);
-};
+#define SMARTSIM_WEAK(...)                                                                                       \
+  __VA_ARGS__ __attribute__((weak));                                                                             \
+  __VA_ARGS__ {                                                                                                  \
+    PetscFunctionBeginUser;                                                                                      \
+    SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "HONEE must be built with SMARTREDIS_DIR set to run %s", __func__); \
+  };
 
-PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx) __attribute__((weak));
-PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx) {
-  PetscFunctionBeginUser;
-  SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "Must build with SMARTREDIS_DIR set to run %s", __func__);
-};
+SMARTSIM_WEAK(PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem))
+SMARTSIM_WEAK(PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx))
+SMARTSIM_WEAK(PetscErrorCode TSPostStep_SGS_DD_Training(TS ts))
 
-PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) __attribute__((weak));
-PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
-  PetscFunctionBeginUser;
-  SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "Must build with SMARTREDIS_DIR set to run %s", __func__);
-};
+SMARTSIM_WEAK(PetscErrorCode TSMonitor_SmartSimSolutionSetup(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx))
+SMARTSIM_WEAK(PetscErrorCode TSMonitor_SmartSimSolution(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx))

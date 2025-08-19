@@ -6,7 +6,7 @@
 #include <differential_filter.h>
 #include <navierstokes.h>
 #include <petscdmplex.h>
-#include <smartsim.h>
+#include <smartsim-impl.h>
 
 typedef struct {
   DM                   dm_dd_training;
@@ -21,7 +21,7 @@ typedef struct {
 
 #define SGS_DD_TRAIN_KEY "SGS Data Driven Training"
 
-PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData *sgs_dd_train) {
+static PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData *sgs_dd_train) {
   SGS_DD_TrainingData sgs_dd_train_ = *sgs_dd_train;
 
   PetscFunctionBeginUser;
@@ -167,10 +167,11 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem) {
+PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee) {
   SGS_DDTrainingContext    sgsdd_train_ctx;
   SGS_DD_TrainingSetupData sgs_dd_train_setup_data;
   SGS_DD_TrainingData      sgs_dd_train;
+  ProblemData              problem = honee->problem_data;
 
   PetscFunctionBeginUser;
 

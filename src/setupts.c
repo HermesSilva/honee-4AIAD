@@ -10,6 +10,7 @@
 
 #include <differential_filter.h>
 #include <navierstokes.h>
+#include <smartsim.h>
 #include <spanstats.h>
 #include "../qfunctions/newtonian_state.h"
 
@@ -487,6 +488,8 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
                                     TSMonitor_SpanwiseStatisticsCflPe, SpanwiseStatisticsSetup_CflPe));
   PetscCall(TSMonitorSetFromOptions(*ts, "-diff_filter_monitor", "Run differential filtering for every timestep (used for testing)", NULL,
                                     TSMonitor_DifferentialFilter, TSMonitor_DifferentialFilterSetup));
+  PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_smartsim_solution", "Write solution to SmartSim database", NULL, TSMonitor_SmartSimSolution,
+                                    TSMonitor_SmartSimSolutionSetup));
   PetscOptionsEnd();
 
   if (app_ctx->sgs_train_enable) PetscCall(TSMonitorSet(*ts, TSMonitor_SGS_DD_Training, honee, NULL));
