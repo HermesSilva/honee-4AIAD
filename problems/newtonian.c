@@ -363,11 +363,6 @@ static PetscErrorCode BoundaryIntegralBCSetup_CreateIJacobianQF(BCDefinition bc_
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static const char *const conservative_component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
-static const char *const primitive_component_names[]    = {"Pressure", "VelocityX", "VelocityY", "VelocityZ", "Temperature"};
-static const char *const entropy_component_names[]      = {"EntropyDensity", "EntropyMomentumX", "EntropyMomentumY", "EntropyMomentumZ",
-                                                           "EntropyTotalEnergy"};
-
 PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   SetupContext             setup_context;
   Honee                    honee  = *(Honee *)ctx;
@@ -380,31 +375,118 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscBool                unit_tests;
   NewtonianIdealGasContext newtonian_ig_ctx;
   CeedQFunctionContext     newtonian_ig_qfctx;
+  // Option Defaults
+  CeedScalar     cv             = 717.;          // J/(kg K)
+  CeedScalar     cp             = 1004.;         // J/(kg K)
+  CeedScalar     g[3]           = {0, 0, 0};     // m/s^2
+  CeedScalar     lambda         = -2. / 3.;      // -
+  CeedScalar     mu             = 1.8e-5;        // Pa s, dynamic viscosity
+  CeedScalar     k              = 0.02638;       // W/(m K)
+  CeedScalar     c_tau          = 0.5 / degree;  // -
+  CeedScalar     Ctau_t         = 1.0;           // -
+  CeedScalar     Cv_func[3]     = {36, 60, 128};
+  CeedScalar     Ctau_v         = Cv_func[(CeedInt)Min(3, degree) - 1];
+  CeedScalar     Ctau_C         = 0.25 / degree;
+  CeedScalar     Ctau_M         = 0.25 / degree;
+  CeedScalar     Ctau_E         = 0.125;
+  StatePrimitive reference      = {.pressure = 1.01e5, .velocity = {0}, .temperature = 288.15};
+  CeedScalar     idl_decay_time = -1, idl_start = 0, idl_length = 0, idl_pressure = reference.pressure;
+  PetscBool      idl_enable = PETSC_FALSE;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscCalloc1(1, &setup_context));
-  PetscCall(PetscCalloc1(1, &newtonian_ig_ctx));
+  PetscBool given_option = PETSC_FALSE;
+  PetscOptionsBegin(comm, NULL, "Options for Newtonian Ideal Gas based problem", NULL);
+  PetscCall(PetscOptionsEnum("-state_var", "State variables used", NULL, StateVariables, (PetscEnum)(state_var = STATEVAR_CONSERVATIVE),
+                             (PetscEnum *)&state_var, NULL));
 
-  // ------------------------------------------------------
-  //           Setup Generic Newtonian IG Problem
-  // ------------------------------------------------------
-  problem->num_comps_jac_data           = 14;
+  // Newtonian fluid properties
+  PetscCall(PetscOptionsScalar("-cv", "Heat capacity at constant volume", NULL, cv, &cv, NULL));
+  PetscCall(PetscOptionsScalar("-cp", "Heat capacity at constant pressure", NULL, cp, &cp, NULL));
+  PetscCall(PetscOptionsScalar("-lambda", "Stokes hypothesis second viscosity coefficient", NULL, lambda, &lambda, NULL));
+  PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, mu, &mu, NULL));
+  PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, k, &k, NULL));
+
+  PetscInt dim = 3;
+  PetscCall(PetscOptionsDeprecated("-g", "-gravity", "libCEED 0.11.1", NULL));
+  PetscCall(PetscOptionsRealArray("-gravity", "Gravitational acceleration vector", NULL, g, &dim, &given_option));
+  if (given_option) PetscCheck(dim == 3, comm, PETSC_ERR_ARG_SIZ, "Gravity vector must be size 3, %" PetscInt_FMT " values given", dim);
+
+  // Stabilization parameters
+  PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
+  PetscCall(PetscOptionsScalar("-c_tau", "Stabilization constant", NULL, c_tau, &c_tau, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, Ctau_t, &Ctau_t, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_v", "Stabilization viscous constant", NULL, Ctau_v, &Ctau_v, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_C", "Stabilization continuity constant", NULL, Ctau_C, &Ctau_C, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_M", "Stabilization momentum constant", NULL, Ctau_M, &Ctau_M, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_E", "Stabilization energy constant", NULL, Ctau_E, &Ctau_E, NULL));
+
+  dim = 3;
+  PetscCall(PetscOptionsScalar("-reference_pressure", "Reference/initial pressure", NULL, reference.pressure, &reference.pressure, NULL));
+  PetscCall(PetscOptionsScalarArray("-reference_velocity", "Reference/initial velocity", NULL, reference.velocity, &dim, NULL));
+  PetscCall(PetscOptionsScalar("-reference_temperature", "Reference/initial temperature", NULL, reference.temperature, &reference.temperature, NULL));
+
+  PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
+  PetscCall(PetscOptionsBool("-newtonian_unit_tests", "Run Newtonian unit tests", NULL, unit_tests = PETSC_FALSE, &unit_tests, NULL));
+  PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
+             "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
+
+  // IDL Settings
+  PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
+                               NULL, idl_decay_time, &idl_decay_time, &idl_enable));
+  PetscCheck(!(idl_enable && idl_decay_time == 0), comm, PETSC_ERR_SUP, "idl_decay_time may not be equal to zero.");
+  if (idl_decay_time < 0) idl_enable = PETSC_FALSE;
+  PetscCall(PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, idl_start, &idl_start, NULL));
+  PetscCall(PetscOptionsScalar("-idl_length", "Length of IDL in the positive x direction", NULL, idl_length, &idl_length, NULL));
+  idl_pressure = reference.pressure;
+  PetscCall(PetscOptionsScalar("-idl_pressure", "Pressure IDL uses as reference (default is `-reference_pressure`)", NULL, idl_pressure,
+                               &idl_pressure, NULL));
+  PetscOptionsEnd();
+
+  // Set problem information
+  problem->num_comps_jac_data = 14;
+  if (idl_enable) problem->num_comps_jac_data += 1;
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
-
-  problem->num_components = 5;
+  problem->num_components               = 5;
   PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
-  switch (honee->phys->state_var) {
+  static const char *const conservative_component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
+  static const char *const primitive_component_names[]    = {"Pressure", "VelocityX", "VelocityY", "VelocityZ", "Temperature"};
+  static const char *const entropy_component_names[]      = {"EntropyDensity", "EntropyMomentumX", "EntropyMomentumY", "EntropyMomentumZ",
+                                                             "EntropyTotalEnergy"};
+
+  switch (state_var) {
     case STATEVAR_CONSERVATIVE:
+      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Conserv;
+      problem->ics.qf_loc                      = ICsNewtonianIG_Conserv_loc;
+      problem->apply_vol_rhs.qf_func_ptr       = RHSFunction_Newtonian;
+      problem->apply_vol_rhs.qf_loc            = RHSFunction_Newtonian_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Conserv;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Conserv_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Conserv;
+      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Conserv_loc;
       for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(conservative_component_names[i], &problem->component_names[i]));
       break;
     case STATEVAR_PRIMITIVE:
+      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Prim;
+      problem->ics.qf_loc                      = ICsNewtonianIG_Prim_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Prim;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Prim_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Prim;
+      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Prim_loc;
       for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(primitive_component_names[i], &problem->component_names[i]));
       break;
     case STATEVAR_ENTROPY:
+      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Entropy;
+      problem->ics.qf_loc                      = ICsNewtonianIG_Entropy_loc;
+      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Entropy;
+      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Entropy_loc;
+      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Entropy;
+      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Entropy_loc;
       for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(entropy_component_names[i], &problem->component_names[i]));
       break;
   }
+
+  if (stab == STAB_SUPG && !implicit) problem->create_mass_operator = CreateKSPMassOperator_NewtonianStabilized;
 
   PetscCall(DivDiffFluxProjectionCreate(honee, 4, &honee->diff_flux_proj));
   if (honee->diff_flux_proj) {
@@ -451,113 +533,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   }
 
   // ------------------------------------------------------
-  //             Create the QFunction context
-  // ------------------------------------------------------
-  CeedScalar cv         = 717.;          // J/(kg K)
-  CeedScalar cp         = 1004.;         // J/(kg K)
-  CeedScalar g[3]       = {0, 0, 0};     // m/s^2
-  CeedScalar lambda     = -2. / 3.;      // -
-  CeedScalar mu         = 1.8e-5;        // Pa s, dynamic viscosity
-  CeedScalar k          = 0.02638;       // W/(m K)
-  CeedScalar c_tau      = 0.5 / degree;  // -
-  CeedScalar Ctau_t     = 1.0;           // -
-  CeedScalar Cv_func[3] = {36, 60, 128};
-  CeedScalar Ctau_v     = Cv_func[(CeedInt)Min(3, degree) - 1];
-  CeedScalar Ctau_C     = 0.25 / degree;
-  CeedScalar Ctau_M     = 0.25 / degree;
-  CeedScalar Ctau_E     = 0.125;
-  PetscReal  domain_min[3], domain_max[3], domain_size[3];
-  PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
-  for (PetscInt i = 0; i < 3; i++) domain_size[i] = domain_max[i] - domain_min[i];
-
-  StatePrimitive reference      = {.pressure = 1.01e5, .velocity = {0}, .temperature = 288.15};
-  CeedScalar     idl_decay_time = -1, idl_start = 0, idl_length = 0, idl_pressure = reference.pressure;
-  PetscBool      idl_enable = PETSC_FALSE;
-
-  // ------------------------------------------------------
-  //              Command line Options
-  // ------------------------------------------------------
-  PetscBool given_option = PETSC_FALSE;
-  PetscOptionsBegin(comm, NULL, "Options for Newtonian Ideal Gas based problem", NULL);
-  // -- Conservative vs Primitive variables
-  PetscCall(PetscOptionsEnum("-state_var", "State variables used", NULL, StateVariables, (PetscEnum)(state_var = STATEVAR_CONSERVATIVE),
-                             (PetscEnum *)&state_var, NULL));
-
-  switch (state_var) {
-    case STATEVAR_CONSERVATIVE:
-      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Conserv;
-      problem->ics.qf_loc                      = ICsNewtonianIG_Conserv_loc;
-      problem->apply_vol_rhs.qf_func_ptr       = RHSFunction_Newtonian;
-      problem->apply_vol_rhs.qf_loc            = RHSFunction_Newtonian_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Conserv;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Conserv_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Conserv;
-      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Conserv_loc;
-      break;
-    case STATEVAR_PRIMITIVE:
-      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Prim;
-      problem->ics.qf_loc                      = ICsNewtonianIG_Prim_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Prim;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Prim_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Prim;
-      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Prim_loc;
-      break;
-    case STATEVAR_ENTROPY:
-      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Entropy;
-      problem->ics.qf_loc                      = ICsNewtonianIG_Entropy_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Entropy;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Entropy_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Entropy;
-      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Entropy_loc;
-      break;
-  }
-
-  // -- Physics
-  PetscCall(PetscOptionsScalar("-cv", "Heat capacity at constant volume", NULL, cv, &cv, NULL));
-  PetscCall(PetscOptionsScalar("-cp", "Heat capacity at constant pressure", NULL, cp, &cp, NULL));
-  PetscCall(PetscOptionsScalar("-lambda", "Stokes hypothesis second viscosity coefficient", NULL, lambda, &lambda, NULL));
-  PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, mu, &mu, NULL));
-  PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, k, &k, NULL));
-
-  PetscInt dim = 3;
-  PetscCall(PetscOptionsDeprecated("-g", "-gravity", "libCEED 0.11.1", NULL));
-  PetscCall(PetscOptionsRealArray("-gravity", "Gravitational acceleration vector", NULL, g, &dim, &given_option));
-  if (given_option) PetscCheck(dim == 3, comm, PETSC_ERR_ARG_SIZ, "Gravity vector must be size 3, %" PetscInt_FMT " values given", dim);
-
-  PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
-  PetscCall(PetscOptionsScalar("-c_tau", "Stabilization constant", NULL, c_tau, &c_tau, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, Ctau_t, &Ctau_t, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_v", "Stabilization viscous constant", NULL, Ctau_v, &Ctau_v, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_C", "Stabilization continuity constant", NULL, Ctau_C, &Ctau_C, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_M", "Stabilization momentum constant", NULL, Ctau_M, &Ctau_M, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_E", "Stabilization energy constant", NULL, Ctau_E, &Ctau_E, NULL));
-  PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
-  PetscCall(PetscOptionsBool("-newtonian_unit_tests", "Run Newtonian unit tests", NULL, unit_tests = PETSC_FALSE, &unit_tests, NULL));
-
-  dim = 3;
-  PetscCall(PetscOptionsScalar("-reference_pressure", "Reference/initial pressure", NULL, reference.pressure, &reference.pressure, NULL));
-  PetscCall(PetscOptionsScalarArray("-reference_velocity", "Reference/initial velocity", NULL, reference.velocity, &dim, NULL));
-  PetscCall(PetscOptionsScalar("-reference_temperature", "Reference/initial temperature", NULL, reference.temperature, &reference.temperature, NULL));
-
-  // -- Warnings
-  PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
-             "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
-
-  PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
-                               NULL, idl_decay_time, &idl_decay_time, &idl_enable));
-  PetscCheck(!(idl_enable && idl_decay_time == 0), comm, PETSC_ERR_SUP, "idl_decay_time may not be equal to zero.");
-  if (idl_decay_time < 0) idl_enable = PETSC_FALSE;
-  if (idl_enable) problem->num_comps_jac_data++;
-  PetscCall(PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, idl_start, &idl_start, NULL));
-  PetscCall(PetscOptionsScalar("-idl_length", "Length of IDL in the positive x direction", NULL, idl_length, &idl_length, NULL));
-  idl_pressure = reference.pressure;
-  PetscCall(PetscOptionsScalar("-idl_pressure", "Pressure IDL uses as reference (default is `-reference_pressure`)", NULL, idl_pressure,
-                               &idl_pressure, NULL));
-  PetscOptionsEnd();
-
-  if (stab == STAB_SUPG && !implicit) problem->create_mass_operator = CreateKSPMassOperator_NewtonianStabilized;
-
-  // ------------------------------------------------------
   //           Set up the QFunction context
   // ------------------------------------------------------
   // -- Scale variables to desired units
@@ -566,17 +541,21 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   cp *= units->J_per_kg_K;
   mu *= units->Pascal * units->second;
   k *= units->W_per_m_K;
-  for (PetscInt i = 0; i < 3; i++) domain_size[i] *= units->meter;
   for (PetscInt i = 0; i < 3; i++) g[i] *= units->m_per_squared_s;
   reference.pressure *= units->Pascal;
   for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= units->meter / units->second;
   reference.temperature *= units->Kelvin;
+
+  PetscReal domain_min[3], domain_max[3], domain_size[3];
+  PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
+  for (PetscInt i = 0; i < 3; i++) domain_size[i] = (domain_max[i] - domain_min[i]) * units->meter;
 
   // -- Solver Settings
   honee->phys->implicit  = implicit;
   honee->phys->state_var = state_var;
 
   // -- QFunction Context
+  PetscCall(PetscCalloc1(1, &newtonian_ig_ctx));
   newtonian_ig_ctx->lambda          = lambda;
   newtonian_ig_ctx->mu              = mu;
   newtonian_ig_ctx->k               = k;
@@ -600,6 +579,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscArraycpy(newtonian_ig_ctx->g, g, 3));
 
   // -- Setup Context
+  PetscCall(PetscCalloc1(1, &setup_context));
   setup_context->reference = reference;
   setup_context->gas       = *newtonian_ig_ctx;
   setup_context->lx        = domain_size[0];
@@ -653,9 +633,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
     }
   }
 
-  if (unit_tests) {
-    PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx));
-  }
+  if (unit_tests) PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
