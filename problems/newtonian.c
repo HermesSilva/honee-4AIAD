@@ -375,50 +375,61 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscBool                unit_tests;
   NewtonianIdealGasContext newtonian_ig_ctx;
   CeedQFunctionContext     newtonian_ig_qfctx;
-  // Option Defaults
-  CeedScalar     cv             = 717.;          // J/(kg K)
-  CeedScalar     cp             = 1004.;         // J/(kg K)
-  CeedScalar     g[3]           = {0, 0, 0};     // m/s^2
-  CeedScalar     lambda         = -2. / 3.;      // -
-  CeedScalar     mu             = 1.8e-5;        // Pa s, dynamic viscosity
-  CeedScalar     k              = 0.02638;       // W/(m K)
-  CeedScalar     c_tau          = 0.5 / degree;  // -
-  CeedScalar     Ctau_t         = 1.0;           // -
-  CeedScalar     Cv_func[3]     = {36, 60, 128};
-  CeedScalar     Ctau_v         = Cv_func[(CeedInt)Min(3, degree) - 1];
-  CeedScalar     Ctau_C         = 0.25 / degree;
-  CeedScalar     Ctau_M         = 0.25 / degree;
-  CeedScalar     Ctau_E         = 0.125;
-  StatePrimitive reference      = {.pressure = 1.01e5, .velocity = {0}, .temperature = 288.15};
-  CeedScalar     idl_decay_time = -1, idl_start = 0, idl_length = 0, idl_pressure = reference.pressure;
-  PetscBool      idl_enable = PETSC_FALSE;
 
   PetscFunctionBeginUser;
-  PetscBool given_option = PETSC_FALSE;
+  // Option Defaults
+  StatePrimitive reference      = {.pressure = 1.01e5, .velocity = {0}, .temperature = 288.15};
+  CeedScalar     idl_decay_time = -1;
+  {
+    PetscCall(PetscNew(&newtonian_ig_ctx));
+    const CeedScalar                 Cv_func[3]                = {36, 60, 128};
+    struct NewtonianIdealGasContext_ newtonian_ig_ctx_defaults = {
+        .cv           = 717., // J/(kg K)
+        .cp           = 1004., // J/(kg K)
+        .g            = {0, 0, 0}, // m/s^2
+        .lambda       = -2. / 3., // -
+        .mu           = 1.8e-5, // Pa s, dynamic viscosity
+        .k            = 0.02638, // W/(m K)
+        .c_tau        = 0.5 / degree, // -
+        .Ctau_t       = 1.0, // -
+        .Ctau_v       = Cv_func[(CeedInt)Min(3, degree) - 1],
+        .Ctau_C       = 0.25 / degree,
+        .Ctau_M       = 0.25 / degree,
+        .Ctau_E       = 0.125,
+        .idl_start    = 0,
+        .idl_length   = 0,
+        .idl_pressure = reference.pressure,
+        .idl_enable   = PETSC_FALSE,
+    };
+    *newtonian_ig_ctx = newtonian_ig_ctx_defaults;
+  }
+
   PetscOptionsBegin(comm, NULL, "Options for Newtonian Ideal Gas based problem", NULL);
   PetscCall(PetscOptionsEnum("-state_var", "State variables used", NULL, StateVariables, (PetscEnum)(state_var = STATEVAR_CONSERVATIVE),
                              (PetscEnum *)&state_var, NULL));
 
   // Newtonian fluid properties
-  PetscCall(PetscOptionsScalar("-cv", "Heat capacity at constant volume", NULL, cv, &cv, NULL));
-  PetscCall(PetscOptionsScalar("-cp", "Heat capacity at constant pressure", NULL, cp, &cp, NULL));
-  PetscCall(PetscOptionsScalar("-lambda", "Stokes hypothesis second viscosity coefficient", NULL, lambda, &lambda, NULL));
-  PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, mu, &mu, NULL));
-  PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, k, &k, NULL));
+  PetscCall(PetscOptionsScalar("-cv", "Heat capacity at constant volume", NULL, newtonian_ig_ctx->cv, &newtonian_ig_ctx->cv, NULL));
+  PetscCall(PetscOptionsScalar("-cp", "Heat capacity at constant pressure", NULL, newtonian_ig_ctx->cp, &newtonian_ig_ctx->cp, NULL));
+  PetscCall(PetscOptionsScalar("-lambda", "Stokes hypothesis second viscosity coefficient", NULL, newtonian_ig_ctx->lambda, &newtonian_ig_ctx->lambda,
+                               NULL));
+  PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, newtonian_ig_ctx->mu, &newtonian_ig_ctx->mu, NULL));
+  PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, newtonian_ig_ctx->k, &newtonian_ig_ctx->k, NULL));
 
-  PetscInt dim = 3;
+  PetscInt  dim          = 3;
+  PetscBool given_option = PETSC_FALSE;
   PetscCall(PetscOptionsDeprecated("-g", "-gravity", "libCEED 0.11.1", NULL));
-  PetscCall(PetscOptionsRealArray("-gravity", "Gravitational acceleration vector", NULL, g, &dim, &given_option));
+  PetscCall(PetscOptionsRealArray("-gravity", "Gravitational acceleration vector", NULL, newtonian_ig_ctx->g, &dim, &given_option));
   if (given_option) PetscCheck(dim == 3, comm, PETSC_ERR_ARG_SIZ, "Gravity vector must be size 3, %" PetscInt_FMT " values given", dim);
 
   // Stabilization parameters
   PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
-  PetscCall(PetscOptionsScalar("-c_tau", "Stabilization constant", NULL, c_tau, &c_tau, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, Ctau_t, &Ctau_t, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_v", "Stabilization viscous constant", NULL, Ctau_v, &Ctau_v, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_C", "Stabilization continuity constant", NULL, Ctau_C, &Ctau_C, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_M", "Stabilization momentum constant", NULL, Ctau_M, &Ctau_M, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_E", "Stabilization energy constant", NULL, Ctau_E, &Ctau_E, NULL));
+  PetscCall(PetscOptionsScalar("-c_tau", "Stabilization constant", NULL, newtonian_ig_ctx->c_tau, &newtonian_ig_ctx->c_tau, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, newtonian_ig_ctx->Ctau_t, &newtonian_ig_ctx->Ctau_t, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_v", "Stabilization viscous constant", NULL, newtonian_ig_ctx->Ctau_v, &newtonian_ig_ctx->Ctau_v, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_C", "Stabilization continuity constant", NULL, newtonian_ig_ctx->Ctau_C, &newtonian_ig_ctx->Ctau_C, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_M", "Stabilization momentum constant", NULL, newtonian_ig_ctx->Ctau_M, &newtonian_ig_ctx->Ctau_M, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_E", "Stabilization energy constant", NULL, newtonian_ig_ctx->Ctau_E, &newtonian_ig_ctx->Ctau_E, NULL));
 
   dim = 3;
   PetscCall(PetscOptionsScalar("-reference_pressure", "Reference/initial pressure", NULL, reference.pressure, &reference.pressure, NULL));
@@ -431,20 +442,27 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
              "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
 
   // IDL Settings
-  PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
-                               NULL, idl_decay_time, &idl_decay_time, &idl_enable));
-  PetscCheck(!(idl_enable && idl_decay_time == 0), comm, PETSC_ERR_SUP, "idl_decay_time may not be equal to zero.");
-  if (idl_decay_time < 0) idl_enable = PETSC_FALSE;
-  PetscCall(PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, idl_start, &idl_start, NULL));
-  PetscCall(PetscOptionsScalar("-idl_length", "Length of IDL in the positive x direction", NULL, idl_length, &idl_length, NULL));
-  idl_pressure = reference.pressure;
-  PetscCall(PetscOptionsScalar("-idl_pressure", "Pressure IDL uses as reference (default is `-reference_pressure`)", NULL, idl_pressure,
-                               &idl_pressure, NULL));
+  {
+    PetscBool idl_enable = (PetscBool)newtonian_ig_ctx->idl_enable;  // Need PetscBool variable to read in from PetscOptionsScalar()
+    PetscCall(PetscOptionsScalar("-idl_decay_time", "Characteristic timescale of the pressure deviance decay. The timestep is good starting point",
+                                 NULL, idl_decay_time, &idl_decay_time, &idl_enable));
+    PetscCheck(!(idl_enable && idl_decay_time == 0), comm, PETSC_ERR_SUP, "idl_decay_time may not be equal to zero.");
+    if (idl_decay_time < 0) idl_enable = PETSC_FALSE;
+    newtonian_ig_ctx->idl_enable = idl_enable;
+
+    PetscCall(
+        PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, newtonian_ig_ctx->idl_start, &newtonian_ig_ctx->idl_start, NULL));
+    PetscCall(PetscOptionsScalar("-idl_length", "Length of IDL in the positive x direction", NULL, newtonian_ig_ctx->idl_length,
+                                 &newtonian_ig_ctx->idl_length, NULL));
+    newtonian_ig_ctx->idl_pressure = reference.pressure;
+    PetscCall(PetscOptionsScalar("-idl_pressure", "Pressure IDL uses as reference (default is `-reference_pressure`)", NULL,
+                                 newtonian_ig_ctx->idl_pressure, &newtonian_ig_ctx->idl_pressure, NULL));
+  }
   PetscOptionsEnd();
 
   // Set problem information
   problem->num_comps_jac_data = 14;
-  if (idl_enable) problem->num_comps_jac_data += 1;
+  if (newtonian_ig_ctx->idl_enable) problem->num_comps_jac_data += 1;
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
   problem->num_components               = 5;
@@ -537,11 +555,11 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   // ------------------------------------------------------
   // -- Scale variables to desired units
   Units units = honee->units;
-  cv *= units->J_per_kg_K;
-  cp *= units->J_per_kg_K;
-  mu *= units->Pascal * units->second;
-  k *= units->W_per_m_K;
-  for (PetscInt i = 0; i < 3; i++) g[i] *= units->m_per_squared_s;
+  newtonian_ig_ctx->cv *= units->J_per_kg_K;
+  newtonian_ig_ctx->cp *= units->J_per_kg_K;
+  newtonian_ig_ctx->mu *= units->Pascal * units->second;
+  newtonian_ig_ctx->k *= units->W_per_m_K;
+  for (PetscInt i = 0; i < 3; i++) newtonian_ig_ctx->g[i] *= units->m_per_squared_s;
   reference.pressure *= units->Pascal;
   for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= units->meter / units->second;
   reference.temperature *= units->Kelvin;
@@ -555,31 +573,14 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   honee->phys->state_var = state_var;
 
   // -- QFunction Context
-  PetscCall(PetscCalloc1(1, &newtonian_ig_ctx));
-  newtonian_ig_ctx->lambda          = lambda;
-  newtonian_ig_ctx->mu              = mu;
-  newtonian_ig_ctx->k               = k;
-  newtonian_ig_ctx->cv              = cv;
-  newtonian_ig_ctx->cp              = cp;
-  newtonian_ig_ctx->c_tau           = c_tau;
-  newtonian_ig_ctx->Ctau_t          = Ctau_t;
-  newtonian_ig_ctx->Ctau_v          = Ctau_v;
-  newtonian_ig_ctx->Ctau_C          = Ctau_C;
-  newtonian_ig_ctx->Ctau_M          = Ctau_M;
-  newtonian_ig_ctx->Ctau_E          = Ctau_E;
   newtonian_ig_ctx->stabilization   = stab;
   newtonian_ig_ctx->is_implicit     = implicit;
   newtonian_ig_ctx->state_var       = state_var;
-  newtonian_ig_ctx->idl_enable      = idl_enable;
   newtonian_ig_ctx->idl_amplitude   = 1 / (idl_decay_time * units->second);
-  newtonian_ig_ctx->idl_start       = idl_start * units->meter;
-  newtonian_ig_ctx->idl_length      = idl_length * units->meter;
-  newtonian_ig_ctx->idl_pressure    = idl_pressure;
   newtonian_ig_ctx->divFdiff_method = honee->app_ctx->divFdiffproj_method;
-  PetscCall(PetscArraycpy(newtonian_ig_ctx->g, g, 3));
 
   // -- Setup Context
-  PetscCall(PetscCalloc1(1, &setup_context));
+  PetscCall(PetscNew(&setup_context));
   setup_context->reference = reference;
   setup_context->gas       = *newtonian_ig_ctx;
   setup_context->lx        = domain_size[0];
