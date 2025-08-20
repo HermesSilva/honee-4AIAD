@@ -3,6 +3,7 @@
 #pragma once
 
 #include <c_client.h>
+#include <c_dataset.h>
 #include <honee.h>
 #include <petscsys.h>
 #include <smartsim.h>
@@ -34,3 +35,9 @@ typedef struct {
 PetscErrorCode HoneeGetSmartSimData(Honee honee, SmartSimData *smartsim);
 
 PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const size_t name_length);
+
+#if defined(PETSC_USE_64BIT_INDICES)
+#define SRMetadataTypePetscInt SRMetadataTypeInt64
+#else
+#define SRMetadataTypePetscInt SRMetadataTypeInt32
+#endif

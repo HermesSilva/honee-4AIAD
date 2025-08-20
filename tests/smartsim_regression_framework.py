@@ -157,11 +157,15 @@ class SmartSimTest(object):
             assert client.poll_tensor("step", 250, 10)
             assert_equal(client.get_tensor("step")[0], 2)
 
-            assert client.poll_tensor("y.0.flow_solution", 250, 5)
+            assert client.poll_dataset("y.0.flow_solution", 250, 5)
             test_data_path = test_output_dir / "y0flow_solution_output.npy"
             assert test_data_path.is_file()
             correct_value = np.load(test_data_path)
-            database_value = client.get_tensor("y.0.flow_solution")
+            dataset = client.get_dataset("y.0.flow_solution")
+            assert "step" in dataset.get_metadata_field_names()
+            assert "time" in dataset.get_metadata_field_names()
+            assert_equal(dataset.get_meta_scalars("step")[0], 2)
+            database_value = dataset.get_tensor("solution")
             verify_training_data(database_value, correct_value, ceed_resource)
 
             assert client.poll_tensor("y.0.0", 250, 5)

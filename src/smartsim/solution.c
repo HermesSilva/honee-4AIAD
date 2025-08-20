@@ -69,6 +69,7 @@ PetscErrorCode TSMonitor_SmartSimSolution(TS ts, PetscInt step_num, PetscReal so
   {  // -- Send solution data to SmartSim
     char   array_key[PETSC_MAX_PATH_LEN];
     size_t array_key_len;
+    void  *dataset;
 
     if (smartsimsol->overwrite_training_data) {
       PetscCall(PetscSNPrintf(array_key, sizeof array_key, "%s.flow_solution", smartsim->rank_id_name));
@@ -76,27 +77,24 @@ PetscErrorCode TSMonitor_SmartSimSolution(TS ts, PetscInt step_num, PetscReal so
       PetscCall(PetscSNPrintf(array_key, sizeof array_key, "%s.flow_solution.%" PetscInt_FMT, smartsim->rank_id_name, step_num));
     }
     PetscCall(PetscStrlen(array_key, &array_key_len));
+    PetscCallSmartRedis(CDataSet(array_key, array_key_len, &dataset));
 
     {
       const PetscScalar *Q_output_array;
       PetscCall(VecGetArrayRead(Q_output, &Q_output_array));
       PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Write, 0, 0, 0, 0));
-      PetscCallSmartRedis(put_tensor(smartsim->client, array_key, array_key_len, (void *)Q_output_array, smartsimsol->local_array_dims, 2,
-                                     SRTensorTypeDouble, SRMemLayoutContiguous));
+      PetscCallSmartRedis(
+          add_tensor(dataset, "solution", 8, (void *)Q_output_array, smartsimsol->local_array_dims, 2, SRTensorTypeDouble, SRMemLayoutContiguous));
       PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Write, 0, 0, 0, 0));
       PetscCall(VecRestoreArrayRead(Q_output, &Q_output_array));
     }
-  }
 
-  if (rank % smartsim->collocated_database_num_ranks == 0) {
-    const char tensor_name[] = "flow_solution_step";
-    size_t     dim_2[1]      = {2};
-    PetscInt64 step_array[2] = {step_num, step_num};
-
-    PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
-    PetscCallSmartRedis(
-        put_tensor(smartsim->client, tensor_name, strlen(tensor_name), step_array, dim_2, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
-    PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
+    PetscCallSmartRedis(add_meta_scalar(dataset, "step", 4, (void *)&step_num, SRMetadataTypePetscInt));
+    PetscCallSmartRedis(add_meta_scalar(dataset, "time", 4, (void *)&solution_time, SRMetadataTypeDouble));
+    PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Write, 0, 0, 0, 0));
+    PetscCallSmartRedis(put_dataset(smartsim->client, dataset));
+    PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Write, 0, 0, 0, 0));
+    PetscCallSmartRedis(DeallocateDataSet(&dataset));
   }
 
   PetscCall(DMRestoreGlobalVector(output_dm, &Q_output));
