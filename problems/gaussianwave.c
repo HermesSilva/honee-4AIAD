@@ -55,7 +55,7 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
   for (int i = 0; i < 3; i++) epicenter[i] *= honee->units->meter;
 
   // -- Set gausswave_ctx struct values
-  PetscCall(PetscCalloc1(1, &gausswave_ctx));
+  PetscCall(PetscNew(&gausswave_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition  bc_def = problem->bc_defs[b];

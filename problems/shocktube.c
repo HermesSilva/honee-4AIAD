@@ -36,8 +36,8 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   CeedQFunctionContext shocktube_qfctx;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscCalloc1(1, &setup_context));
-  PetscCall(PetscCalloc1(1, &shocktube_ctx));
+  PetscCall(PetscNew(&setup_context));
+  PetscCall(PetscNew(&shocktube_ctx));
 
   // ------------------------------------------------------
   //               SET UP SHOCKTUBE

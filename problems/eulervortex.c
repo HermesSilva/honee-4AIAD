@@ -63,7 +63,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   PetscInt             dim;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscCalloc1(1, &euler_ctx));
+  PetscCall(PetscNew(&euler_ctx));
 
   // ------------------------------------------------------
   //               SET UP EULER VORTEX

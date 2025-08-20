@@ -392,8 +392,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   PetscInt                   dim;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscCalloc1(1, &setup_context));
-  PetscCall(PetscCalloc1(1, &advection_ctx));
+  PetscCall(PetscNew(&setup_context));
+  PetscCall(PetscNew(&advection_ctx));
   PetscCall(DMGetDimension(dm, &dim));
 
   // ------------------------------------------------------

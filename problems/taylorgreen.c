@@ -26,7 +26,7 @@ PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx) {
                                     background_velocity, &background_velocity_size, NULL));
   PetscOptionsEnd();
 
-  PetscCall(PetscCalloc1(1, &taylorgreen_ctx));
+  PetscCall(PetscNew(&taylorgreen_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &setup_ctx));
   taylorgreen_ctx->reference = setup_ctx->reference;
   taylorgreen_ctx->gas       = setup_ctx->gas;
