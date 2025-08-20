@@ -426,7 +426,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
   for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
 
-  PetscCall(DivDiffFluxProjectionCreate(honee, 1, &honee->diff_flux_proj));
+  PetscCall(DivDiffFluxProjectionCreate(honee, honee->app_ctx->divFdiffproj_method, 1, &honee->diff_flux_proj));
   if (honee->diff_flux_proj) {
     DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
     NodalProjectionData       projection     = diff_flux_proj->projection;

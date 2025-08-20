@@ -15,42 +15,43 @@ const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "INDIRECT"
   @brief Create `DivDiffFluxProjectionData` for solution DM in `honee`
 
   @param[in]  honee               `Honee` context
+  @param[in]  divFdiffproj_method Method used to perform the divergence of diffusive flux method (can be `DIV_DIFF_FLUX_PROJ_NONE`)
   @param[in]  num_diff_flux_comps Number of components that makes up the diffusive flux (e.g. 1 for scalar advection-diffusion)
-  @param[out] pdiff_flux_proj     The `DivDiffFluxProjectionData` object created, or `NULL` if not created
+  @param[out] diff_flux_proj      The `DivDiffFluxProjectionData` object created, or set to `NULL` if `divFdiffproj_method = DIV_DIFF_FLUX_PROJ_NONE`
 **/
-PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, PetscInt num_diff_flux_comps, DivDiffFluxProjectionData *pdiff_flux_proj) {
+PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMethod divFdiffproj_method, PetscInt num_diff_flux_comps,
+                                           DivDiffFluxProjectionData *diff_flux_proj) {
   PetscInt                  label_value = 0, height = 0, dm_field = 0, dim, degree = honee->app_ctx->degree, q_extra = honee->app_ctx->q_extra;
   DMLabel                   domain_label = NULL;
-  DivDiffFluxProjectionData diff_flux_proj;
+  DivDiffFluxProjectionData diff_flux_proj_;
   NodalProjectionData       projection;
 
   PetscFunctionBeginUser;
-  if (honee->app_ctx->divFdiffproj_method == DIV_DIFF_FLUX_PROJ_NONE) {
-    *pdiff_flux_proj = NULL;
+  if (divFdiffproj_method == DIV_DIFF_FLUX_PROJ_NONE) {
+    *diff_flux_proj = NULL;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
-  PetscCall(PetscNew(pdiff_flux_proj));
-  diff_flux_proj = *pdiff_flux_proj;
-  PetscCall(PetscNew(&honee->diff_flux_proj->projection));
-  projection                          = honee->diff_flux_proj->projection;
-  diff_flux_proj->method              = honee->app_ctx->divFdiffproj_method;
-  diff_flux_proj->num_diff_flux_comps = num_diff_flux_comps;
+  PetscCall(PetscNew(&diff_flux_proj_));
+  PetscCall(PetscNew(&diff_flux_proj_->projection));
+  projection                           = diff_flux_proj_->projection;
+  diff_flux_proj_->method              = divFdiffproj_method;
+  diff_flux_proj_->num_diff_flux_comps = num_diff_flux_comps;
 
   PetscCall(DMClone(honee->dm, &projection->dm));
   PetscCall(DMSetMatrixPreallocateSkip(projection->dm, PETSC_TRUE));
   PetscCall(DMGetDimension(projection->dm, &dim));
-  switch (diff_flux_proj->method) {
+  switch (diff_flux_proj_->method) {
     case DIV_DIFF_FLUX_PROJ_DIRECT: {
-      projection->num_comp = diff_flux_proj->num_diff_flux_comps;
+      projection->num_comp = diff_flux_proj_->num_diff_flux_comps;
       PetscCall(PetscObjectSetName((PetscObject)projection->dm, "DivDiffFluxProj"));
       PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, degree, 1, q_extra, 1, &projection->num_comp, projection->dm));
 
       PetscCall(DMPlexCeedElemRestrictionCreate(honee->ceed, projection->dm, domain_label, label_value, height, dm_field,
-                                                &diff_flux_proj->elem_restr_div_diff_flux));
+                                                &diff_flux_proj_->elem_restr_div_diff_flux));
       PetscCallCeed(honee->ceed,
-                    CeedElemRestrictionCreateVector(diff_flux_proj->elem_restr_div_diff_flux, &diff_flux_proj->div_diff_flux_ceed, NULL));
-      PetscCall(CreateBasisFromPlex(honee->ceed, projection->dm, domain_label, label_value, height, dm_field, &diff_flux_proj->basis_div_diff_flux));
-      diff_flux_proj->eval_mode_div_diff_flux = CEED_EVAL_INTERP;
+                    CeedElemRestrictionCreateVector(diff_flux_proj_->elem_restr_div_diff_flux, &diff_flux_proj_->div_diff_flux_ceed, NULL));
+      PetscCall(CreateBasisFromPlex(honee->ceed, projection->dm, domain_label, label_value, height, dm_field, &diff_flux_proj_->basis_div_diff_flux));
+      diff_flux_proj_->eval_mode_div_diff_flux = CEED_EVAL_INTERP;
 
       {  // Create face labels on projection->dm for boundary integrals
         DMLabel  face_sets_label;
@@ -71,22 +72,23 @@ PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, PetscInt num_diff_flux_c
       }
     } break;
     case DIV_DIFF_FLUX_PROJ_INDIRECT: {
-      projection->num_comp = diff_flux_proj->num_diff_flux_comps * dim;
+      projection->num_comp = diff_flux_proj_->num_diff_flux_comps * dim;
       PetscCall(PetscObjectSetName((PetscObject)projection->dm, "DiffFluxProj"));
       PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, degree, 1, q_extra, 1, &projection->num_comp, projection->dm));
 
       PetscCall(DMPlexCeedElemRestrictionQDataCreate(honee->ceed, projection->dm, domain_label, label_value, height,
-                                                     diff_flux_proj->num_diff_flux_comps, &diff_flux_proj->elem_restr_div_diff_flux));
+                                                     diff_flux_proj_->num_diff_flux_comps, &diff_flux_proj_->elem_restr_div_diff_flux));
       PetscCallCeed(honee->ceed,
-                    CeedElemRestrictionCreateVector(diff_flux_proj->elem_restr_div_diff_flux, &diff_flux_proj->div_diff_flux_ceed, NULL));
-      diff_flux_proj->basis_div_diff_flux     = CEED_BASIS_NONE;
-      diff_flux_proj->eval_mode_div_diff_flux = CEED_EVAL_NONE;
+                    CeedElemRestrictionCreateVector(diff_flux_proj_->elem_restr_div_diff_flux, &diff_flux_proj_->div_diff_flux_ceed, NULL));
+      diff_flux_proj_->basis_div_diff_flux     = CEED_BASIS_NONE;
+      diff_flux_proj_->eval_mode_div_diff_flux = CEED_EVAL_NONE;
     } break;
     case DIV_DIFF_FLUX_PROJ_NONE:
-      SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
-              DivDiffFluxProjectionMethods[honee->app_ctx->divFdiffproj_method]);
+      SETERRQ(honee->comm, PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
+              DivDiffFluxProjectionMethods[divFdiffproj_method]);
       break;
   }
+  *diff_flux_proj = diff_flux_proj_;
   PetscFunctionReturn(PETSC_SUCCESS);
 };
 

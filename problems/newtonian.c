@@ -506,7 +506,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
   if (stab == STAB_SUPG && !implicit) problem->create_mass_operator = CreateKSPMassOperator_NewtonianStabilized;
 
-  PetscCall(DivDiffFluxProjectionCreate(honee, 4, &honee->diff_flux_proj));
+  PetscCall(DivDiffFluxProjectionCreate(honee, honee->app_ctx->divFdiffproj_method, 4, &honee->diff_flux_proj));
   if (honee->diff_flux_proj) {
     DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
     NodalProjectionData       projection     = diff_flux_proj->projection;

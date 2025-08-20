@@ -369,7 +369,8 @@ PetscErrorCode TSPostStep_SGS_DD_Training(TS ts);
 // -----------------------------------------------------------------------------
 // Divergence of Diffusive Flux Projection
 // -----------------------------------------------------------------------------
-PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, PetscInt num_diff_flux_comps, DivDiffFluxProjectionData *pdiff_flux_proj);
+PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMethod divFdiffproj_method, PetscInt num_diff_flux_comps,
+                                           DivDiffFluxProjectionData *pdiff_flux_proj);
 PetscErrorCode DivDiffFluxProjectionGetOperatorFieldData(DivDiffFluxProjectionData diff_flux_proj, CeedElemRestriction *elem_restr, CeedBasis *basis,
                                                          CeedVector *vector, CeedEvalMode *eval_mode);
 PetscErrorCode DivDiffFluxProjectionSetup(Honee honee, DivDiffFluxProjectionData diff_flux_proj);
