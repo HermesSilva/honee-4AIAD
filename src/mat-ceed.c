@@ -114,7 +114,7 @@ static PetscErrorCode MatCeedAssemblePointBlockDiagonalCOO(Mat mat_ceed, Mat mat
     CeedMemType       mem_type = CEED_MEM_HOST;
     PetscBool         is_spd, is_spd_known;
 
-    PetscCall(MatGetCurrentMemType(mat_coo, &mem_type_petsc));
+    PetscCall(MatGetMemTypeFromVecType(mat_coo, &mem_type_petsc));
     mem_type = MemTypePetscToCeed(mem_type_petsc);
     PetscCall(PetscLogEventBegin(MATCEED_ASSEMBLE_PBDIAGONAL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
     PetscCallCeed(ctx->ceed, CeedOperatorLinearAssemblePointBlockDiagonal(ctx->op_mult, ctx->coo_values_pbd, CEED_REQUEST_IMMEDIATE));
@@ -719,7 +719,7 @@ PetscErrorCode MatCeedAssembleCOO(Mat mat_ceed, Mat mat_coo) {
     PetscBool         is_spd, is_spd_known;
     PetscMemType      mem_type_petsc;
 
-    PetscCall(MatGetCurrentMemType(mat_coo, &mem_type_petsc));
+    PetscCall(MatGetMemTypeFromVecType(mat_coo, &mem_type_petsc));
     mem_type = MemTypePetscToCeed(mem_type_petsc);
     PetscCall(PetscLogEventBegin(MATCEED_ASSEMBLE_FULL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
     PetscCallCeed(ctx->ceed, CeedOperatorLinearAssemble(ctx->op_mult, ctx->coo_values_full));

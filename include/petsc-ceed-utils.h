@@ -292,7 +292,7 @@ static inline PetscErrorCode DefaultMatTypeFromVecType(VecType vec_type, MatType
 
   @return An error code: 0 - success, otherwise - failure
 **/
-static inline PetscErrorCode MatGetCurrentMemType(Mat mat, PetscMemType *mem_type) {
+static inline PetscErrorCode MatGetMemTypeFromVecType(Mat mat, PetscMemType *mem_type) {
   PetscBool bound;
 
   PetscFunctionBeginUser;
