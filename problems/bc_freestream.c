@@ -141,7 +141,7 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
   State S_infty = StateFromPrimitive(newtonian_ig_ctx, Y_inf);
 
   // -- Set freestream_ctx struct values
-  PetscCall(PetscCalloc1(1, &freestream_ctx));
+  PetscCall(PetscNew(&freestream_ctx));
   freestream_ctx->newtonian_ctx = *newtonian_ig_ctx;
   freestream_ctx->S_infty       = S_infty;
 

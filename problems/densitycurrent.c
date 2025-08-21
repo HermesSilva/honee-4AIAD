@@ -22,7 +22,7 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx) {
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
-  PetscCall(PetscCalloc1(1, &density_current_ctx));
+  PetscCall(PetscNew(&density_current_ctx));
   // ------------------------------------------------------
   //               SET UP DENSITY_CURRENT
   // ------------------------------------------------------

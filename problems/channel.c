@@ -46,7 +46,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
-  PetscCall(PetscCalloc1(1, &channel_ctx));
+  PetscCall(PetscNew(&channel_ctx));
 
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-mesh_transform_channel_div_diff_projection_verify", &use_divdiff_verify_mesh, NULL));
   if (use_divdiff_verify_mesh) PetscCall(DivDiffFluxVerifyMesh(dm));

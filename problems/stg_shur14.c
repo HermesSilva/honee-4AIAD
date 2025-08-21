@@ -262,7 +262,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
   PetscCall(PetscOptionsDeprecated("-stg_dz", NULL, "libCEED 0.12.0", NULL));
   PetscOptionsEnd();
 
-  PetscCall(PetscCalloc1(1, &global_stg_ctx));
+  PetscCall(PetscNew(&global_stg_ctx));
   global_stg_ctx->alpha              = alpha;
   global_stg_ctx->u0                 = u0;
   global_stg_ctx->is_implicit        = honee->phys->implicit;

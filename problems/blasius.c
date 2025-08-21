@@ -264,7 +264,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
-  PetscCall(PetscCalloc1(1, &blasius_ctx));
+  PetscCall(PetscNew(&blasius_ctx));
 
   // ------------------------------------------------------
   //               SET UP Blasius
