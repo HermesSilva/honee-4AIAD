@@ -244,12 +244,14 @@ PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter)
   }
 
   PetscCall(PetscNew(&diff_filter_ctx));
-  diff_filter_ctx->grid_based_width = false;
-  for (int i = 0; i < 3; i++) diff_filter_ctx->width_scaling[i] = 1;
-  diff_filter_ctx->kernel_scaling   = 0.1;
-  diff_filter_ctx->damping_function = DIFF_FILTER_DAMP_NONE;
-  diff_filter_ctx->friction_length  = 0;
-  diff_filter_ctx->damping_constant = 25;
+  *diff_filter_ctx = (struct DifferentialFilterContext_){
+      .grid_based_width = false,
+      .width_scaling    = {1, 1, 1},
+      .kernel_scaling   = 0.1,
+      .damping_function = DIFF_FILTER_DAMP_NONE,
+      .friction_length  = 0,
+      .damping_constant = 25,
+  };
 
   PetscOptionsBegin(comm, NULL, "Differential Filtering Options", NULL);
   PetscInt narray = 3;
@@ -362,7 +364,10 @@ PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData *diff_filter) {
 
 PetscErrorCode DifferentialFilterMmsICSetup(Honee honee) {
   PetscFunctionBeginUser;
-  honee->problem_data->ics.qf_func_ptr = DifferentialFilter_MMS_IC;
-  honee->problem_data->ics.qf_loc      = DifferentialFilter_MMS_IC_loc;
+  honee->problem_data->ics = (HoneeQFSpec){
+      .qf_func_ptr = DifferentialFilter_MMS_IC,
+      .qf_loc      = DifferentialFilter_MMS_IC_loc,
+      .qfctx       = honee->problem_data->ics.qfctx,
+  };
   PetscFunctionReturn(PETSC_SUCCESS);
 }

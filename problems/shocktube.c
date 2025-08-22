@@ -33,28 +33,11 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   PetscBool            yzb;
   PetscInt             stab;
   ShockTubeContext     shocktube_ctx;
-  CeedQFunctionContext shocktube_qfctx;
+  CeedQFunctionContext shocktube_qfctx, ics_qfctx;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&setup_context));
   PetscCall(PetscNew(&shocktube_ctx));
-
-  // ------------------------------------------------------
-  //               SET UP SHOCKTUBE
-  // ------------------------------------------------------
-  problem->ics.qf_func_ptr                 = ICsShockTube;
-  problem->ics.qf_loc                      = ICsShockTube_loc;
-  problem->apply_vol_rhs.qf_func_ptr       = EulerShockTube;
-  problem->apply_vol_rhs.qf_loc            = EulerShockTube_loc;
-  problem->apply_vol_ifunction.qf_func_ptr = NULL;
-  problem->apply_vol_ifunction.qf_loc      = NULL;
-  problem->num_comps_jac_data              = 0;
-  problem->compute_exact_solution_error    = PETSC_FALSE;
-  problem->print_info                      = PRINT_SHOCKTUBE;
-
-  problem->num_components = 5;
-  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
-  for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
 
   // ------------------------------------------------------
   //             Create the QFunction context
@@ -124,13 +107,25 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   shocktube_ctx->Byzb          = Byzb;
   shocktube_ctx->c_tau         = c_tau;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &problem->ics.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &ics_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(ics_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(ics_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &shocktube_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(shocktube_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*shocktube_ctx), shocktube_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(shocktube_qfctx, CEED_MEM_HOST, FreeContextPetsc));
-  problem->apply_vol_rhs.qfctx = shocktube_qfctx;
+
+  // ------------------------------------------------------
+  //               SET UP SHOCKTUBE
+  // ------------------------------------------------------
+  problem->ics                          = (HoneeQFSpec){.qf_func_ptr = ICsShockTube, .qf_loc = ICsShockTube_loc, .qfctx = ics_qfctx};
+  problem->apply_vol_rhs                = (HoneeQFSpec){.qf_func_ptr = EulerShockTube, .qf_loc = EulerShockTube_loc, .qfctx = shocktube_qfctx};
+  problem->num_comps_jac_data           = 0;
+  problem->compute_exact_solution_error = PETSC_FALSE;
+  problem->print_info                   = PRINT_SHOCKTUBE;
+
+  problem->num_components = 5;
+  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
+  for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -23,29 +23,16 @@ static PetscErrorCode HoneeInitClass_Private() {
   @param[out] honee The initialized `Honee` object
 **/
 PetscErrorCode HoneeInit(MPI_Comm comm, Honee *honee) {
-  Honee       honee_;
-  AppCtx      app_ctx;
-  ProblemData problem;
-  Physics     phys_ctx;
-  Units       units;
+  Honee honee_;
 
   PetscFunctionBeginUser;
   PetscCall(HoneeInitClass_Private());
   PetscCall(PetscHeaderCreate(honee_, HONEE_CLASSID, "Honee", "HONEE", "Honee", comm, HoneeDestroy, NULL));
-  PetscCall(PetscNew(&app_ctx));
-  PetscCall(PetscNew(&problem));
-  PetscCall(PetscNew(&phys_ctx));
-  PetscCall(PetscNew(&units));
-  honee_->app_ctx          = app_ctx;
-  honee_->units            = units;
-  honee_->phys             = phys_ctx;
-  honee_->problem_data     = problem;
-  problem->set_bc_from_ics = PETSC_TRUE;
-  honee_->comm             = PETSC_COMM_WORLD;
-  honee_->start_time       = time(NULL);
-
+  PetscCall(PetscCalloc4(1, &honee_->app_ctx, 1, &honee_->problem_data, 1, &honee_->phys, 1, &honee_->units));
+  honee_->problem_data->set_bc_from_ics = PETSC_TRUE;
+  honee_->comm                          = PETSC_COMM_WORLD;
+  honee_->start_time                    = time(NULL);
   PetscCall(RegisterLogEvents());
-
   *honee = honee_;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -134,11 +121,8 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
     PetscCall(PetscFree(problem->component_names[i]));
   }
   PetscCall(PetscFree(problem->component_names));
-  PetscCall(PetscFree(problem));
-  PetscCall(PetscFree(honee_->units));
-  PetscCall(PetscFree(honee_->phys));
-  PetscCall(PetscFree(app_ctx));
 
+  PetscCall(PetscFree4(honee_->app_ctx, honee_->problem_data, honee_->phys, honee_->units));
   PetscCall(PetscHeaderDestroy(&honee_));
   *honee = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);

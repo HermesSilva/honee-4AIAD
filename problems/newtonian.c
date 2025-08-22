@@ -374,35 +374,31 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscBool                implicit;
   PetscBool                unit_tests;
   NewtonianIdealGasContext newtonian_ig_ctx;
-  CeedQFunctionContext     newtonian_ig_qfctx;
 
   PetscFunctionBeginUser;
   // Option Defaults
-  StatePrimitive reference      = {.pressure = 1.01e5, .velocity = {0}, .temperature = 288.15};
-  CeedScalar     idl_decay_time = -1;
-  {
-    PetscCall(PetscNew(&newtonian_ig_ctx));
-    const CeedScalar                 Cv_func[3]                = {36, 60, 128};
-    struct NewtonianIdealGasContext_ newtonian_ig_ctx_defaults = {
-        .cv           = 717., // J/(kg K)
-        .cp           = 1004., // J/(kg K)
-        .g            = {0, 0, 0}, // m/s^2
-        .lambda       = -2. / 3., // -
-        .mu           = 1.8e-5, // Pa s, dynamic viscosity
-        .k            = 0.02638, // W/(m K)
-        .c_tau        = 0.5 / degree, // -
-        .Ctau_t       = 1.0, // -
-        .Ctau_v       = Cv_func[(CeedInt)Min(3, degree) - 1],
-        .Ctau_C       = 0.25 / degree,
-        .Ctau_M       = 0.25 / degree,
-        .Ctau_E       = 0.125,
-        .idl_start    = 0,
-        .idl_length   = 0,
-        .idl_pressure = reference.pressure,
-        .idl_enable   = PETSC_FALSE,
-    };
-    *newtonian_ig_ctx = newtonian_ig_ctx_defaults;
-  }
+  const CeedScalar Cv_func[3]     = {36, 60, 128};
+  StatePrimitive   reference      = {.pressure = 1.01e5, .velocity = {0}, .temperature = 288.15};
+  CeedScalar       idl_decay_time = -1;
+  PetscCall(PetscNew(&newtonian_ig_ctx));
+  *newtonian_ig_ctx = (struct NewtonianIdealGasContext_){
+      .cv           = 717., // J/(kg K)
+      .cp           = 1004., // J/(kg K)
+      .g            = {0, 0, 0}, // m/s^2
+      .lambda       = -2. / 3., // -
+      .mu           = 1.8e-5, // Pa s, dynamic viscosity
+      .k            = 0.02638, // W/(m K)
+      .c_tau        = 0.5 / degree, // -
+      .Ctau_t       = 1.0, // -
+      .Ctau_v       = Cv_func[(CeedInt)Min(3, degree) - 1],
+      .Ctau_C       = 0.25 / degree,
+      .Ctau_M       = 0.25 / degree,
+      .Ctau_E       = 0.125,
+      .idl_start    = 0,
+      .idl_length   = 0,
+      .idl_pressure = reference.pressure,
+      .idl_enable   = PETSC_FALSE,
+  };
 
   PetscOptionsBegin(comm, NULL, "Options for Newtonian Ideal Gas based problem", NULL);
   PetscCall(PetscOptionsEnum("-state_var", "State variables used", NULL, StateVariables, (PetscEnum)(state_var = STATEVAR_CONSERVATIVE),
@@ -460,96 +456,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   }
   PetscOptionsEnd();
 
-  // Set problem information
-  problem->num_comps_jac_data = 14;
-  if (newtonian_ig_ctx->idl_enable) problem->num_comps_jac_data += 1;
-  problem->compute_exact_solution_error = PETSC_FALSE;
-  problem->print_info                   = PRINT_NEWTONIAN;
-  problem->num_components               = 5;
-  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
-  static const char *const conservative_component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
-  static const char *const primitive_component_names[]    = {"Pressure", "VelocityX", "VelocityY", "VelocityZ", "Temperature"};
-  static const char *const entropy_component_names[]      = {"EntropyDensity", "EntropyMomentumX", "EntropyMomentumY", "EntropyMomentumZ",
-                                                             "EntropyTotalEnergy"};
-
-  switch (state_var) {
-    case STATEVAR_CONSERVATIVE:
-      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Conserv;
-      problem->ics.qf_loc                      = ICsNewtonianIG_Conserv_loc;
-      problem->apply_vol_rhs.qf_func_ptr       = RHSFunction_Newtonian;
-      problem->apply_vol_rhs.qf_loc            = RHSFunction_Newtonian_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Conserv;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Conserv_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Conserv;
-      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Conserv_loc;
-      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(conservative_component_names[i], &problem->component_names[i]));
-      break;
-    case STATEVAR_PRIMITIVE:
-      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Prim;
-      problem->ics.qf_loc                      = ICsNewtonianIG_Prim_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Prim;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Prim_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Prim;
-      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Prim_loc;
-      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(primitive_component_names[i], &problem->component_names[i]));
-      break;
-    case STATEVAR_ENTROPY:
-      problem->ics.qf_func_ptr                 = ICsNewtonianIG_Entropy;
-      problem->ics.qf_loc                      = ICsNewtonianIG_Entropy_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Newtonian_Entropy;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Newtonian_Entropy_loc;
-      problem->apply_vol_ijacobian.qf_func_ptr = IJacobian_Newtonian_Entropy;
-      problem->apply_vol_ijacobian.qf_loc      = IJacobian_Newtonian_Entropy_loc;
-      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(entropy_component_names[i], &problem->component_names[i]));
-      break;
-  }
-
-  if (stab == STAB_SUPG && !implicit) problem->create_mass_operator = CreateKSPMassOperator_NewtonianStabilized;
-
-  PetscCall(DivDiffFluxProjectionCreate(honee, honee->app_ctx->divFdiffproj_method, 4, &honee->diff_flux_proj));
-  if (honee->diff_flux_proj) {
-    DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
-    NodalProjectionData       projection     = diff_flux_proj->projection;
-
-    diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_NS;
-    diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_NS;
-
-    switch (honee->diff_flux_proj->method) {
-      case DIV_DIFF_FLUX_PROJ_DIRECT: {
-        PetscSection section;
-
-        PetscCall(DMGetLocalSection(projection->dm, &section));
-        PetscCall(PetscSectionSetFieldName(section, 0, ""));
-        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DivDiffusiveFlux_MomentumX"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 1, "DivDiffusiveFlux_MomentumY"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 2, "DivDiffusiveFlux_MomentumZ"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 3, "DivDiffusiveFlux_Energy"));
-      } break;
-      case DIV_DIFF_FLUX_PROJ_INDIRECT: {
-        PetscSection section;
-
-        PetscCall(DMGetLocalSection(projection->dm, &section));
-        PetscCall(PetscSectionSetFieldName(section, 0, ""));
-        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DiffusiveFlux_MomentumXX"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 1, "DiffusiveFlux_MomentumXY"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 2, "DiffusiveFlux_MomentumXZ"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 3, "DiffusiveFlux_MomentumYX"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 4, "DiffusiveFlux_MomentumYY"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 5, "DiffusiveFlux_MomentumYZ"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 6, "DiffusiveFlux_MomentumZX"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 7, "DiffusiveFlux_MomentumZY"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 8, "DiffusiveFlux_MomentumZZ"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 9, "DiffusiveFlux_EnergyX"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 10, "DiffusiveFlux_EnergyY"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 11, "DiffusiveFlux_EnergyZ"));
-      } break;
-      case DIV_DIFF_FLUX_PROJ_NONE:
-        SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
-                DivDiffFluxProjectionMethods[honee->app_ctx->divFdiffproj_method]);
-        break;
-    }
-  }
-
   // ------------------------------------------------------
   //           Set up the QFunction context
   // ------------------------------------------------------
@@ -581,18 +487,22 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
   // -- Setup Context
   PetscCall(PetscNew(&setup_context));
-  setup_context->reference = reference;
-  setup_context->gas       = *newtonian_ig_ctx;
-  setup_context->lx        = domain_size[0];
-  setup_context->ly        = domain_size[1];
-  setup_context->lz        = domain_size[2];
-  setup_context->time      = 0;
+  *setup_context = (struct SetupContext_){
+      .reference = reference,
+      .gas       = *newtonian_ig_ctx,
+      .lx        = domain_size[0],
+      .ly        = domain_size[1],
+      .lz        = domain_size[2],
+      .time      = 0,
+  };
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &problem->ics.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfctx, CEED_MEM_HOST, FreeContextPetsc));
-  PetscCallCeed(
-      ceed, CeedQFunctionContextRegisterDouble(problem->ics.qfctx, "evaluation time", offsetof(struct SetupContext_, time), 1, "Time of evaluation"));
+  CeedQFunctionContext ics_qfctx, newtonian_ig_qfctx;
+
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &ics_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(ics_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(ics_qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed,
+                CeedQFunctionContextRegisterDouble(ics_qfctx, "evaluation time", offsetof(struct SetupContext_, time), 1, "Time of evaluation"));
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &newtonian_ig_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(newtonian_ig_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*newtonian_ig_ctx), newtonian_ig_ctx));
@@ -605,9 +515,85 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(newtonian_ig_qfctx, "solution time", offsetof(struct NewtonianIdealGasContext_, time), 1,
                                                          "Current solution time"));
 
+  // Set problem information
+  problem->num_comps_jac_data = 14;
+  if (newtonian_ig_ctx->idl_enable) problem->num_comps_jac_data += 1;
+  problem->compute_exact_solution_error = PETSC_FALSE;
+  problem->print_info                   = PRINT_NEWTONIAN;
+  problem->num_components               = 5;
+  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
+  static const char *const conserv_component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
+  static const char *const prim_component_names[]    = {"Pressure", "VelocityX", "VelocityY", "VelocityZ", "Temperature"};
+  static const char *const entropy_component_names[] = {"EntropyDensity", "EntropyMomentumX", "EntropyMomentumY", "EntropyMomentumZ",
+                                                        "EntropyTotalEnergy"};
+
+  switch (state_var) {
+    case STATEVAR_CONSERVATIVE:
+      problem->ics                 = (HoneeQFSpec){.qf_func_ptr = ICsNewtonianIG_Conserv, .qf_loc = ICsNewtonianIG_Conserv_loc};
+      problem->apply_vol_rhs       = (HoneeQFSpec){.qf_func_ptr = RHSFunction_Newtonian, .qf_loc = RHSFunction_Newtonian_loc};
+      problem->apply_vol_ifunction = (HoneeQFSpec){.qf_func_ptr = IFunction_Newtonian_Conserv, .qf_loc = IFunction_Newtonian_Conserv_loc};
+      problem->apply_vol_ijacobian = (HoneeQFSpec){.qf_func_ptr = IJacobian_Newtonian_Conserv, .qf_loc = IJacobian_Newtonian_Conserv_loc};
+      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(conserv_component_names[i], &problem->component_names[i]));
+      break;
+    case STATEVAR_PRIMITIVE:
+      problem->ics                 = (HoneeQFSpec){.qf_func_ptr = ICsNewtonianIG_Prim, .qf_loc = ICsNewtonianIG_Prim_loc};
+      problem->apply_vol_ifunction = (HoneeQFSpec){.qf_func_ptr = IFunction_Newtonian_Prim, .qf_loc = IFunction_Newtonian_Prim_loc};
+      problem->apply_vol_ijacobian = (HoneeQFSpec){.qf_func_ptr = IJacobian_Newtonian_Prim, .qf_loc = IJacobian_Newtonian_Prim_loc};
+      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(prim_component_names[i], &problem->component_names[i]));
+      break;
+    case STATEVAR_ENTROPY:
+      problem->ics                 = (HoneeQFSpec){.qf_func_ptr = ICsNewtonianIG_Entropy, .qf_loc = ICsNewtonianIG_Entropy_loc};
+      problem->apply_vol_ifunction = (HoneeQFSpec){.qf_func_ptr = IFunction_Newtonian_Entropy, .qf_loc = IFunction_Newtonian_Entropy_loc};
+      problem->apply_vol_ijacobian = (HoneeQFSpec){.qf_func_ptr = IJacobian_Newtonian_Entropy, .qf_loc = IJacobian_Newtonian_Entropy_loc};
+      for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(entropy_component_names[i], &problem->component_names[i]));
+      break;
+  }
+  // All QFunctions get the same QFunctionContext regardless of state variable
+  problem->ics.qfctx           = ics_qfctx;
   problem->apply_vol_rhs.qfctx = newtonian_ig_qfctx;
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_vol_ifunction.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &problem->apply_vol_ijacobian.qfctx));
+
+  if (stab == STAB_SUPG && !implicit) problem->create_mass_operator = CreateKSPMassOperator_NewtonianStabilized;
+
+  PetscCall(DivDiffFluxProjectionCreate(honee, honee->app_ctx->divFdiffproj_method, 4, &honee->diff_flux_proj));
+  if (honee->diff_flux_proj) {
+    DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
+    NodalProjectionData       projection     = diff_flux_proj->projection;
+    PetscSection              section;
+
+    diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_NS;
+    diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_NS;
+    PetscCall(DMGetLocalSection(projection->dm, &section));
+    switch (honee->diff_flux_proj->method) {
+      case DIV_DIFF_FLUX_PROJ_DIRECT: {
+        PetscCall(PetscSectionSetFieldName(section, 0, ""));
+        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DivDiffusiveFlux_MomentumX"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 1, "DivDiffusiveFlux_MomentumY"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 2, "DivDiffusiveFlux_MomentumZ"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 3, "DivDiffusiveFlux_Energy"));
+      } break;
+      case DIV_DIFF_FLUX_PROJ_INDIRECT: {
+        PetscCall(PetscSectionSetFieldName(section, 0, ""));
+        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DiffusiveFlux_MomentumXX"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 1, "DiffusiveFlux_MomentumXY"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 2, "DiffusiveFlux_MomentumXZ"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 3, "DiffusiveFlux_MomentumYX"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 4, "DiffusiveFlux_MomentumYY"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 5, "DiffusiveFlux_MomentumYZ"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 6, "DiffusiveFlux_MomentumZX"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 7, "DiffusiveFlux_MomentumZY"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 8, "DiffusiveFlux_MomentumZZ"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 9, "DiffusiveFlux_EnergyX"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 10, "DiffusiveFlux_EnergyY"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 11, "DiffusiveFlux_EnergyZ"));
+      } break;
+      case DIV_DIFF_FLUX_PROJ_NONE:
+        SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
+                DivDiffFluxProjectionMethods[honee->app_ctx->divFdiffproj_method]);
+        break;
+    }
+  }
 
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];

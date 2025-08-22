@@ -142,21 +142,24 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
 
   // -- Set freestream_ctx struct values
   PetscCall(PetscNew(&freestream_ctx));
-  freestream_ctx->newtonian_ctx = *newtonian_ig_ctx;
-  freestream_ctx->S_infty       = S_infty;
-
+  *freestream_ctx = (struct FreestreamContext_){
+      .newtonian_ctx = *newtonian_ig_ctx,
+      .S_infty       = S_infty,
+  };
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &freestream_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(freestream_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*freestream_ctx), freestream_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(freestream_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-  PetscCall(PetscNew(&honee_bc));
   PetscCall(PetscNew(&freestream_honee_bc));
   freestream_honee_bc->flux_type = flux_type;
-  honee_bc->ctx                  = freestream_honee_bc;
-  honee_bc->DestroyCtx           = PetscCtxDestroyDefault;
-  honee_bc->honee                = honee;
-  honee_bc->num_comps_jac_data   = honee->phys->implicit ? 5 : 0;
-  honee_bc->qfctx                = freestream_qfctx;
+  PetscCall(PetscNew(&honee_bc));
+  *honee_bc = (struct HoneeBCStruct_){
+      .ctx                = freestream_honee_bc,
+      .DestroyCtx         = PetscCtxDestroyDefault,
+      .honee              = honee,
+      .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
+      .qfctx              = freestream_qfctx,
+  };
   PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
   PetscCall(BCDefinitionSetIFunction(bc_def, FreestreamBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

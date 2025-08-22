@@ -51,13 +51,6 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscOptionsGetBool(NULL, NULL, "-mesh_transform_channel_div_diff_projection_verify", &use_divdiff_verify_mesh, NULL));
   if (use_divdiff_verify_mesh) PetscCall(DivDiffFluxVerifyMesh(dm));
 
-  // ------------------------------------------------------
-  //               SET UP Channel
-  // ------------------------------------------------------
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
-  problem->ics.qf_func_ptr = ICsChannel;
-  problem->ics.qf_loc      = ICsChannel_loc;
-
   // -- Command Line Options
   CeedScalar umax             = 10.;   // m/s
   CeedScalar theta0           = 300.;  // K
@@ -112,7 +105,9 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &channel_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(channel_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*channel_ctx), channel_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(channel_qfctx, CEED_MEM_HOST, FreeContextPetsc));
-  problem->ics.qfctx = channel_qfctx;
+
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+  problem->ics = (HoneeQFSpec){.qf_func_ptr = ICsChannel, .qf_loc = ICsChannel_loc, .qfctx = channel_qfctx};
 
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];

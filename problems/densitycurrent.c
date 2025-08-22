@@ -23,12 +23,6 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx) {
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
   PetscCall(PetscNew(&density_current_ctx));
-  // ------------------------------------------------------
-  //               SET UP DENSITY_CURRENT
-  // ------------------------------------------------------
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
-  problem->ics.qf_func_ptr = ICsDC;
-  problem->ics.qf_loc      = ICsDC_loc;
 
   // ------------------------------------------------------
   //             Create the QFunction context
@@ -94,6 +88,11 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(
       ceed, CeedQFunctionContextSetData(density_current_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*density_current_ctx), density_current_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(density_current_qfctx, CEED_MEM_HOST, FreeContextPetsc));
-  problem->ics.qfctx = density_current_qfctx;
+
+  // ------------------------------------------------------
+  //               SET UP DENSITY_CURRENT
+  // ------------------------------------------------------
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+  problem->ics = (HoneeQFSpec){.qf_func_ptr = ICsDC, .qf_loc = ICsDC_loc, .qfctx = density_current_qfctx};
   PetscFunctionReturn(PETSC_SUCCESS);
 }

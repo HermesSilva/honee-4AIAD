@@ -68,15 +68,12 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   // ------------------------------------------------------
   //               SET UP EULER VORTEX
   // ------------------------------------------------------
-  problem->ics.qf_func_ptr                 = ICsEuler;
-  problem->ics.qf_loc                      = ICsEuler_loc;
-  problem->apply_vol_rhs.qf_func_ptr       = Euler;
-  problem->apply_vol_rhs.qf_loc            = Euler_loc;
-  problem->apply_vol_ifunction.qf_func_ptr = IFunction_Euler;
-  problem->apply_vol_ifunction.qf_loc      = IFunction_Euler_loc;
-  problem->num_comps_jac_data              = 0;
-  problem->compute_exact_solution_error    = PETSC_TRUE;
-  problem->print_info                      = PRINT_EULER_VORTEX;
+  problem->ics                          = (HoneeQFSpec){.qf_func_ptr = ICsEuler, .qf_loc = ICsEuler_loc};
+  problem->apply_vol_rhs                = (HoneeQFSpec){.qf_func_ptr = Euler, .qf_loc = Euler_loc};
+  problem->apply_vol_ifunction          = (HoneeQFSpec){.qf_func_ptr = IFunction_Euler, .qf_loc = IFunction_Euler_loc};
+  problem->num_comps_jac_data           = 0;
+  problem->compute_exact_solution_error = PETSC_TRUE;
+  problem->print_info                   = PRINT_EULER_VORTEX;
 
   problem->num_components = 5;
   PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));

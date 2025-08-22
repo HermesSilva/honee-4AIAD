@@ -8,7 +8,8 @@
 #include <petscdmplex.h>
 #include <smartsim.h>
 
-typedef struct {
+typedef struct SGS_DD_TrainingData_ *SGS_DD_TrainingData;
+struct SGS_DD_TrainingData_ {
   DM                   dm_dd_training;
   PetscInt             num_comp_dd_inputs, write_data_interval, num_filter_widths;
   PetscScalar          filter_widths[16];
@@ -17,7 +18,7 @@ typedef struct {
   NodalProjectionData  filtered_grad_velo_proj;
   size_t               training_data_array_dims[2];
   PetscBool            overwrite_training_data;
-} *SGS_DD_TrainingData;
+};
 
 #define SGS_DD_TRAIN_KEY "SGS Data Driven Training"
 
@@ -177,12 +178,14 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
   PetscCall(PetscNew(&sgsdd_train_ctx));
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
   PetscCall(PetscNew(&sgs_dd_train));
+  *sgs_dd_train = (struct SGS_DD_TrainingData_){
+      .overwrite_training_data = PETSC_TRUE,
+      .write_data_interval     = 1,
+      .num_filter_widths       = sizeof(sgs_dd_train->filter_widths) / sizeof(sgs_dd_train->filter_widths[0]),
+  };
   PetscCall(HoneeSetContainer(honee, SGS_DD_TRAIN_KEY, sgs_dd_train, (PetscCtxDestroyFn *)SGS_DD_TrainingDataDestroy));
   PetscCall(DifferentialFilterSetup(honee, &sgs_dd_train->diff_filter));
 
-  sgs_dd_train->overwrite_training_data = PETSC_TRUE;
-  sgs_dd_train->write_data_interval     = 1;
-  sgs_dd_train->num_filter_widths       = sizeof(sgs_dd_train->filter_widths) / sizeof(sgs_dd_train->filter_widths[0]);
   PetscOptionsBegin(honee->comm, NULL, "SGS Data-Driven Training Options", NULL);
   PetscCall(PetscOptionsInt("-sgs_train_write_data_interval", "Number of timesteps between writing data into database", NULL,
                             sgs_dd_train->write_data_interval, &sgs_dd_train->write_data_interval, NULL));

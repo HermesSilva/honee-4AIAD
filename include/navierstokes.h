@@ -125,9 +125,8 @@ struct AppCtx_private {
   PetscInt check_step_interval;
 };
 
-typedef struct DivDiffFluxProjectionData_private *DivDiffFluxProjectionData;
-
-struct DivDiffFluxProjectionData_private {
+typedef struct DivDiffFluxProjectionData_ *DivDiffFluxProjectionData;
+struct DivDiffFluxProjectionData_ {
   PetscInt                    num_diff_flux_comps;
   DivDiffFluxProjectionMethod method;
   NodalProjectionData         projection;
@@ -216,13 +215,14 @@ struct Physics_private {
   CeedContextFieldLabel ics_time_label;
 };
 
-typedef struct {
+typedef struct HoneeBCStruct_ *HoneeBCStruct;
+struct HoneeBCStruct_ {
   Honee                honee;
   CeedInt              num_comps_jac_data;
   CeedQFunctionContext qfctx;
   void                *ctx;
   PetscCtxDestroyFn   *DestroyCtx;
-} *HoneeBCStruct;
+};
 
 PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx);
 PetscErrorCode HoneeBCDestroy(void **ctx);
@@ -239,7 +239,7 @@ typedef struct {
   CeedQFunctionUser    qf_func_ptr;  // !< QFunction function pointer
   const char          *qf_loc;       // !< Absolute path to QFunction source file
   CeedQFunctionContext qfctx;        // !< QFunctionContext to attach to QFunction
-} ProblemQFunctionSpec;
+} HoneeQFSpec;
 
 // Problem specific data
 struct ProblemData_private {
@@ -247,10 +247,10 @@ struct ProblemData_private {
   PetscInt num_components;
   char   **component_names;
 
-  CeedInt              num_comps_jac_data;
-  ProblemQFunctionSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian;
-  bool                 compute_exact_solution_error;
-  PetscBool            set_bc_from_ics, use_strong_bc_ceed;
+  CeedInt     num_comps_jac_data;
+  HoneeQFSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian;
+  bool        compute_exact_solution_error;
+  PetscBool   set_bc_from_ics, use_strong_bc_ceed;
 
   // BC Definitions
   PetscCount    num_bc_defs;

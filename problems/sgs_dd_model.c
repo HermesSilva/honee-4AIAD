@@ -663,11 +663,13 @@ PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem) {
   PetscOptionsEnd();
 
   PetscCall(PetscNew(&sgsdd_ctx));
-  sgsdd_ctx->num_layers  = 1;
-  sgsdd_ctx->num_inputs  = 6;
-  sgsdd_ctx->num_outputs = 6;
-  sgsdd_ctx->num_neurons = 20;
-  sgsdd_ctx->alpha       = alpha;
+  *sgsdd_ctx = (struct SgsDDContext_){
+      .num_layers  = 1,
+      .num_inputs  = 6,
+      .num_outputs = 6,
+      .num_neurons = 20,
+      .alpha       = alpha,
+  };
 
   PetscCall(SgsDDContextFill(comm, sgs_dd_dir, &sgsdd_ctx));
 

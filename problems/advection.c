@@ -388,75 +388,13 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   Ceed                       ceed  = honee->ceed;
   PetscBool                  implicit;
   AdvectionContext           advection_ctx;
-  CeedQFunctionContext       advection_qfctx;
+  CeedQFunctionContext       advection_qfctx, ics_qfctx;
   PetscInt                   dim;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&setup_context));
   PetscCall(PetscNew(&advection_ctx));
   PetscCall(DMGetDimension(dm, &dim));
-
-  // ------------------------------------------------------
-  //               SET UP ADVECTION
-  // ------------------------------------------------------
-  problem->print_info         = PRINT_ADVECTION;
-  problem->num_comps_jac_data = 0;
-  switch (dim) {
-    case 2:
-      problem->ics.qf_func_ptr                 = ICsAdvection2d;
-      problem->ics.qf_loc                      = ICsAdvection2d_loc;
-      problem->apply_vol_rhs.qf_func_ptr       = RHS_Advection2d;
-      problem->apply_vol_rhs.qf_loc            = RHS_Advection2d_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Advection2d;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Advection2d_loc;
-      problem->compute_exact_solution_error    = PETSC_TRUE;
-      break;
-    case 3:
-      problem->ics.qf_func_ptr                 = ICsAdvection;
-      problem->ics.qf_loc                      = ICsAdvection_loc;
-      problem->apply_vol_rhs.qf_func_ptr       = RHS_Advection;
-      problem->apply_vol_rhs.qf_loc            = RHS_Advection_loc;
-      problem->apply_vol_ifunction.qf_func_ptr = IFunction_Advection;
-      problem->apply_vol_ifunction.qf_loc      = IFunction_Advection_loc;
-      problem->compute_exact_solution_error    = PETSC_FALSE;
-      break;
-  }
-
-  problem->num_components = 5;
-  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
-  for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
-
-  PetscCall(DivDiffFluxProjectionCreate(honee, honee->app_ctx->divFdiffproj_method, 1, &honee->diff_flux_proj));
-  if (honee->diff_flux_proj) {
-    DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
-    NodalProjectionData       projection     = diff_flux_proj->projection;
-
-    diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_AdvDif;
-    diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_AdvDif;
-
-    switch (honee->diff_flux_proj->method) {
-      case DIV_DIFF_FLUX_PROJ_DIRECT: {
-        PetscSection section;
-
-        PetscCall(DMGetLocalSection(projection->dm, &section));
-        PetscCall(PetscSectionSetFieldName(section, 0, ""));
-        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DivDiffusiveFlux_Scalar"));
-      } break;
-      case DIV_DIFF_FLUX_PROJ_INDIRECT: {
-        PetscSection section;
-
-        PetscCall(DMGetLocalSection(projection->dm, &section));
-        PetscCall(PetscSectionSetFieldName(section, 0, ""));
-        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DiffusiveFlux_ScalarX"));
-        PetscCall(PetscSectionSetComponentName(section, 0, 1, "DiffusiveFlux_ScalarY"));
-        if (dim >= 3) PetscCall(PetscSectionSetComponentName(section, 0, 2, "DiffusiveFlux_ScalarZ"));
-      } break;
-      case DIV_DIFF_FLUX_PROJ_NONE:
-        SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
-                DivDiffFluxProjectionMethods[honee->app_ctx->divFdiffproj_method]);
-        break;
-    }
-  }
 
   // ------------------------------------------------------
   //             Create the QFunction context
@@ -591,17 +529,69 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   advection_ctx->diffusion_coeff   = diffusion_coeff;
   advection_ctx->divFdiff_method   = honee->app_ctx->divFdiffproj_method;
 
-  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &problem->ics.qfctx));
-  PetscCallCeed(ceed, CeedQFunctionContextSetData(problem->ics.qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
-  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(problem->ics.qfctx, CEED_MEM_HOST, FreeContextPetsc));
+  PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &ics_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(ics_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*setup_context), setup_context));
+  PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(ics_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &advection_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(advection_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*advection_ctx), advection_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(advection_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(advection_qfctx, "timestep size", offsetof(struct AdvectionContext_, dt), 1,
                                                          "Size of timestep, delta t"));
+
+  // ------------------------------------------------------
+  //               SET UP ADVECTION
+  // ------------------------------------------------------
+  problem->print_info         = PRINT_ADVECTION;
+  problem->num_comps_jac_data = 0;
+  switch (dim) {
+    case 2:
+      problem->ics                          = (HoneeQFSpec){.qf_func_ptr = ICsAdvection2d, .qf_loc = ICsAdvection2d_loc};
+      problem->apply_vol_rhs                = (HoneeQFSpec){.qf_func_ptr = RHS_Advection2d, .qf_loc = RHS_Advection2d_loc};
+      problem->apply_vol_ifunction          = (HoneeQFSpec){.qf_func_ptr = IFunction_Advection2d, .qf_loc = IFunction_Advection2d_loc};
+      problem->compute_exact_solution_error = PETSC_TRUE;
+      break;
+    case 3:
+      problem->ics                          = (HoneeQFSpec){.qf_func_ptr = ICsAdvection, .qf_loc = ICsAdvection_loc};
+      problem->apply_vol_rhs                = (HoneeQFSpec){.qf_func_ptr = RHS_Advection, .qf_loc = RHS_Advection_loc};
+      problem->apply_vol_ifunction          = (HoneeQFSpec){.qf_func_ptr = IFunction_Advection, .qf_loc = IFunction_Advection_loc};
+      problem->compute_exact_solution_error = PETSC_FALSE;
+      break;
+  }
+  problem->ics.qfctx           = ics_qfctx;
   problem->apply_vol_rhs.qfctx = advection_qfctx;
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &problem->apply_vol_ifunction.qfctx));
+
+  problem->num_components = 5;
+  PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
+  for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
+
+  PetscCall(DivDiffFluxProjectionCreate(honee, honee->app_ctx->divFdiffproj_method, 1, &honee->diff_flux_proj));
+  if (honee->diff_flux_proj) {
+    DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
+    NodalProjectionData       projection     = diff_flux_proj->projection;
+    PetscSection              section;
+
+    diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_AdvDif;
+    diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_AdvDif;
+    PetscCall(DMGetLocalSection(projection->dm, &section));
+    switch (honee->diff_flux_proj->method) {
+      case DIV_DIFF_FLUX_PROJ_DIRECT: {
+        PetscCall(PetscSectionSetFieldName(section, 0, ""));
+        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DivDiffusiveFlux_Scalar"));
+      } break;
+      case DIV_DIFF_FLUX_PROJ_INDIRECT: {
+        PetscCall(PetscSectionSetFieldName(section, 0, ""));
+        PetscCall(PetscSectionSetComponentName(section, 0, 0, "DiffusiveFlux_ScalarX"));
+        PetscCall(PetscSectionSetComponentName(section, 0, 1, "DiffusiveFlux_ScalarY"));
+        if (dim >= 3) PetscCall(PetscSectionSetComponentName(section, 0, 2, "DiffusiveFlux_ScalarZ"));
+      } break;
+      case DIV_DIFF_FLUX_PROJ_NONE:
+        SETERRQ(PetscObjectComm((PetscObject)honee->dm), PETSC_ERR_ARG_WRONG, "Should not reach here with div_diff_flux_projection_method %s",
+                DivDiffFluxProjectionMethods[honee->app_ctx->divFdiffproj_method]);
+        break;
+    }
+  }
 
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];

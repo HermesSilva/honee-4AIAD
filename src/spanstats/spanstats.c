@@ -344,31 +344,31 @@ static PetscErrorCode SpanwiseStatisticsSetupL2Projection(Honee honee, SpanStats
 }
 
 PetscErrorCode SpanwiseStatisticsSetupInitialize(Honee honee, PetscInt degree, PetscInt num_comps, const char *prefix,
-                                                 SpanStatsSetupData *stats_setup_data, SpanStatsCtx *spanstats_new) {
+                                                 SpanStatsSetupData *stats_setup_data, SpanStatsCtx *spanstats) {
   PetscLogStage stage_stats_setup;
-  SpanStatsCtx  spanstats;
+  SpanStatsCtx  spanstats_;
 
   PetscFunctionBeginUser;
   PetscCall(PetscLogStageGetId("Stats Setup", &stage_stats_setup));
   if (stage_stats_setup == -1) PetscCall(PetscLogStageRegister("Stats Setup", &stage_stats_setup));
   PetscCall(PetscLogStagePush(stage_stats_setup));
 
-  PetscCall(PetscNew(&spanstats));
-  PetscCall(PetscStrallocpy(prefix, &spanstats->prefix));
+  PetscCall(PetscNew(&spanstats_));
+  PetscCall(PetscStrallocpy(prefix, &spanstats_->prefix));
 
-  spanstats->collect_interval = 1;
-  PetscCall(PetscOptionsGetInt(NULL, prefix, "-collect_interval", &spanstats->collect_interval, NULL));
+  spanstats_->collect_interval = 1;
+  PetscCall(PetscOptionsGetInt(NULL, prefix, "-collect_interval", &spanstats_->collect_interval, NULL));
 
   // Create parent DM
-  PetscCall(SpanwiseStatisticssCreateDM(honee, spanstats, degree, num_comps));
+  PetscCall(SpanwiseStatisticssCreateDM(honee, spanstats_, degree, num_comps));
 
   // Create necessary CeedObjects for setting up statistics
-  PetscCall(SpanwiseStatisticsSetupDataCreate(honee, spanstats, stats_setup_data));
+  PetscCall(SpanwiseStatisticsSetupDataCreate(honee, spanstats_, stats_setup_data));
   //
   // Create SF for communicating child data back their respective parents
-  PetscCall(SpanwiseStatisticsCreateSF(honee, *stats_setup_data, honee->dm, spanstats->dm, &spanstats->sf));
+  PetscCall(SpanwiseStatisticsCreateSF(honee, *stats_setup_data, honee->dm, spanstats_->dm, &spanstats_->sf));
 
-  *spanstats_new = spanstats;
+  *spanstats = spanstats_;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

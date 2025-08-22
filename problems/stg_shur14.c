@@ -263,15 +263,17 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
   PetscOptionsEnd();
 
   PetscCall(PetscNew(&global_stg_ctx));
-  global_stg_ctx->alpha              = alpha;
-  global_stg_ctx->u0                 = u0;
-  global_stg_ctx->is_implicit        = honee->phys->implicit;
-  global_stg_ctx->prescribe_T        = prescribe_T;
-  global_stg_ctx->mean_only          = mean_only;
-  global_stg_ctx->use_fluctuating_IC = use_fluctuating_IC;
-  global_stg_ctx->theta0             = theta0;
-  global_stg_ctx->P0                 = P0;
-  global_stg_ctx->h_scale_factor     = stg_h_scale_factor;
+  *global_stg_ctx = (struct STGShur14Context_){
+      .alpha              = alpha,
+      .u0                 = u0,
+      .is_implicit        = honee->phys->implicit,
+      .prescribe_T        = prescribe_T,
+      .mean_only          = mean_only,
+      .use_fluctuating_IC = use_fluctuating_IC,
+      .theta0             = theta0,
+      .P0                 = P0,
+      .h_scale_factor     = stg_h_scale_factor,
+  };
 
   if (!use_stgstrong) {  // Calculate dx assuming constant spacing
     PetscReal domain_min[3], domain_max[3], domain_size[3];
@@ -298,9 +300,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
                                                          "Physical time of the solution"));
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
-  problem->ics.qf_func_ptr = ICsStg;
-  problem->ics.qf_loc      = ICsStg_loc;
-  problem->ics.qfctx       = stg_qfctx;
+  problem->ics = (HoneeQFSpec){.qf_func_ptr = ICsStg, .qf_loc = ICsStg_loc, .qfctx = stg_qfctx};
 
   if (use_stgstrong) {
     // Use default boundary integral QF (BoundaryIntegral) in newtonian.h

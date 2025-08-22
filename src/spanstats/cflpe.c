@@ -79,11 +79,10 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
     PetscCall(PetscNew(&collect_ctx));
     PetscCall(PetscStrcmp("advection", honee->app_ctx->problem_name, &is_advection));
     if (is_advection) {
-      AdvectionContext                 advection_ctx;
-      struct NewtonianIdealGasContext_ gas_struct = {0};
+      AdvectionContext advection_ctx;
 
       PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &advection_ctx));
-      collect_ctx->gas             = gas_struct;
+      collect_ctx->gas             = (struct NewtonianIdealGasContext_){0};
       collect_ctx->diffusion_coeff = advection_ctx->diffusion_coeff;
       PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &advection_ctx));
     } else {
