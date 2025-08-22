@@ -25,7 +25,6 @@ struct NewtonianIdealGasContext_ {
   CeedScalar        cv;
   CeedScalar        cp;
   CeedScalar        g[3];
-  CeedScalar        c_tau;
   CeedScalar        Ctau_t;
   CeedScalar        Ctau_v;
   CeedScalar        Ctau_C;

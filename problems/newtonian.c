@@ -388,7 +388,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
       .lambda       = -2. / 3., // -
       .mu           = 1.8e-5, // Pa s, dynamic viscosity
       .k            = 0.02638, // W/(m K)
-      .c_tau        = 0.5 / degree, // -
       .Ctau_t       = 1.0, // -
       .Ctau_v       = Cv_func[(CeedInt)Min(3, degree) - 1],
       .Ctau_C       = 0.25 / degree,
@@ -420,7 +419,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
   // Stabilization parameters
   PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
-  PetscCall(PetscOptionsScalar("-c_tau", "Stabilization constant", NULL, newtonian_ig_ctx->c_tau, &newtonian_ig_ctx->c_tau, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, newtonian_ig_ctx->Ctau_t, &newtonian_ig_ctx->Ctau_t, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_v", "Stabilization viscous constant", NULL, newtonian_ig_ctx->Ctau_v, &newtonian_ig_ctx->Ctau_v, NULL));
   PetscCall(PetscOptionsScalar("-Ctau_C", "Stabilization continuity constant", NULL, newtonian_ig_ctx->Ctau_C, &newtonian_ig_ctx->Ctau_C, NULL));
