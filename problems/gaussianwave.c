@@ -23,21 +23,6 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
 
-  switch (honee->phys->state_var) {
-    case STATEVAR_CONSERVATIVE:
-      problem->ics.qf_func_ptr = IC_GaussianWave_Conserv;
-      problem->ics.qf_loc      = IC_GaussianWave_Conserv_loc;
-      break;
-    case STATEVAR_PRIMITIVE:
-      problem->ics.qf_func_ptr = IC_GaussianWave_Prim;
-      problem->ics.qf_loc      = IC_GaussianWave_Prim_loc;
-      break;
-    case STATEVAR_ENTROPY:
-      problem->ics.qf_func_ptr = IC_GaussianWave_Entropy;
-      problem->ics.qf_loc      = IC_GaussianWave_Entropy_loc;
-      break;
-  }
-
   // -- Option Defaults
   CeedScalar epicenter[3] = {0.};   // m
   CeedScalar width        = 0.002;  // m
@@ -84,6 +69,18 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextSetData(gausswave_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*gausswave_ctx), gausswave_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(gausswave_qfctx, CEED_MEM_HOST, FreeContextPetsc));
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
+
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE:
+      problem->ics = (HoneeQFSpec){.qf_func_ptr = IC_GaussianWave_Conserv, .qf_loc = IC_GaussianWave_Conserv_loc};
+      break;
+    case STATEVAR_PRIMITIVE:
+      problem->ics = (HoneeQFSpec){.qf_func_ptr = IC_GaussianWave_Prim, .qf_loc = IC_GaussianWave_Prim_loc};
+      break;
+    case STATEVAR_ENTROPY:
+      problem->ics = (HoneeQFSpec){.qf_func_ptr = IC_GaussianWave_Entropy, .qf_loc = IC_GaussianWave_Entropy_loc};
+      break;
+  }
   problem->ics.qfctx = gausswave_qfctx;
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -141,24 +141,27 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
   temperature *= units->Kelvin;
 
   PetscCall(PetscNew(&outflow_ctx));
-  outflow_ctx->gas               = *newtonian_ig_ctx;
-  outflow_ctx->recirc            = recirc;
-  outflow_ctx->softplus_velocity = softplus_velocity;
-  outflow_ctx->pressure          = pressure;
-  outflow_ctx->temperature       = temperature;
-
+  *outflow_ctx = (struct OutflowContext_){
+      .gas               = *newtonian_ig_ctx,
+      .recirc            = recirc,
+      .softplus_velocity = softplus_velocity,
+      .pressure          = pressure,
+      .temperature       = temperature,
+  };
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &outflow_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(outflow_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*outflow_ctx), outflow_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(outflow_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
-  PetscCall(PetscNew(&honee_bc));
   PetscCall(PetscNew(&outflow_honee_bc));
   outflow_honee_bc->outflow_type = outflow_type;
-  honee_bc->ctx                  = outflow_honee_bc;
-  honee_bc->DestroyCtx           = PetscCtxDestroyDefault;
-  honee_bc->honee                = honee;
-  honee_bc->num_comps_jac_data   = honee->phys->implicit ? 11 : 0;
-  honee_bc->qfctx                = outflow_qfctx;
+  PetscCall(PetscNew(&honee_bc));
+  *honee_bc = (struct HoneeBCStruct_){
+      .ctx                = outflow_honee_bc,
+      .DestroyCtx         = PetscCtxDestroyDefault,
+      .honee              = honee,
+      .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
+      .qfctx              = outflow_qfctx,
+  };
   PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
 
   PetscCall(BCDefinitionSetIFunction(bc_def, OutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

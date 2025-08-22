@@ -31,11 +31,13 @@ PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMet
     *diff_flux_proj = NULL;
     PetscFunctionReturn(PETSC_SUCCESS);
   }
+  PetscCall(PetscNew(&projection));
   PetscCall(PetscNew(&diff_flux_proj_));
-  PetscCall(PetscNew(&diff_flux_proj_->projection));
-  projection                           = diff_flux_proj_->projection;
-  diff_flux_proj_->method              = divFdiffproj_method;
-  diff_flux_proj_->num_diff_flux_comps = num_diff_flux_comps;
+  *diff_flux_proj_ = (struct DivDiffFluxProjectionData_){
+      .method              = divFdiffproj_method,
+      .num_diff_flux_comps = num_diff_flux_comps,
+      .projection          = projection,
+  };
 
   PetscCall(DMClone(honee->dm, &projection->dm));
   PetscCall(DMSetMatrixPreallocateSkip(projection->dm, PETSC_TRUE));

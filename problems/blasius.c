@@ -269,8 +269,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   // ------------------------------------------------------
   //               SET UP Blasius
   // ------------------------------------------------------
-  problem->ics.qf_func_ptr = ICsBlasius;
-  problem->ics.qf_loc      = ICsBlasius_loc;
+  problem->ics = (HoneeQFSpec){.qf_func_ptr = ICsBlasius, .qf_loc = ICsBlasius_loc, .qfctx = problem->ics.qfctx};
 
   CeedScalar U_inf                                = 40;           // m/s
   CeedScalar T_inf                                = 288.;         // K
