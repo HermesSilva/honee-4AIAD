@@ -560,15 +560,13 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   if (honee->diff_flux_proj) {
     DivDiffFluxProjectionData diff_flux_proj = honee->diff_flux_proj;
     NodalProjectionData       projection     = diff_flux_proj->projection;
+    PetscSection              section;
 
     diff_flux_proj->CreateRHSOperator_Direct   = DivDiffFluxProjectionCreateRHS_Direct_NS;
     diff_flux_proj->CreateRHSOperator_Indirect = DivDiffFluxProjectionCreateRHS_Indirect_NS;
-
+    PetscCall(DMGetLocalSection(projection->dm, &section));
     switch (honee->diff_flux_proj->method) {
       case DIV_DIFF_FLUX_PROJ_DIRECT: {
-        PetscSection section;
-
-        PetscCall(DMGetLocalSection(projection->dm, &section));
         PetscCall(PetscSectionSetFieldName(section, 0, ""));
         PetscCall(PetscSectionSetComponentName(section, 0, 0, "DivDiffusiveFlux_MomentumX"));
         PetscCall(PetscSectionSetComponentName(section, 0, 1, "DivDiffusiveFlux_MomentumY"));
@@ -576,9 +574,6 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
         PetscCall(PetscSectionSetComponentName(section, 0, 3, "DivDiffusiveFlux_Energy"));
       } break;
       case DIV_DIFF_FLUX_PROJ_INDIRECT: {
-        PetscSection section;
-
-        PetscCall(DMGetLocalSection(projection->dm, &section));
         PetscCall(PetscSectionSetFieldName(section, 0, ""));
         PetscCall(PetscSectionSetComponentName(section, 0, 0, "DiffusiveFlux_MomentumXX"));
         PetscCall(PetscSectionSetComponentName(section, 0, 1, "DiffusiveFlux_MomentumXY"));
