@@ -17,31 +17,32 @@ typedef enum {
 extern const char *const StateVariables[];
 #endif
 
+typedef struct {
+  CeedScalar lambda;
+  CeedScalar mu;
+  CeedScalar k;
+  CeedScalar cv;
+  CeedScalar cp;
+} NewtonianIGProperties;
+
 typedef struct NewtonianIdealGasContext_ *NewtonianIdealGasContext;
 struct NewtonianIdealGasContext_ {
-  CeedScalar        lambda;
-  CeedScalar        mu;
-  CeedScalar        k;
-  CeedScalar        cv;
-  CeedScalar        cp;
-  CeedScalar        g[3];
-  CeedScalar        Ctau_t;
-  CeedScalar        Ctau_v;
-  CeedScalar        Ctau_C;
-  CeedScalar        Ctau_M;
-  CeedScalar        Ctau_E;
-  CeedScalar        dt;
-  CeedScalar        time;
-  CeedScalar        ijacobian_time_shift;
-  bool              is_implicit;
-  StateVariable     state_var;
-  StabilizationType stabilization;
-  bool              idl_enable;
-  CeedScalar        idl_pressure;
-  CeedScalar        idl_amplitude;
-  CeedScalar        idl_start;
-  CeedScalar        idl_length;
+  NewtonianIGProperties gas;
+  CeedScalar            g[3];
+  CeedScalar            time;
+  CeedScalar            ijacobian_time_shift;
+  bool                  is_implicit;
+  StateVariable         state_var;
+  StabilizationType     stabilization;
+  bool                  idl_enable;
+  CeedScalar            idl_pressure;
+  CeedScalar            idl_amplitude;
+  CeedScalar            idl_start;
+  CeedScalar            idl_length;
 
+  // Stabilization
+  TauDiagCoefficients         tau_coeffs;
+  CeedScalar                  dt;
   DivDiffFluxProjectionMethod divFdiff_method;
 };
 
@@ -60,7 +61,7 @@ typedef struct {
 typedef struct SetupContext_ *SetupContext;
 struct SetupContext_ {
   StatePrimitive                   reference;
-  struct NewtonianIdealGasContext_ gas;
+  struct NewtonianIdealGasContext_ newt_ctx;
   CeedScalar                       lx;
   CeedScalar                       ly;
   CeedScalar                       lz;

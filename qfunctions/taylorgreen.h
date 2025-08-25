@@ -12,7 +12,7 @@
 typedef struct TaylorGreenContext_ *TaylorGreenContext;
 struct TaylorGreenContext_ {
   StatePrimitive                   reference;
-  struct NewtonianIdealGasContext_ gas;
+  struct NewtonianIdealGasContext_ newt_ctx;
   CeedScalar                       lx;
   CeedScalar                       ly;
   CeedScalar                       lz;
@@ -25,12 +25,12 @@ CEED_QFUNCTION(ICsTaylorGreen)(void *ctx, CeedInt Q, const CeedScalar *const *in
 
   CeedScalar(*q0)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const TaylorGreenContext       context   = (TaylorGreenContext)ctx;
-  const NewtonianIdealGasContext gas       = &context->gas;
-  CeedScalar                     R         = GasConstant(gas);
-  StatePrimitive                 reference = context->reference;
-  const CeedScalar               V0        = Norm3(reference.velocity);
-  const CeedScalar               density0  = reference.pressure / (reference.temperature * R);
+  const TaylorGreenContext    context   = (TaylorGreenContext)ctx;
+  const NewtonianIGProperties gas       = context->newt_ctx.gas;
+  CeedScalar                  R         = GasConstant(gas);
+  StatePrimitive              reference = context->reference;
+  const CeedScalar            V0        = Norm3(reference.velocity);
+  const CeedScalar            density0  = reference.pressure / (reference.temperature * R);
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar x[] = {X[0][i], X[1][i], X[2][i]};
@@ -44,7 +44,7 @@ CEED_QFUNCTION(ICsTaylorGreen)(void *ctx, CeedInt Q, const CeedScalar *const *in
     Y[4] = reference.temperature;
 
     State s = StateFromY(gas, Y);
-    StateToQ(gas, s, q, gas->state_var);
+    StateToQ(gas, s, q, context->newt_ctx.state_var);
     for (CeedInt j = 0; j < 5; j++) q0[j][i] = q[j];
   }
   return 0;

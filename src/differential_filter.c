@@ -190,7 +190,7 @@ PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter)
   Ceed                      ceed    = honee->ceed;
   ProblemData               problem = honee->problem_data;
   DiffFilterData            diff_filter_;
-  NewtonianIdealGasContext  gas;
+  NewtonianIdealGasContext  newt_ctx;
   DifferentialFilterContext diff_filter_ctx;
   CeedQFunctionContext      diff_filter_qfctx;
 
@@ -275,9 +275,9 @@ PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter)
   diff_filter_ctx->friction_length *= units->meter;
 
   // -- Create QFContext
-  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
-  diff_filter_ctx->gas = *gas;
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
+  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &newt_ctx));
+  diff_filter_ctx->newt_ctx = *newt_ctx;
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &newt_ctx));
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(ceed, &diff_filter_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(diff_filter_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*diff_filter_ctx), diff_filter_ctx));

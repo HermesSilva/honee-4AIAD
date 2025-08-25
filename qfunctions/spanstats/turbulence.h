@@ -35,7 +35,7 @@ typedef struct Turbulence_SpanStatsContext_ *Turbulence_SpanStatsContext;
 struct Turbulence_SpanStatsContext_ {
   CeedScalar                       solution_time;
   CeedScalar                       previous_time;
-  struct NewtonianIdealGasContext_ gas;
+  struct NewtonianIdealGasContext_ newt_ctx;
 };
 
 CEED_QFUNCTION_HELPER int ChildStatsCollection(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
@@ -44,7 +44,7 @@ CEED_QFUNCTION_HELPER int ChildStatsCollection(void *ctx, CeedInt Q, const CeedS
   CeedScalar(*v)[CEED_Q_VLA]            = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
   Turbulence_SpanStatsContext context = (Turbulence_SpanStatsContext)ctx;
-  NewtonianIdealGasContext    gas     = &context->gas;
+  NewtonianIGProperties       gas     = context->newt_ctx.gas;
   CeedScalar                  delta_t = context->solution_time - context->previous_time;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {

@@ -200,10 +200,10 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem)
                                     &sgs_dd_train->num_comp_dd_inputs));
 
   {  // -- Create QFunction Context
-    NewtonianIdealGasContext gas;
-    PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
-    sgsdd_train_ctx->gas = *gas;
-    PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
+    NewtonianIdealGasContext newt_ctx;
+    PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &newt_ctx));
+    sgsdd_train_ctx->newt_ctx = *newt_ctx;
+    PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &newt_ctx));
     PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &sgs_dd_train_setup_data->sgs_dd_train_qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextSetData(sgs_dd_train_setup_data->sgs_dd_train_qfctx, CEED_MEM_HOST, CEED_USE_POINTER,
                                                     sizeof(*sgsdd_train_ctx), sgsdd_train_ctx));

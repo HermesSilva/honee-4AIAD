@@ -288,7 +288,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
   }
 
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
-  global_stg_ctx->newtonian_ctx = *newtonian_ig_ctx;
+  global_stg_ctx->newt_ctx = *newtonian_ig_ctx;
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
 
   PetscCall(GetStgContextData(comm, dm, stg_inflow_path, stg_rand_path, &global_stg_ctx));

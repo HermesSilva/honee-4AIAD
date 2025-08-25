@@ -6,12 +6,13 @@
 
 CEED_QFUNCTION_HELPER int MonitorTotalKineticEnergy(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
                                                     StateVariable state_var) {
-  const NewtonianIdealGasContext gas = (const NewtonianIdealGasContext)ctx;
-  const CeedScalar(*q)[CEED_Q_VLA]   = (const CeedScalar(*)[CEED_Q_VLA])in[0];
-  const CeedScalar(*Grad_q)          = in[1];
-  const CeedScalar(*q_data)          = in[2];
-  CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
+  const NewtonianIdealGasContext newt_ctx = (const NewtonianIdealGasContext)ctx;
+  const CeedScalar(*q)[CEED_Q_VLA]        = (const CeedScalar(*)[CEED_Q_VLA])in[0];
+  const CeedScalar(*Grad_q)               = in[1];
+  const CeedScalar(*q_data)               = in[2];
+  CeedScalar(*v)[CEED_Q_VLA]              = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
+  const NewtonianIGProperties gas = newt_ctx->gas;
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
     const State      s     = StateFromQ(gas, qi, state_var);
@@ -26,12 +27,12 @@ CEED_QFUNCTION_HELPER int MonitorTotalKineticEnergy(void *ctx, CeedInt Q, const 
     {  // See Kundu eq. 4.60
       CeedScalar div_u = kmstrain_rate[0] + kmstrain_rate[1] + kmstrain_rate[2];
       KMUnpack(kmstrain_rate, strain_rate);
-      v[1][i] = wdetJ * -2 * gas->mu * DotN((CeedScalar *)strain_rate, (CeedScalar *)strain_rate, 9);
-      v[2][i] = wdetJ * -gas->lambda * gas->mu * Square(div_u);
+      v[1][i] = wdetJ * -2 * gas.mu * DotN((CeedScalar *)strain_rate, (CeedScalar *)strain_rate, 9);
+      v[2][i] = wdetJ * -gas.lambda * gas.mu * Square(div_u);
       v[3][i] = wdetJ * s.Y.pressure * div_u;
     }
     Vorticity(grad_s, vorticity);
-    v[4][i] = wdetJ * gas->mu * Dot3(vorticity, vorticity);
+    v[4][i] = wdetJ * gas.mu * Dot3(vorticity, vorticity);
   }
   return 0;
 }

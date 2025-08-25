@@ -14,21 +14,21 @@
 const char *const StateVariables[]     = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};
 const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationType", "STAB_", NULL};
 
-static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIdealGasContext gas);
+static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIGProperties gas);
 
 static PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx) {
   MPI_Comm                 comm = honee->comm;
   Ceed                     ceed = honee->ceed;
-  NewtonianIdealGasContext newtonian_ctx;
+  NewtonianIdealGasContext newt_ctx;
 
   PetscFunctionBeginUser;
-  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newt_ctx));
   PetscCall(PetscPrintf(comm,
                         "  Problem:\n"
                         "    Problem Name                       : %s\n"
                         "    Stabilization                      : %s\n",
-                        app_ctx->problem_name, StabilizationTypes[newtonian_ctx->stabilization]));
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ctx));
+                        app_ctx->problem_name, StabilizationTypes[newt_ctx->stabilization]));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newt_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -382,17 +382,23 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   CeedScalar       idl_decay_time = -1;
   PetscCall(PetscNew(&newtonian_ig_ctx));
   *newtonian_ig_ctx = (struct NewtonianIdealGasContext_){
-      .cv           = 717., // J/(kg K)
-      .cp           = 1004., // J/(kg K)
+      .gas =
+          {
+                .cv     = 717.,
+                .cp     = 1004.,
+                .lambda = -2. / 3.,
+                .mu     = 1.8e-5,
+                .k      = 0.02638,
+                },
+      .tau_coeffs =
+          {
+                .Ctau_t = 1.0,
+                .Ctau_v = Cv_func[(CeedInt)Min(3, degree) - 1],
+                .Ctau_C = 0.25 / degree,
+                .Ctau_M = 0.25 / degree,
+                .Ctau_E = 0.125,
+                },
       .g            = {0, 0, 0}, // m/s^2
-      .lambda       = -2. / 3., // -
-      .mu           = 1.8e-5, // Pa s, dynamic viscosity
-      .k            = 0.02638, // W/(m K)
-      .Ctau_t       = 1.0, // -
-      .Ctau_v       = Cv_func[(CeedInt)Min(3, degree) - 1],
-      .Ctau_C       = 0.25 / degree,
-      .Ctau_M       = 0.25 / degree,
-      .Ctau_E       = 0.125,
       .idl_start    = 0,
       .idl_length   = 0,
       .idl_pressure = reference.pressure,
@@ -404,12 +410,12 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
                              (PetscEnum *)&state_var, NULL));
 
   // Newtonian fluid properties
-  PetscCall(PetscOptionsScalar("-cv", "Heat capacity at constant volume", NULL, newtonian_ig_ctx->cv, &newtonian_ig_ctx->cv, NULL));
-  PetscCall(PetscOptionsScalar("-cp", "Heat capacity at constant pressure", NULL, newtonian_ig_ctx->cp, &newtonian_ig_ctx->cp, NULL));
-  PetscCall(PetscOptionsScalar("-lambda", "Stokes hypothesis second viscosity coefficient", NULL, newtonian_ig_ctx->lambda, &newtonian_ig_ctx->lambda,
-                               NULL));
-  PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, newtonian_ig_ctx->mu, &newtonian_ig_ctx->mu, NULL));
-  PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, newtonian_ig_ctx->k, &newtonian_ig_ctx->k, NULL));
+  PetscCall(PetscOptionsScalar("-cv", "Heat capacity at constant volume", NULL, newtonian_ig_ctx->gas.cv, &newtonian_ig_ctx->gas.cv, NULL));
+  PetscCall(PetscOptionsScalar("-cp", "Heat capacity at constant pressure", NULL, newtonian_ig_ctx->gas.cp, &newtonian_ig_ctx->gas.cp, NULL));
+  PetscCall(PetscOptionsScalar("-lambda", "Stokes hypothesis second viscosity coefficient", NULL, newtonian_ig_ctx->gas.lambda,
+                               &newtonian_ig_ctx->gas.lambda, NULL));
+  PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, newtonian_ig_ctx->gas.mu, &newtonian_ig_ctx->gas.mu, NULL));
+  PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, newtonian_ig_ctx->gas.k, &newtonian_ig_ctx->gas.k, NULL));
 
   PetscInt  dim          = 3;
   PetscBool given_option = PETSC_FALSE;
@@ -419,11 +425,16 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
   // Stabilization parameters
   PetscCall(PetscOptionsEnum("-stab", "Stabilization method", NULL, StabilizationTypes, (PetscEnum)(stab = STAB_NONE), (PetscEnum *)&stab, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, newtonian_ig_ctx->Ctau_t, &newtonian_ig_ctx->Ctau_t, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_v", "Stabilization viscous constant", NULL, newtonian_ig_ctx->Ctau_v, &newtonian_ig_ctx->Ctau_v, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_C", "Stabilization continuity constant", NULL, newtonian_ig_ctx->Ctau_C, &newtonian_ig_ctx->Ctau_C, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_M", "Stabilization momentum constant", NULL, newtonian_ig_ctx->Ctau_M, &newtonian_ig_ctx->Ctau_M, NULL));
-  PetscCall(PetscOptionsScalar("-Ctau_E", "Stabilization energy constant", NULL, newtonian_ig_ctx->Ctau_E, &newtonian_ig_ctx->Ctau_E, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_t", "Stabilization time constant", NULL, newtonian_ig_ctx->tau_coeffs.Ctau_t,
+                               &newtonian_ig_ctx->tau_coeffs.Ctau_t, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_v", "Stabilization viscous constant", NULL, newtonian_ig_ctx->tau_coeffs.Ctau_v,
+                               &newtonian_ig_ctx->tau_coeffs.Ctau_v, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_C", "Stabilization continuity constant", NULL, newtonian_ig_ctx->tau_coeffs.Ctau_C,
+                               &newtonian_ig_ctx->tau_coeffs.Ctau_C, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_M", "Stabilization momentum constant", NULL, newtonian_ig_ctx->tau_coeffs.Ctau_M,
+                               &newtonian_ig_ctx->tau_coeffs.Ctau_M, NULL));
+  PetscCall(PetscOptionsScalar("-Ctau_E", "Stabilization energy constant", NULL, newtonian_ig_ctx->tau_coeffs.Ctau_E,
+                               &newtonian_ig_ctx->tau_coeffs.Ctau_E, NULL));
 
   dim = 3;
   PetscCall(PetscOptionsScalar("-reference_pressure", "Reference/initial pressure", NULL, reference.pressure, &reference.pressure, NULL));
@@ -459,10 +470,10 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   // ------------------------------------------------------
   // -- Scale variables to desired units
   Units units = honee->units;
-  newtonian_ig_ctx->cv *= units->J_per_kg_K;
-  newtonian_ig_ctx->cp *= units->J_per_kg_K;
-  newtonian_ig_ctx->mu *= units->Pascal * units->second;
-  newtonian_ig_ctx->k *= units->W_per_m_K;
+  newtonian_ig_ctx->gas.cv *= units->J_per_kg_K;
+  newtonian_ig_ctx->gas.cp *= units->J_per_kg_K;
+  newtonian_ig_ctx->gas.mu *= units->Pascal * units->second;
+  newtonian_ig_ctx->gas.k *= units->W_per_m_K;
   for (PetscInt i = 0; i < 3; i++) newtonian_ig_ctx->g[i] *= units->m_per_squared_s;
   reference.pressure *= units->Pascal;
   for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= units->meter / units->second;
@@ -487,7 +498,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscNew(&setup_context));
   *setup_context = (struct SetupContext_){
       .reference = reference,
-      .gas       = *newtonian_ig_ctx,
+      .newt_ctx  = *newtonian_ig_ctx,
       .lx        = domain_size[0],
       .ly        = domain_size[1],
       .lz        = domain_size[2],
@@ -618,7 +629,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
     }
   }
 
-  if (unit_tests) PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx));
+  if (unit_tests) PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx->gas));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -656,7 +667,7 @@ static PetscErrorCode CheckQWithTolerance(const CeedScalar Q_s[5], const CeedSca
 }
 
 // @brief Verify `StateFromQ` by converting A0 -> B0 -> A0_test, where A0 should equal A0_test
-static PetscErrorCode TestState(StateVariable state_var_A, StateVariable state_var_B, NewtonianIdealGasContext gas, const CeedScalar A0[5],
+static PetscErrorCode TestState(StateVariable state_var_A, StateVariable state_var_B, NewtonianIGProperties gas, const CeedScalar A0[5],
                                 CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar        B0[5], A0_test[5];
   char              buf[128];
@@ -677,7 +688,7 @@ static PetscErrorCode TestState(StateVariable state_var_A, StateVariable state_v
 }
 
 // @brief Verify `StateFromQ_fwd` via a finite difference approximation
-static PetscErrorCode TestState_fwd(StateVariable state_var_A, StateVariable state_var_B, NewtonianIdealGasContext gas, const CeedScalar A0[5],
+static PetscErrorCode TestState_fwd(StateVariable state_var_A, StateVariable state_var_B, NewtonianIGProperties gas, const CeedScalar A0[5],
                                     CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar        eps = 4e-7;  // Finite difference step
   char              buf[128];
@@ -715,7 +726,7 @@ static PetscErrorCode TestState_fwd(StateVariable state_var_A, StateVariable sta
 }
 
 // @brief Test the Newtonian State transformation functions, `StateFrom*`
-static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIdealGasContext gas) {
+static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIGProperties gas) {
   Units            units = honee->units;
   const CeedScalar kg = units->kilogram, m = units->meter, sec = units->second, K = units->Kelvin;
   CeedScalar       rtol;
@@ -723,11 +734,11 @@ static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIdealGasContext 
   PetscFunctionBeginUser;
   const CeedScalar T          = 200 * K;
   const CeedScalar rho        = 1.2 * kg / Cube(m);
-  const CeedScalar P          = (HeatCapacityRatio(gas) - 1) * rho * gas->cv * T;
+  const CeedScalar P          = (HeatCapacityRatio(gas) - 1) * rho * gas.cv * T;
   const CeedScalar u_base     = 40 * m / sec;
   const CeedScalar u[3]       = {u_base, u_base * 1.1, u_base * 1.2};
   const CeedScalar e_kinetic  = 0.5 * Dot3(u, u);
-  const CeedScalar e_internal = gas->cv * T;
+  const CeedScalar e_internal = gas.cv * T;
   const CeedScalar e_total    = e_kinetic + e_internal;
   const CeedScalar gamma      = HeatCapacityRatio(gas);
   const CeedScalar entropy    = log(P) - gamma * log(rho);

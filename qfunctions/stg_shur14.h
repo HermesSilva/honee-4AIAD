@@ -247,10 +247,10 @@ CEED_QFUNCTION(StgShur14Preprocess)(void *ctx, CeedInt Q, const CeedScalar *cons
 
   CeedScalar             ubar[3], cij[6], eps, lt;
   const StgShur14Context stg_ctx = (StgShur14Context)ctx;
-  const CeedScalar       mu      = stg_ctx->newtonian_ctx.mu;
+  const CeedScalar       mu      = stg_ctx->newt_ctx.gas.mu;
   const CeedScalar       theta0  = stg_ctx->theta0;
   const CeedScalar       P0      = stg_ctx->P0;
-  const CeedScalar       Rd      = GasConstant(&stg_ctx->newtonian_ctx);
+  const CeedScalar       Rd      = GasConstant(stg_ctx->newt_ctx.gas);
   const CeedScalar       rho     = P0 / (Rd * theta0);
   const CeedScalar       nu      = mu / rho;
 
@@ -286,14 +286,15 @@ CEED_QFUNCTION(ICsStg)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedSc
   CeedScalar(*q0)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
   const StgShur14Context         stg_ctx = (StgShur14Context)ctx;
-  const NewtonianIdealGasContext gas     = &stg_ctx->newtonian_ctx;
+  const NewtonianIdealGasContext context = &stg_ctx->newt_ctx;
+  const NewtonianIGProperties    gas     = context->gas;
   CeedScalar                     qn[STG_NMODES_MAX], u[3], ubar[3], cij[6], eps, lt;
   const CeedScalar               dx     = stg_ctx->dx;
   const CeedScalar               time   = stg_ctx->time;
   const CeedScalar               theta0 = stg_ctx->theta0;
   const CeedScalar               P0     = stg_ctx->P0;
   const CeedScalar               rho    = P0 / (GasConstant(gas) * theta0);
-  const CeedScalar               nu     = gas->mu / rho;
+  const CeedScalar               nu     = gas.mu / rho;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar x_i[3] = {x[0][i], x[1][i], x[2][i]};
@@ -314,7 +315,7 @@ CEED_QFUNCTION(ICsStg)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedSc
 
     CeedScalar Y[5] = {P0, u[0], u[1], u[2], theta0}, q[5];
     State      s    = StateFromY(gas, Y);
-    StateToQ(gas, s, q, gas->state_var);
+    StateToQ(gas, s, q, context->state_var);
     for (CeedInt j = 0; j < 5; j++) {
       q0[j][i] = q[j];
     }
@@ -336,19 +337,20 @@ CEED_QFUNCTION(StgShur14Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
   CeedScalar(*v)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*jac_data_sur)  = out[1];
 
-  const StgShur14Context stg_ctx = (StgShur14Context)ctx;
-  CeedScalar             qn[STG_NMODES_MAX], u[3], ubar[3], cij[6], eps, lt;
-  const bool             is_implicit = stg_ctx->is_implicit;
-  const bool             mean_only   = stg_ctx->mean_only;
-  const bool             prescribe_T = stg_ctx->prescribe_T;
-  const CeedScalar       dx          = stg_ctx->dx;
-  const CeedScalar       mu          = stg_ctx->newtonian_ctx.mu;
-  const CeedScalar       time        = stg_ctx->time;
-  const CeedScalar       theta0      = stg_ctx->theta0;
-  const CeedScalar       P0          = stg_ctx->P0;
-  const CeedScalar       cv          = stg_ctx->newtonian_ctx.cv;
-  const CeedScalar       Rd          = GasConstant(&stg_ctx->newtonian_ctx);
-  const CeedScalar       gamma       = HeatCapacityRatio(&stg_ctx->newtonian_ctx);
+  const StgShur14Context      stg_ctx = (StgShur14Context)ctx;
+  const NewtonianIGProperties gas     = stg_ctx->newt_ctx.gas;
+  CeedScalar                  qn[STG_NMODES_MAX], u[3], ubar[3], cij[6], eps, lt;
+  const bool                  is_implicit = stg_ctx->is_implicit;
+  const bool                  mean_only   = stg_ctx->mean_only;
+  const bool                  prescribe_T = stg_ctx->prescribe_T;
+  const CeedScalar            dx          = stg_ctx->dx;
+  const CeedScalar            mu          = gas.mu;
+  const CeedScalar            time        = stg_ctx->time;
+  const CeedScalar            theta0      = stg_ctx->theta0;
+  const CeedScalar            P0          = stg_ctx->P0;
+  const CeedScalar            cv          = gas.cv;
+  const CeedScalar            Rd          = GasConstant(gas);
+  const CeedScalar            gamma       = HeatCapacityRatio(gas);
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar rho = prescribe_T ? q[0][i] : P0 / (Rd * theta0);
@@ -414,11 +416,12 @@ CEED_QFUNCTION(StgShur14Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar 
   const CeedScalar(*jac_data_sur)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[4];
   CeedScalar(*v)[CEED_Q_VLA]                  = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const StgShur14Context stg_ctx  = (StgShur14Context)ctx;
-  const bool             implicit = stg_ctx->is_implicit;
-  const CeedScalar       cv       = stg_ctx->newtonian_ctx.cv;
-  const CeedScalar       Rd       = GasConstant(&stg_ctx->newtonian_ctx);
-  const CeedScalar       gamma    = HeatCapacityRatio(&stg_ctx->newtonian_ctx);
+  const StgShur14Context      stg_ctx  = (StgShur14Context)ctx;
+  const NewtonianIGProperties gas      = stg_ctx->newt_ctx.gas;
+  const bool                  implicit = stg_ctx->is_implicit;
+  const CeedScalar            cv       = gas.cv;
+  const CeedScalar            Rd       = GasConstant(gas);
+  const CeedScalar            gamma    = HeatCapacityRatio(gas);
 
   const CeedScalar theta0      = stg_ctx->theta0;
   const bool       prescribe_T = stg_ctx->prescribe_T;
@@ -474,15 +477,15 @@ CEED_QFUNCTION(StgShur14InflowStrongQF)(void *ctx, CeedInt Q, const CeedScalar *
   const CeedScalar(*inv_Ektotal)        = (const CeedScalar(*))in[3];
   CeedScalar(*bcval)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const StgShur14Context         stg_ctx = (StgShur14Context)ctx;
-  const NewtonianIdealGasContext gas     = &stg_ctx->newtonian_ctx;
-  CeedScalar                     u[3], ubar[3], cij[6], eps, lt;
-  const bool                     mean_only = stg_ctx->mean_only;
-  const CeedScalar               time      = stg_ctx->time;
-  const CeedScalar               theta0    = stg_ctx->theta0;
-  const CeedScalar               P0        = stg_ctx->P0;
-  const CeedScalar               rho       = P0 / (GasConstant(gas) * theta0);
-  const CeedScalar               nu        = gas->mu / rho;
+  const StgShur14Context      stg_ctx = (StgShur14Context)ctx;
+  const NewtonianIGProperties gas     = stg_ctx->newt_ctx.gas;
+  CeedScalar                  u[3], ubar[3], cij[6], eps, lt;
+  const bool                  mean_only = stg_ctx->mean_only;
+  const CeedScalar            time      = stg_ctx->time;
+  const CeedScalar            theta0    = stg_ctx->theta0;
+  const CeedScalar            P0        = stg_ctx->P0;
+  const CeedScalar            rho       = P0 / (GasConstant(gas) * theta0);
+  const CeedScalar            nu        = gas.mu / rho;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar x[] = {coords[0][i], coords[1][i], coords[2][i]};
@@ -505,8 +508,8 @@ CEED_QFUNCTION(StgShur14InflowStrongQF)(void *ctx, CeedInt Q, const CeedScalar *
 
     CeedScalar Y[5] = {P0, u[0], u[1], u[2], theta0}, q[5];
     State      s    = StateFromY(gas, Y);
-    StateToQ(gas, s, q, gas->state_var);
-    switch (gas->state_var) {
+    StateToQ(gas, s, q, stg_ctx->newt_ctx.state_var);
+    switch (stg_ctx->newt_ctx.state_var) {
       case STATEVAR_CONSERVATIVE:
         q[4] = 0.;  // Don't set energy
         break;

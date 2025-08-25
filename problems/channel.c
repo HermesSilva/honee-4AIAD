@@ -89,17 +89,17 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
   channel_ctx->P0       = P0;
   channel_ctx->umax     = umax;
   channel_ctx->implicit = honee->phys->implicit;
-  channel_ctx->B        = body_force_scale * 2 * umax * newtonian_ig_ctx->mu / (H * H);
+  channel_ctx->B        = body_force_scale * 2 * umax * newtonian_ig_ctx->gas.mu / (H * H);
 
   {
     // Calculate Body force
-    CeedScalar cv = newtonian_ig_ctx->cv, cp = newtonian_ig_ctx->cp;
+    CeedScalar cv = newtonian_ig_ctx->gas.cv, cp = newtonian_ig_ctx->gas.cp;
     CeedScalar Rd  = cp - cv;
     CeedScalar rho = P0 / (Rd * theta0);
     CeedScalar g[] = {channel_ctx->B / rho, 0., 0.};
     PetscCall(PetscArraycpy(newtonian_ig_ctx->g, g, 3));
   }
-  channel_ctx->newtonian_ctx = *newtonian_ig_ctx;
+  channel_ctx->newt_ctx = *newtonian_ig_ctx;
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &channel_qfctx));

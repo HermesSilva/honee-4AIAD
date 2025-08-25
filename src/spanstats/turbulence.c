@@ -56,7 +56,7 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
   {  // Setup Collection Context
     PetscCall(PetscNew(&collect_ctx));
     PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
-    collect_ctx->gas = *newtonian_ig_ctx;
+    collect_ctx->newt_ctx = *newtonian_ig_ctx;
 
     PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &collect_qfctx));
     PetscCallCeed(ceed, CeedQFunctionContextSetData(collect_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*collect_ctx), collect_ctx));

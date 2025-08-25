@@ -142,7 +142,7 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
 
   PetscCall(PetscNew(&outflow_ctx));
   *outflow_ctx = (struct OutflowContext_){
-      .gas               = *newtonian_ig_ctx,
+      .newt_ctx          = *newtonian_ig_ctx,
       .recirc            = recirc,
       .softplus_velocity = softplus_velocity,
       .pressure          = pressure,

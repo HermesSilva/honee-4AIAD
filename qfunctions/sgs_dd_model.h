@@ -20,7 +20,7 @@ struct SgsDDContext_ {
   CeedInt    num_neurons;
   CeedScalar alpha;
 
-  struct NewtonianIdealGasContext_ gas;
+  struct NewtonianIdealGasContext_ newt_ctx;
   struct {
     size_t bias1, bias2;
     size_t weight1, weight2;
@@ -72,8 +72,8 @@ CEED_QFUNCTION_HELPER int ComputeSgsDDNodal_Fused(void *ctx, CeedInt Q, const Ce
   const CeedScalar(*inv_multiplicity)         = (const CeedScalar(*))in[4];
   CeedScalar(*v)[CEED_Q_VLA]                  = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const SgsDDContext             sgsdd_ctx = (SgsDDContext)ctx;
-  const NewtonianIdealGasContext gas       = &sgsdd_ctx->gas;
+  const SgsDDContext          sgsdd_ctx = (SgsDDContext)ctx;
+  const NewtonianIGProperties gas       = sgsdd_ctx->newt_ctx.gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5]                 = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
@@ -87,7 +87,7 @@ CEED_QFUNCTION_HELPER int ComputeSgsDDNodal_Fused(void *ctx, CeedInt Q, const Ce
     const State      s          = StateFromQ(gas, qi, state_var);
     CeedScalar       km_sgs[6];
 
-    ComputeSgsDD_Fused(grad_velo_aniso, km_A_ij, delta, gas->mu / s.U.density, km_sgs, sgsdd_ctx);
+    ComputeSgsDD_Fused(grad_velo_aniso, km_A_ij, delta, gas.mu / s.U.density, km_sgs, sgsdd_ctx);
 
     for (int j = 0; j < 6; j++) v[j][i] = inv_multiplicity[i] * km_sgs[j];
   }
@@ -116,8 +116,8 @@ CEED_QFUNCTION_HELPER int ComputeSgsDDNodal_Sequential_Inputs(void *ctx, CeedInt
   CeedScalar(*eigenvectors_stored)            = out[0];
   CeedScalar(*model_inputs)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[1];
 
-  const SgsDDContext             sgsdd_ctx = (SgsDDContext)ctx;
-  const NewtonianIdealGasContext gas       = &sgsdd_ctx->gas;
+  const SgsDDContext          sgsdd_ctx = (SgsDDContext)ctx;
+  const NewtonianIGProperties gas       = sgsdd_ctx->newt_ctx.gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5]                 = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
@@ -131,7 +131,7 @@ CEED_QFUNCTION_HELPER int ComputeSgsDDNodal_Sequential_Inputs(void *ctx, CeedInt
     const State      s          = StateFromQ(gas, qi, state_var);
 
     CeedScalar model_inputs_i[6], grad_velo_magnitude, eigenvectors[3][3];
-    ComputeSgsDDInputs(grad_velo_aniso, km_A_ij, delta, gas->mu / s.U.density, eigenvectors, model_inputs_i, &grad_velo_magnitude);
+    ComputeSgsDDInputs(grad_velo_aniso, km_A_ij, delta, gas.mu / s.U.density, eigenvectors, model_inputs_i, &grad_velo_magnitude);
 
     ScaleN(model_inputs_i, inv_multiplicity[i], 6);
     StoredValuesPack(Q, i, 0, 6, model_inputs_i, (CeedScalar *)model_inputs);
@@ -218,11 +218,11 @@ CEED_QFUNCTION_HELPER int IFunction_NodalSgs(void *ctx, CeedInt Q, const CeedSca
   const CeedScalar(*km_sgs)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[2];
   CeedScalar(*Grad_v)[5][CEED_Q_VLA]    = (CeedScalar(*)[5][CEED_Q_VLA])out[0];
 
-  NewtonianIdealGasContext gas = (NewtonianIdealGasContext)ctx;
+  NewtonianIdealGasContext newt_ctx = (NewtonianIdealGasContext)ctx;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
-    const State      s     = StateFromQ(gas, qi, state_var);
+    const State      s     = StateFromQ(newt_ctx->gas, qi, state_var);
 
     CeedScalar wdetJ, dXdx[3][3];
     QdataUnpack_3D(Q, i, q_data, &wdetJ, dXdx);

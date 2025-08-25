@@ -82,15 +82,15 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
       AdvectionContext advection_ctx;
 
       PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &advection_ctx));
-      collect_ctx->gas             = (struct NewtonianIdealGasContext_){0};
+      collect_ctx->newt_ctx        = (struct NewtonianIdealGasContext_){0};
       collect_ctx->diffusion_coeff = advection_ctx->diffusion_coeff;
       PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &advection_ctx));
     } else {
       NewtonianIdealGasContext newtonian_ig_ctx;
 
       PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
-      collect_ctx->gas             = *newtonian_ig_ctx;
-      collect_ctx->diffusion_coeff = newtonian_ig_ctx->mu;
+      collect_ctx->newt_ctx        = *newtonian_ig_ctx;
+      collect_ctx->diffusion_coeff = newtonian_ig_ctx->gas.mu;
       PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
     }
 
