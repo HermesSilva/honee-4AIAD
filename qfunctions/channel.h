@@ -18,20 +18,20 @@ struct ChannelContext_ {
   CeedScalar                       center;    // !< Y Coordinate for center of channel
   CeedScalar                       H;         // !< Channel half-height
   CeedScalar                       B;         // !< Body-force driving the flow
-  struct NewtonianIdealGasContext_ newtonian_ctx;
+  struct NewtonianIdealGasContext_ newt_ctx;
 };
 
 CEED_QFUNCTION_HELPER State Exact_Channel(CeedInt dim, CeedScalar time, const CeedScalar X[], CeedInt Nf, void *ctx) {
-  const ChannelContext     context = (ChannelContext)ctx;
-  const CeedScalar         theta0  = context->theta0;
-  const CeedScalar         P0      = context->P0;
-  const CeedScalar         umax    = context->umax;
-  const CeedScalar         center  = context->center;
-  const CeedScalar         H       = context->H;
-  NewtonianIdealGasContext gas     = &context->newtonian_ctx;
-  const CeedScalar         cp      = gas->cp;
-  const CeedScalar         mu      = gas->mu;
-  const CeedScalar         k       = gas->k;
+  const ChannelContext  context = (ChannelContext)ctx;
+  const CeedScalar      theta0  = context->theta0;
+  const CeedScalar      P0      = context->P0;
+  const CeedScalar      umax    = context->umax;
+  const CeedScalar      center  = context->center;
+  const CeedScalar      H       = context->H;
+  NewtonianIGProperties gas     = context->newt_ctx.gas;
+  const CeedScalar      cp      = gas.cp;
+  const CeedScalar      mu      = gas.mu;
+  const CeedScalar      k       = gas.k;
   // There is a gravity body force but it is excluded from
   //   the potential energy due to periodicity.
   //     g = (g, 0, 0)
@@ -59,14 +59,14 @@ CEED_QFUNCTION(ICsChannel)(void *ctx, CeedInt Q, const CeedScalar *const *in, Ce
   const CeedScalar(*X)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   CeedScalar(*q0)[CEED_Q_VLA]      = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const ChannelContext           context = (ChannelContext)ctx;
-  const NewtonianIdealGasContext gas     = &context->newtonian_ctx;
+  const ChannelContext  context = (ChannelContext)ctx;
+  NewtonianIGProperties gas     = context->newt_ctx.gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar x[] = {X[0][i], X[1][i], X[2][i]};
     State            s   = Exact_Channel(3, 0., x, 5, ctx);
     CeedScalar       q[5];
-    StateToQ(gas, s, q, gas->state_var);
+    StateToQ(gas, s, q, context->newt_ctx.state_var);
     for (CeedInt j = 0; j < 5; j++) q0[j][i] = q[j];
   }
   return 0;
@@ -81,10 +81,10 @@ CEED_QFUNCTION(Channel_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const CeedScalar(*X)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[3];
   CeedScalar(*v)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const ChannelContext     context     = (ChannelContext)ctx;
-  const bool               is_implicit = context->implicit;
-  NewtonianIdealGasContext gas         = &context->newtonian_ctx;
-  const CeedScalar         gamma       = HeatCapacityRatio(&context->newtonian_ctx);
+  const ChannelContext  context     = (ChannelContext)ctx;
+  const bool            is_implicit = context->implicit;
+  NewtonianIGProperties gas         = context->newt_ctx.gas;
+  const CeedScalar      gamma       = HeatCapacityRatio(gas);
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, norm[3];
@@ -110,7 +110,7 @@ CEED_QFUNCTION(Channel_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     const CeedScalar P        = s_inside.Y.pressure;
 
     // Find inflow state using calculated P and prescribed velocity, theta0
-    const CeedScalar e_internal = gas->cv * s_exact.Y.temperature;
+    const CeedScalar e_internal = gas.cv * s_exact.Y.temperature;
     const CeedScalar rho_in     = P / ((gamma - 1) * e_internal);
     const CeedScalar E_kinetic  = .5 * rho_in * Dot3(s_exact.Y.velocity, s_exact.Y.velocity);
     const CeedScalar E          = rho_in * e_internal + E_kinetic;

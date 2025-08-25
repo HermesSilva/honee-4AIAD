@@ -7,10 +7,12 @@
 
 CEED_QFUNCTION_HELPER int MonitorCFL(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var,
                                      CeedInt dim) {
-  const NewtonianIdealGasContext gas = (const NewtonianIdealGasContext)ctx;
-  const CeedScalar(*q)[CEED_Q_VLA]   = (const CeedScalar(*)[CEED_Q_VLA])in[0];
-  const CeedScalar(*q_data)          = in[1];
-  CeedScalar(*v)                     = out[0];
+  const NewtonianIdealGasContext newt_ctx = (const NewtonianIdealGasContext)ctx;
+  const CeedScalar(*q)[CEED_Q_VLA]        = (const CeedScalar(*)[CEED_Q_VLA])in[0];
+  const CeedScalar(*q_data)               = in[1];
+  CeedScalar(*v)                          = out[0];
+
+  const NewtonianIGProperties gas = newt_ctx->gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};

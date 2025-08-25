@@ -526,6 +526,11 @@ The constant $C_{YZB}$ is set to 0.1 for piecewise linear elements in the curren
   - Stabilization method (`none`, `su`, or `supg`)
   - `none`
   -
+
+* - `-c_tau`
+  - Stabilization constant
+  - `0.5`
+  -
 :::
 
 This problem can be run with:

@@ -23,7 +23,7 @@ PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &setup_ctx));
   *taylorgreen_ctx = (struct TaylorGreenContext_){
       .reference = setup_ctx->reference,
-      .gas       = setup_ctx->gas,
+      .newt_ctx  = setup_ctx->newt_ctx,
       .lx        = setup_ctx->lx,
       .ly        = setup_ctx->ly,
       .lz        = setup_ctx->lz,

@@ -12,7 +12,7 @@ struct CflPe_SpanStatsContext_ {
   CeedScalar                       previous_time;
   CeedScalar                       diffusion_coeff;
   CeedScalar                       timestep;
-  struct NewtonianIdealGasContext_ gas;
+  struct NewtonianIdealGasContext_ newt_ctx;
 };
 
 CEED_QFUNCTION_HELPER int ChildStatsCollection_CflPe(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out,
@@ -21,9 +21,9 @@ CEED_QFUNCTION_HELPER int ChildStatsCollection_CflPe(void *ctx, CeedInt Q, const
   const CeedScalar(*q_data)        = in[1];
   CeedScalar(*v)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  CflPe_SpanStatsContext   context = (CflPe_SpanStatsContext)ctx;
-  NewtonianIdealGasContext gas     = &context->gas;
-  CeedScalar               delta_t = context->solution_time - context->previous_time;
+  CflPe_SpanStatsContext      context = (CflPe_SpanStatsContext)ctx;
+  const NewtonianIGProperties gas     = context->newt_ctx.gas;
+  CeedScalar                  delta_t = context->solution_time - context->previous_time;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};

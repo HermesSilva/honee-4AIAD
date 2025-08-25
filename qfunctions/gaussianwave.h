@@ -24,6 +24,7 @@ CEED_QFUNCTION_HELPER int IC_GaussianWave(void *ctx, CeedInt Q, const CeedScalar
 
   const GaussianWaveContext      context  = (GaussianWaveContext)ctx;
   const NewtonianIdealGasContext newt_ctx = &context->newt_ctx;
+  const NewtonianIGProperties    gas      = newt_ctx->gas;
 
   const CeedScalar amplitude = context->amplitude;
   const CeedScalar width     = context->width;
@@ -31,7 +32,7 @@ CEED_QFUNCTION_HELPER int IC_GaussianWave(void *ctx, CeedInt Q, const CeedScalar
   const CeedScalar xc        = context->epicenter[0];
   const CeedScalar yc        = context->epicenter[1];
 
-  const CeedScalar gamma = HeatCapacityRatio(newt_ctx);
+  const CeedScalar gamma = HeatCapacityRatio(gas);
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar       U[5], qi[5];
@@ -48,8 +49,8 @@ CEED_QFUNCTION_HELPER int IC_GaussianWave(void *ctx, CeedInt Q, const CeedScalar
     U[3] = S_infty.Y.velocity[2] * U[0];
     U[4] = S_infty.Y.pressure / (gamma - 1) * perturbation + e_kinetic;
 
-    State initCond = StateFromU(newt_ctx, U);
-    StateToQ(newt_ctx, initCond, qi, state_var);
+    State initCond = StateFromU(gas, U);
+    StateToQ(gas, initCond, qi, state_var);
 
     for (CeedInt j = 0; j < 5; j++) q0[j][i] = qi[j];
   }

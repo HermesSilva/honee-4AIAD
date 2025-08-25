@@ -24,7 +24,7 @@ struct BlasiusContext_ {
   CeedScalar                       eta_max;                               // !< Maximum eta in the domain
   CeedScalar                       Tf_cheb[BLASIUS_MAX_N_CHEBYSHEV];      // !< Chebyshev coefficient for f
   CeedScalar                       Th_cheb[BLASIUS_MAX_N_CHEBYSHEV - 1];  // !< Chebyshev coefficient for h
-  struct NewtonianIdealGasContext_ newtonian_ctx;
+  struct NewtonianIdealGasContext_ newt_ctx;
 };
 
 // *****************************************************************************
@@ -67,13 +67,13 @@ CEED_QFUNCTION_HELPER void ChebyshevEval(int N, const double *Tf, double x, doub
 State CEED_QFUNCTION_HELPER(BlasiusSolution)(const BlasiusContext blasius, const CeedScalar x[3], const CeedScalar x0, const CeedScalar x_inflow,
                                              const CeedScalar rho_infty, CeedScalar *t12) {
   CeedInt    N       = blasius->n_cheb;
-  CeedScalar mu      = blasius->newtonian_ctx.mu;
+  CeedScalar mu      = blasius->newt_ctx.gas.mu;
   State      S_infty = blasius->S_infty;
   CeedScalar nu      = mu / rho_infty;
   CeedScalar U_infty = Norm3(S_infty.Y.velocity);
   CeedScalar eta     = x[1] * sqrt(U_infty / (nu * (x0 + x[0] - x_inflow)));
   CeedScalar X       = 2 * (eta / blasius->eta_max) - 1.;
-  CeedScalar Rd      = GasConstant(&blasius->newtonian_ctx);
+  CeedScalar Rd      = GasConstant(blasius->newt_ctx.gas);
 
   CeedScalar f[4], h[4];
   ChebyshevEval(N, blasius->Tf_cheb, X, blasius->eta_max, f);
@@ -87,7 +87,7 @@ State CEED_QFUNCTION_HELPER(BlasiusSolution)(const BlasiusContext blasius, const
   Y[3] = 0.;
   Y[4] = S_infty.Y.temperature * h[0];
   Y[0] = rho_infty / h[0] * Rd * Y[4];
-  return StateFromY(&blasius->newtonian_ctx, Y);
+  return StateFromY(blasius->newt_ctx.gas, Y);
 }
 
 // *****************************************************************************
@@ -97,12 +97,12 @@ CEED_QFUNCTION(ICsBlasius)(void *ctx, CeedInt Q, const CeedScalar *const *in, Ce
   const CeedScalar(*X)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   CeedScalar(*q0)[CEED_Q_VLA]      = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const BlasiusContext           context  = (BlasiusContext)ctx;
-  const NewtonianIdealGasContext gas      = &context->newtonian_ctx;
-  const CeedScalar               mu       = context->newtonian_ctx.mu;
-  const CeedScalar               delta0   = context->delta0;
-  const CeedScalar               x_inflow = context->x_inflow;
-  CeedScalar                     t12;
+  const BlasiusContext        context  = (BlasiusContext)ctx;
+  const NewtonianIGProperties gas      = context->newt_ctx.gas;
+  const CeedScalar            mu       = context->newt_ctx.gas.mu;
+  const CeedScalar            delta0   = context->delta0;
+  const CeedScalar            x_inflow = context->x_inflow;
+  CeedScalar                  t12;
 
   const State      S_infty = context->S_infty;
   const CeedScalar U_infty = Norm3(S_infty.Y.velocity);
@@ -114,7 +114,7 @@ CEED_QFUNCTION(ICsBlasius)(void *ctx, CeedInt Q, const CeedScalar *const *in, Ce
     State            s    = BlasiusSolution(context, x, x0, x_inflow, S_infty.U.density, &t12);
     CeedScalar       q[5];
 
-    StateToQ(gas, s, q, gas->state_var);
+    StateToQ(gas, s, q, context->newt_ctx.state_var);
     for (CeedInt j = 0; j < 5; j++) q0[j][i] = q[j];
   }
   return 0;
@@ -128,12 +128,12 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   const CeedScalar(*X)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[3];
   CeedScalar(*v)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const bool                     is_implicit = context->implicit;
-  const NewtonianIdealGasContext gas         = &context->newtonian_ctx;
-  State                          S_infty     = context->S_infty;
-  const CeedScalar               rho_0       = S_infty.U.density;
-  const CeedScalar               U_infty     = Norm3(S_infty.Y.velocity);
-  const CeedScalar               x0          = U_infty * rho_0 / (gas->mu * 25 / Square(context->delta0));
+  const bool                  is_implicit = context->implicit;
+  const NewtonianIGProperties gas         = context->newt_ctx.gas;
+  State                       S_infty     = context->S_infty;
+  const CeedScalar            rho_0       = S_infty.U.density;
+  const CeedScalar            U_infty     = Norm3(S_infty.Y.velocity);
+  const CeedScalar            x0          = U_infty * rho_0 / (gas.mu * 25 / Square(context->delta0));
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
@@ -158,7 +158,7 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     }
 
     StateConservative Flux_inviscid[3];
-    FluxInviscid(&context->newtonian_ctx, s, Flux_inviscid);
+    FluxInviscid(gas, s, Flux_inviscid);
 
     const CeedScalar stress[3][3] = {
         {0,   t12, 0},
@@ -180,15 +180,15 @@ CEED_QFUNCTION(Blasius_Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *
   const CeedScalar(*X)[CEED_Q_VLA]  = (const CeedScalar(*)[CEED_Q_VLA])in[3];
   CeedScalar(*v)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const BlasiusContext           context     = (BlasiusContext)ctx;
-  const NewtonianIdealGasContext gas         = &context->newtonian_ctx;
-  const bool                     is_implicit = context->implicit;
-  const CeedScalar               Rd          = GasConstant(gas);
-  const CeedScalar               gamma       = HeatCapacityRatio(gas);
-  const State                    S_infty     = context->S_infty;
-  const CeedScalar               rho_0       = S_infty.U.density;
-  const CeedScalar               U_infty     = Norm3(S_infty.Y.velocity);
-  const CeedScalar               x0          = U_infty * rho_0 / (gas->mu * 25 / Square(context->delta0));
+  const BlasiusContext        context     = (BlasiusContext)ctx;
+  const NewtonianIGProperties gas         = context->newt_ctx.gas;
+  const bool                  is_implicit = context->implicit;
+  const CeedScalar            Rd          = GasConstant(gas);
+  const CeedScalar            gamma       = HeatCapacityRatio(gas);
+  const State                 S_infty     = context->S_infty;
+  const CeedScalar            rho_0       = S_infty.U.density;
+  const CeedScalar            U_infty     = Norm3(S_infty.Y.velocity);
+  const CeedScalar            x0          = U_infty * rho_0 / (gas.mu * 25 / Square(context->delta0));
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
@@ -205,7 +205,7 @@ CEED_QFUNCTION(Blasius_Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *
     if (context->weakT) {
       // rho should be from the current solution
       drho                   = dq[0][i];
-      CeedScalar dE_internal = drho * gas->cv * S_infty.Y.temperature;
+      CeedScalar dE_internal = drho * gas.cv * S_infty.Y.temperature;
       CeedScalar dE_kinetic  = .5 * drho * Dot3(s.Y.velocity, s.Y.velocity);
       dE                     = dE_internal + dE_kinetic;
       dP                     = drho * Rd * S_infty.Y.temperature;  // interior rho with exterior T

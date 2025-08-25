@@ -16,7 +16,7 @@
 
 typedef struct SGS_DD_TrainingContext_ *SGS_DDTrainingContext;
 struct SGS_DD_TrainingContext_ {
-  struct NewtonianIdealGasContext_ gas;
+  struct NewtonianIdealGasContext_ newt_ctx;
 };
 
 // @brief Calculate Data-Driven SGS model training data at nodes
@@ -29,8 +29,8 @@ CEED_QFUNCTION_HELPER int ComputeSGS_DDAnisotropicTrainingDataNodal(void *ctx, C
   const CeedScalar(*inv_multiplicity)         = (const CeedScalar(*))in[4];
   CeedScalar(*v)[CEED_Q_VLA]                  = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const SGS_DDTrainingContext    sgsdd_ctx = (SGS_DDTrainingContext)ctx;
-  const NewtonianIdealGasContext gas       = &sgsdd_ctx->gas;
+  const SGS_DDTrainingContext sgsdd_ctx = (SGS_DDTrainingContext)ctx;
+  const NewtonianIGProperties gas       = sgsdd_ctx->newt_ctx.gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5]                 = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
@@ -45,7 +45,7 @@ CEED_QFUNCTION_HELPER int ComputeSGS_DDAnisotropicTrainingDataNodal(void *ctx, C
     CeedScalar       inputs[6];
     CeedScalar       eigenvectors[3][3], grad_velo_magnitude;  // dummy variables, don't actually use them
 
-    ComputeSgsDDInputs(grad_velo_aniso, km_A_ij, delta, gas->mu / s.U.density, eigenvectors, inputs, &grad_velo_magnitude);
+    ComputeSgsDDInputs(grad_velo_aniso, km_A_ij, delta, gas.mu / s.U.density, eigenvectors, inputs, &grad_velo_magnitude);
 
     for (int j = 0; j < 6; j++) v[j][i] = inv_multiplicity[i] * inputs[j];
 

@@ -24,7 +24,7 @@ struct STGShur14Context_ {
   CeedScalar                       h_scale_factor;      // !< Scales the element size
   bool                             prescribe_T;         // !< Prescribe temperature weakly
   bool                             use_fluctuating_IC;  // !< set fluctuations through the domain as an initial condition
-  struct NewtonianIdealGasContext_ newtonian_ctx;
+  struct NewtonianIdealGasContext_ newt_ctx;
 
   struct {
     size_t sigma, d, phi;  // !< Random number set, [nmodes,3], [nmodes,3], [nmodes]

@@ -17,14 +17,14 @@ CEED_QFUNCTION_HELPER int Freestream(void *ctx, CeedInt Q, const CeedScalar *con
   const CeedScalar(*q)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   const CeedScalar(*q_data_sur)    = in[2];
   CeedScalar(*v)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[0];
-  CeedScalar(*jac_data_sur)        = context->newtonian_ctx.is_implicit ? out[1] : NULL;
+  CeedScalar(*jac_data_sur)        = context->newt_ctx.is_implicit ? out[1] : NULL;
 
-  const NewtonianIdealGasContext newt_ctx    = &context->newtonian_ctx;
-  const bool                     is_implicit = newt_ctx->is_implicit;
+  const NewtonianIGProperties gas         = context->newt_ctx.gas;
+  const bool                  is_implicit = context->newt_ctx.is_implicit;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
-    const State      s     = StateFromQ(newt_ctx, qi, state_var);
+    const State      s     = StateFromQ(gas, qi, state_var);
 
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
@@ -33,10 +33,10 @@ CEED_QFUNCTION_HELPER int Freestream(void *ctx, CeedInt Q, const CeedScalar *con
     StateConservative flux;
     switch (flux_type) {
       case RIEMANN_HLL:
-        flux = RiemannFlux_HLL(newt_ctx, s, context->S_infty, normal);
+        flux = RiemannFlux_HLL(gas, s, context->S_infty, normal);
         break;
       case RIEMANN_HLLC:
-        flux = RiemannFlux_HLLC(newt_ctx, s, context->S_infty, normal);
+        flux = RiemannFlux_HLLC(gas, s, context->S_infty, normal);
         break;
     }
     CeedScalar Flux[5];
@@ -80,10 +80,10 @@ CEED_QFUNCTION_HELPER int Freestream_Jacobian(void *ctx, CeedInt Q, const CeedSc
 
   CeedScalar(*v)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const FreestreamContext        context     = (FreestreamContext)ctx;
-  const NewtonianIdealGasContext newt_ctx    = &context->newtonian_ctx;
-  const bool                     is_implicit = newt_ctx->is_implicit;
-  const State                    dS_infty    = {0};
+  const FreestreamContext     context     = (FreestreamContext)ctx;
+  const NewtonianIGProperties gas         = context->newt_ctx.gas;
+  const bool                  is_implicit = context->newt_ctx.is_implicit;
+  const State                 dS_infty    = {0};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
@@ -93,16 +93,16 @@ CEED_QFUNCTION_HELPER int Freestream_Jacobian(void *ctx, CeedInt Q, const CeedSc
     CeedScalar qi[5], dqi[5];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
     for (int j = 0; j < 5; j++) dqi[j] = dq[j][i];
-    State s  = StateFromQ(newt_ctx, qi, state_var);
-    State ds = StateFromQ_fwd(newt_ctx, s, dqi, state_var);
+    State s  = StateFromQ(gas, qi, state_var);
+    State ds = StateFromQ_fwd(gas, s, dqi, state_var);
 
     StateConservative dflux;
     switch (flux_type) {
       case RIEMANN_HLL:
-        dflux = RiemannFlux_HLL_fwd(newt_ctx, s, ds, context->S_infty, dS_infty, normal);
+        dflux = RiemannFlux_HLL_fwd(gas, s, ds, context->S_infty, dS_infty, normal);
         break;
       case RIEMANN_HLLC:
-        dflux = RiemannFlux_HLLC_fwd(newt_ctx, s, ds, context->S_infty, dS_infty, normal);
+        dflux = RiemannFlux_HLLC_fwd(gas, s, ds, context->S_infty, dS_infty, normal);
         break;
     }
     CeedScalar dFlux[5];

@@ -21,7 +21,7 @@ CEED_QFUNCTION_HELPER void dYFromTau(const CeedScalar Y[5], const CeedScalar Tau
 // *****************************************************************************
 // Helper functions for computing the stabilization terms
 // *****************************************************************************
-CEED_QFUNCTION_HELPER void StabilizationMatrix(const NewtonianIdealGasContext gas, const State s, const CeedScalar Tau_d[3],
+CEED_QFUNCTION_HELPER void StabilizationMatrix(const NewtonianIGProperties gas, const State s, const CeedScalar Tau_d[3],
                                                const CeedScalar strong_residual[5], CeedScalar stab[5][3]) {
   CeedScalar        dY[5];
   StateConservative dF[3];
@@ -37,12 +37,12 @@ CEED_QFUNCTION_HELPER void StabilizationMatrix(const NewtonianIdealGasContext ga
   }
 }
 
-CEED_QFUNCTION_HELPER void Stabilization(const NewtonianIdealGasContext gas, const State s, const CeedScalar Tau_d[3], const State ds[3],
-                                         const CeedScalar U_dot[5], const CeedScalar body_force[5], const CeedScalar divFdiff[5],
+CEED_QFUNCTION_HELPER void Stabilization(StabilizationType stab_type, const NewtonianIGProperties gas, const State s, const CeedScalar Tau_d[3],
+                                         const State ds[3], const CeedScalar U_dot[5], const CeedScalar body_force[5], const CeedScalar divFdiff[5],
                                          CeedScalar stab[5][3]) {
   // -- Stabilization method: none (Galerkin), SU, or SUPG
   CeedScalar strong_residual[5] = {0};
-  switch (gas->stabilization) {
+  switch (stab_type) {
     case STAB_NONE:
       break;
     case STAB_SU:
@@ -63,16 +63,16 @@ CEED_QFUNCTION_HELPER void Stabilization(const NewtonianIdealGasContext gas, con
 //
 //   Tau[i] = itau=0 which is diagonal-Shakib (3 values still but not spatial)
 // *****************************************************************************
-CEED_QFUNCTION_HELPER void Tau_diagPrim(NewtonianIdealGasContext gas, State s, const CeedScalar dXdx[3][3], const CeedScalar dt,
-                                        CeedScalar Tau_d[3]) {
+CEED_QFUNCTION_HELPER void Tau_diagPrim(TauDiagCoefficients tau_coeffs, NewtonianIGProperties gas, State s, const CeedScalar dXdx[3][3],
+                                        const CeedScalar dt, CeedScalar Tau_d[3]) {
   // Context
-  const CeedScalar Ctau_t = gas->Ctau_t;
-  const CeedScalar Ctau_v = gas->Ctau_v;
-  const CeedScalar Ctau_C = gas->Ctau_C;
-  const CeedScalar Ctau_M = gas->Ctau_M;
-  const CeedScalar Ctau_E = gas->Ctau_E;
-  const CeedScalar cv     = gas->cv;
-  const CeedScalar mu     = gas->mu;
+  const CeedScalar Ctau_t = tau_coeffs.Ctau_t;
+  const CeedScalar Ctau_v = tau_coeffs.Ctau_v;
+  const CeedScalar Ctau_C = tau_coeffs.Ctau_C;
+  const CeedScalar Ctau_M = tau_coeffs.Ctau_M;
+  const CeedScalar Ctau_E = tau_coeffs.Ctau_E;
+  const CeedScalar cv     = gas.cv;
+  const CeedScalar mu     = gas.mu;
   const CeedScalar rho    = s.U.density;
 
   CeedScalar tau;

@@ -40,10 +40,10 @@ CEED_QFUNCTION_HELPER int RiemannOutflow(void *ctx, CeedInt Q, const CeedScalar 
   const CeedScalar(*Grad_q)        = in[1];
   const CeedScalar(*q_data_sur)    = in[2];
   CeedScalar(*v)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[0];
-  CeedScalar(*jac_data_sur)        = outflow->gas.is_implicit ? out[1] : NULL;
+  CeedScalar(*jac_data_sur)        = outflow->newt_ctx.is_implicit ? out[1] : NULL;
 
-  const NewtonianIdealGasContext gas         = &outflow->gas;
-  const bool                     is_implicit = gas->is_implicit;
+  const NewtonianIGProperties gas         = outflow->newt_ctx.gas;
+  const bool                  is_implicit = outflow->newt_ctx.is_implicit;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, dXdx[2][3], normal[3];
@@ -110,9 +110,9 @@ CEED_QFUNCTION_HELPER int RiemannOutflow_Jacobian(void *ctx, CeedInt Q, const Ce
   const CeedScalar(*jac_data_sur)   = in[4];
   CeedScalar(*v)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const OutflowContext           outflow     = (OutflowContext)ctx;
-  const NewtonianIdealGasContext gas         = &outflow->gas;
-  const bool                     is_implicit = gas->is_implicit;
+  const OutflowContext        outflow     = (OutflowContext)ctx;
+  const NewtonianIGProperties gas         = outflow->newt_ctx.gas;
+  const bool                  is_implicit = outflow->newt_ctx.is_implicit;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, dXdx[2][3], normal[3];
@@ -188,10 +188,10 @@ CEED_QFUNCTION_HELPER int PressureOutflow(void *ctx, CeedInt Q, const CeedScalar
   const CeedScalar(*Grad_q)        = in[1];
   const CeedScalar(*q_data_sur)    = in[2];
   CeedScalar(*v)[CEED_Q_VLA]       = (CeedScalar(*)[CEED_Q_VLA])out[0];
-  CeedScalar(*jac_data_sur)        = outflow->gas.is_implicit ? out[1] : NULL;
+  CeedScalar(*jac_data_sur)        = outflow->newt_ctx.is_implicit ? out[1] : NULL;
 
-  const NewtonianIdealGasContext gas         = &outflow->gas;
-  const bool                     is_implicit = gas->is_implicit;
+  const NewtonianIGProperties gas         = outflow->newt_ctx.gas;
+  const bool                  is_implicit = outflow->newt_ctx.is_implicit;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
@@ -251,9 +251,9 @@ CEED_QFUNCTION_HELPER int PressureOutflow_Jacobian(void *ctx, CeedInt Q, const C
   const CeedScalar(*jac_data_sur)   = in[4];
   CeedScalar(*v)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const OutflowContext           outflow     = (OutflowContext)ctx;
-  const NewtonianIdealGasContext gas         = &outflow->gas;
-  const bool                     is_implicit = gas->is_implicit;
+  const OutflowContext        outflow     = (OutflowContext)ctx;
+  const NewtonianIGProperties gas         = outflow->newt_ctx.gas;
+  const bool                  is_implicit = outflow->newt_ctx.is_implicit;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, dXdx[2][3], normal[3];

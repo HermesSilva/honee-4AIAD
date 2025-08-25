@@ -22,7 +22,7 @@ struct DensityCurrentContext_ {
   CeedScalar                       rc;
   CeedScalar                       center[3];
   CeedScalar                       dc_axis[3];
-  struct NewtonianIdealGasContext_ newtonian_ctx;
+  struct NewtonianIdealGasContext_ newt_ctx;
 };
 
 // *****************************************************************************
@@ -86,11 +86,10 @@ CEED_QFUNCTION_HELPER State Exact_DC(CeedInt dim, CeedScalar time, const CeedSca
   const CeedScalar            rc      = context->rc;
   const CeedScalar           *center  = context->center;
   const CeedScalar           *dc_axis = context->dc_axis;
-  NewtonianIdealGasContext    gas     = &context->newtonian_ctx;
-  const CeedScalar            cp      = gas->cp;
-  const CeedScalar            cv      = gas->cv;
-  const CeedScalar            Rd      = cp - cv;
-  const CeedScalar           *g_vec   = gas->g;
+  NewtonianIGProperties       gas     = context->newt_ctx.gas;
+  const CeedScalar            cp      = gas.cp;
+  const CeedScalar            Rd      = GasConstant(gas);
+  const CeedScalar           *g_vec   = context->newt_ctx.g;
   const CeedScalar            g       = -g_vec[2];
 
   // Setup
@@ -128,14 +127,14 @@ CEED_QFUNCTION(ICsDC)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedSca
   const CeedScalar(*X)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[0];
   CeedScalar(*q0)[CEED_Q_VLA]      = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const DensityCurrentContext    context = (DensityCurrentContext)ctx;
-  const NewtonianIdealGasContext gas     = &context->newtonian_ctx;
+  const DensityCurrentContext context = (DensityCurrentContext)ctx;
+  NewtonianIGProperties       gas     = context->newt_ctx.gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar x[] = {X[0][i], X[1][i], X[2][i]};
     State            s   = Exact_DC(3, 0., x, 5, ctx);
     CeedScalar       q[5];
-    StateToQ(gas, s, q, gas->state_var);
+    StateToQ(gas, s, q, context->newt_ctx.state_var);
     for (CeedInt j = 0; j < 5; j++) q0[j][i] = q[j];
   }
   return 0;

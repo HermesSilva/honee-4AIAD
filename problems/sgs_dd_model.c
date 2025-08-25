@@ -636,7 +636,7 @@ PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem) {
   MPI_Comm                 comm                           = honee->comm;
   char                     sgs_dd_dir[PETSC_MAX_PATH_LEN] = "./dd_sgs_parameters";
   SgsDDSetupData           sgs_dd_setup_data;
-  NewtonianIdealGasContext gas;
+  NewtonianIdealGasContext newt_ctx;
   NodalProjectionData      grad_velo_proj;
   SgsDDData                sgs_dd_data;
 
@@ -676,9 +676,9 @@ PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem) {
   // -- Create DM for storing SGS tensor at nodes
   PetscCall(SgsDDCreateDM(honee->dm, &sgs_dd_data->dm_sgs, honee->app_ctx->degree, honee->app_ctx->q_extra, &sgs_dd_data->num_comp_sgs));
 
-  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &gas));
-  sgsdd_ctx->gas = *gas;
-  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &gas));
+  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(problem->apply_vol_ifunction.qfctx, CEED_MEM_HOST, &newt_ctx));
+  sgsdd_ctx->newt_ctx = *newt_ctx;
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(problem->apply_vol_ifunction.qfctx, &newt_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &sgs_dd_setup_data->sgsdd_qfctx));
   PetscCallCeed(ceed,
                 CeedQFunctionContextSetData(sgs_dd_setup_data->sgsdd_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sgsdd_ctx->total_bytes, sgsdd_ctx));

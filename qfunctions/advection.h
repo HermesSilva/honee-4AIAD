@@ -207,7 +207,7 @@ CEED_QFUNCTION(ICsAdvection2d)(void *ctx, CeedInt Q, const CeedScalar *const *in
   return 0;
 }
 
-CEED_QFUNCTION_HELPER void StatePhysicalGradientFromReference_ND(CeedInt N, CeedInt Q, CeedInt i, NewtonianIdealGasContext gas, State s,
+CEED_QFUNCTION_HELPER void StatePhysicalGradientFromReference_ND(CeedInt N, CeedInt Q, CeedInt i, NewtonianIGProperties gas, State s,
                                                                  StateVariable state_var, const CeedScalar *grad_q, const CeedScalar *dXdx,
                                                                  State *grad_s) {
   switch (N) {
@@ -275,9 +275,7 @@ CEED_QFUNCTION_HELPER int IFunction_AdvectionGeneric(void *ctx, CeedInt Q, const
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
-  NewtonianIdealGasContext         gas;
-  struct NewtonianIdealGasContext_ gas_struct = {0};
-  gas                                         = &gas_struct;
+  NewtonianIGProperties gas = {0};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
@@ -354,9 +352,8 @@ CEED_QFUNCTION_HELPER int MassFunction_AdvectionGeneric(void *ctx, CeedInt Q, co
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
-  AdvectionContext                 context    = (AdvectionContext)ctx;
-  struct NewtonianIdealGasContext_ gas_struct = {0};
-  NewtonianIdealGasContext         gas        = &gas_struct;
+  AdvectionContext      context = (AdvectionContext)ctx;
+  NewtonianIGProperties gas     = {0};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
@@ -413,8 +410,7 @@ CEED_QFUNCTION_HELPER int RHSFunction_AdvectionGeneric(void *ctx, CeedInt Q, con
   CeedScalar(*v)[CEED_Q_VLA]         = (CeedScalar(*)[CEED_Q_VLA])out[0];
   CeedScalar(*grad_v)[5][CEED_Q_VLA] = (CeedScalar(*)[5][CEED_Q_VLA])out[1];
 
-  struct NewtonianIdealGasContext_ gas_struct = {0};
-  NewtonianIdealGasContext         gas        = &gas_struct;
+  NewtonianIGProperties gas = {0};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};

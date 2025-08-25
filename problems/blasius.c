@@ -15,16 +15,16 @@
 #include "stg_shur14.h"
 
 PetscErrorCode CompressibleBlasiusResidual(SNES snes, Vec X, Vec R, void *ctx) {
-  const BlasiusContext blasius = (BlasiusContext)ctx;
-  const PetscScalar   *Tf, *Th;  // Chebyshev coefficients
-  PetscScalar         *r, f[4], h[4];
-  PetscInt             N       = blasius->n_cheb;
-  State                S_infty = blasius->S_infty;
-  CeedScalar           U_infty = Norm3(S_infty.Y.velocity);
+  const BlasiusContext  blasius = (BlasiusContext)ctx;
+  const PetscScalar    *Tf, *Th;  // Chebyshev coefficients
+  PetscScalar          *r, f[4], h[4];
+  PetscInt              N       = blasius->n_cheb;
+  State                 S_infty = blasius->S_infty;
+  CeedScalar            U_infty = Norm3(S_infty.Y.velocity);
+  NewtonianIGProperties gas     = blasius->newt_ctx.gas;
 
   PetscFunctionBeginUser;
-  PetscScalar Ma = Mach(&blasius->newtonian_ctx, S_infty.Y.temperature, U_infty), Pr = Prandtl(&blasius->newtonian_ctx),
-              gamma = HeatCapacityRatio(&blasius->newtonian_ctx);
+  PetscScalar Ma = Mach(gas, S_infty.Y.temperature, U_infty), Pr = Prandtl(gas), gamma = HeatCapacityRatio(gas);
 
   PetscCall(VecGetArrayRead(X, &Tf));
   Th = Tf + N;
@@ -337,7 +337,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
       .pressure = P_inf, .velocity = {U_inf, 0, 0},
            .temperature = T_inf
   };
-  State S_infty = StateFromPrimitive(newtonian_ig_ctx, Y_inf);
+  State S_infty = StateFromPrimitive(newtonian_ig_ctx->gas, Y_inf);
 
   blasius_ctx->weakT    = weakT;
   blasius_ctx->T_wall   = T_wall;
@@ -346,7 +346,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   blasius_ctx->n_cheb   = N;
   blasius_ctx->implicit = honee->phys->implicit;
   if (P0_set) newtonian_ig_ctx->idl_pressure = P_inf;  // For maintaining behavior of -P0 flag (which is deprecated)
-  blasius_ctx->newtonian_ctx = *newtonian_ig_ctx;
+  blasius_ctx->newt_ctx = *newtonian_ig_ctx;
 
   {
     PetscReal domain_min[3], domain_max[3];

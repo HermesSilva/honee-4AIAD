@@ -28,3 +28,11 @@ typedef enum {
 #ifndef CEED_RUNNING_JIT_PASS
 extern const char *const DivDiffFluxProjectionMethods[];
 #endif
+
+typedef struct {
+  CeedScalar Ctau_t;
+  CeedScalar Ctau_v;
+  CeedScalar Ctau_C;
+  CeedScalar Ctau_M;
+  CeedScalar Ctau_E;
+} TauDiagCoefficients;

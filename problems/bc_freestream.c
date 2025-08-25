@@ -14,7 +14,7 @@
 
 static const char *const RiemannSolverTypes[] = {"HLL", "HLLC", "RiemannSolverTypes", "RIEMANN_", NULL};
 
-static PetscErrorCode RiemannSolverUnitTests(NewtonianIdealGasContext gas, CeedScalar rtol);
+static PetscErrorCode RiemannSolverUnitTests(NewtonianIGProperties gas, CeedScalar rtol);
 
 typedef struct {
   RiemannFluxType flux_type;
@@ -138,13 +138,13 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
   for (int i = 0; i < 3; i++) Y_inf.velocity[i] *= units->meter / units->second;
   Y_inf.temperature *= units->Kelvin;
 
-  State S_infty = StateFromPrimitive(newtonian_ig_ctx, Y_inf);
+  State S_infty = StateFromPrimitive(newtonian_ig_ctx->gas, Y_inf);
 
   // -- Set freestream_ctx struct values
   PetscCall(PetscNew(&freestream_ctx));
   *freestream_ctx = (struct FreestreamContext_){
-      .newtonian_ctx = *newtonian_ig_ctx,
-      .S_infty       = S_infty,
+      .newt_ctx = *newtonian_ig_ctx,
+      .S_infty  = S_infty,
   };
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &freestream_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(freestream_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*freestream_ctx), freestream_ctx));
@@ -169,7 +169,7 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
     PetscBool run_unit_tests = PETSC_FALSE;
 
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-riemann_solver_unit_tests", &run_unit_tests, NULL));
-    if (run_unit_tests) PetscCall(RiemannSolverUnitTests(newtonian_ig_ctx, 5e-7));
+    if (run_unit_tests) PetscCall(RiemannSolverUnitTests(newtonian_ig_ctx->gas, 5e-7));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -214,12 +214,12 @@ static PetscErrorCode CheckQWithTolerance(const CeedScalar Q_s[5], const CeedSca
 }
 
 // @brief Verify RiemannFlux_HLL_fwd function against finite-difference approximation
-static PetscErrorCode TestRiemannHLL_fwd(NewtonianIdealGasContext gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
+static PetscErrorCode TestRiemannHLL_fwd(NewtonianIGProperties gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T           = 200;
   const CeedScalar rho         = 1.2;
-  const CeedScalar p           = (HeatCapacityRatio(gas) - 1) * rho * gas->cv * T;
+  const CeedScalar p           = (HeatCapacityRatio(gas) - 1) * rho * gas.cv * T;
   const CeedScalar u_base      = 40;
   const CeedScalar u[3]        = {u_base, u_base * 1.1, u_base * 1.2};
   const CeedScalar Y0_left[5]  = {p, u[0], u[1], u[2], T};
@@ -276,12 +276,12 @@ static PetscErrorCode TestRiemannHLL_fwd(NewtonianIdealGasContext gas, CeedScala
 }
 
 // @brief Verify RiemannFlux_HLLC_fwd function against finite-difference approximation
-static PetscErrorCode TestRiemannHLLC_fwd(NewtonianIdealGasContext gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
+static PetscErrorCode TestRiemannHLLC_fwd(NewtonianIGProperties gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T           = 200;
   const CeedScalar rho         = 1.2;
-  const CeedScalar p           = (HeatCapacityRatio(gas) - 1) * rho * gas->cv * T;
+  const CeedScalar p           = (HeatCapacityRatio(gas) - 1) * rho * gas.cv * T;
   const CeedScalar u_base      = 40;
   const CeedScalar u[3]        = {u_base, u_base * 1.1, u_base * 1.2};
   const CeedScalar Y0_left[5]  = {p, u[0], u[1], u[2], T};
@@ -338,12 +338,12 @@ static PetscErrorCode TestRiemannHLLC_fwd(NewtonianIdealGasContext gas, CeedScal
 }
 
 // @brief Verify ComputeHLLSpeeds_Roe_fwd function against finite-difference approximation
-static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(NewtonianIdealGasContext gas, CeedScalar rtol) {
+static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(NewtonianIGProperties gas, CeedScalar rtol) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T           = 200;
   const CeedScalar rho         = 1.2;
-  const CeedScalar p           = (HeatCapacityRatio(gas) - 1) * rho * gas->cv * T;
+  const CeedScalar p           = (HeatCapacityRatio(gas) - 1) * rho * gas.cv * T;
   const CeedScalar u_base      = 40;
   const CeedScalar u[3]        = {u_base, u_base * 1.1, u_base * 1.2};
   const CeedScalar Y0_left[5]  = {p, u[0], u[1], u[2], T};
@@ -413,12 +413,12 @@ static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(NewtonianIdealGasContext gas,
 }
 
 // @brief Verify TotalSpecificEnthalpy_fwd function against finite-difference approximation
-static PetscErrorCode TestTotalSpecificEnthalpy_fwd(NewtonianIdealGasContext gas, CeedScalar rtol) {
+static PetscErrorCode TestTotalSpecificEnthalpy_fwd(NewtonianIGProperties gas, CeedScalar rtol) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T      = 200;
   const CeedScalar rho    = 1.2;
-  const CeedScalar p      = (HeatCapacityRatio(gas) - 1) * rho * gas->cv * T;
+  const CeedScalar p      = (HeatCapacityRatio(gas) - 1) * rho * gas.cv * T;
   const CeedScalar u_base = 40;
   const CeedScalar u[3]   = {u_base, u_base * 1.1, u_base * 1.2};
   const CeedScalar Y0[5]  = {p, u[0], u[1], u[2], T};
@@ -460,7 +460,7 @@ static PetscErrorCode TestTotalSpecificEnthalpy_fwd(NewtonianIdealGasContext gas
 }
 
 // @brief Verify RoeSetup_fwd function against finite-difference approximation
-static PetscErrorCode TestRowSetup_fwd(NewtonianIdealGasContext gas, CeedScalar rtol) {
+static PetscErrorCode TestRowSetup_fwd(NewtonianIGProperties gas, CeedScalar rtol) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar rho0[2] = {1.2, 1.4};
@@ -501,7 +501,7 @@ static PetscErrorCode TestRowSetup_fwd(NewtonianIdealGasContext gas, CeedScalar 
 }
 
 // @brief Test Riemann solver related `*_fwd` functions via finite-difference approximation
-static PetscErrorCode RiemannSolverUnitTests(NewtonianIdealGasContext gas, CeedScalar rtol) {
+static PetscErrorCode RiemannSolverUnitTests(NewtonianIGProperties gas, CeedScalar rtol) {
   PetscFunctionBeginUser;
   PetscCall(TestRiemannHLL_fwd(gas, rtol, rtol, rtol));
   PetscCall(TestRiemannHLLC_fwd(gas, rtol, rtol, rtol));

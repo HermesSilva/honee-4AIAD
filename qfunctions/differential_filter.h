@@ -23,7 +23,7 @@ struct DifferentialFilterContext_ {
   CeedScalar                             friction_length;
   enum DifferentialFilterDampingFunction damping_function;
   CeedScalar                             damping_constant;
-  struct NewtonianIdealGasContext_       gas;
+  struct NewtonianIdealGasContext_       newt_ctx;
 };
 
 CEED_QFUNCTION_HELPER int DifferentialFilter_RHS(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, StateVariable state_var) {
@@ -33,7 +33,7 @@ CEED_QFUNCTION_HELPER int DifferentialFilter_RHS(void *ctx, CeedInt Q, const Cee
   CeedScalar(*v1)[CEED_Q_VLA]           = (CeedScalar(*)[CEED_Q_VLA])out[1];
 
   DifferentialFilterContext context = (DifferentialFilterContext)ctx;
-  NewtonianIdealGasContext  gas     = &context->gas;
+  NewtonianIGProperties     gas     = context->newt_ctx.gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
