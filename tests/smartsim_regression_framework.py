@@ -120,7 +120,7 @@ class SmartSimTest(object):
                 '-options_file', (file_dir / '../examples/blasius.yaml').as_posix(),
                 '-ts_max_steps', '2',
                 '-diff_filter_grid_based_width',
-                '-ts_monitor', '-snes_monitor',
+                '-ts_monitor_wall_clock_time', '-snes_monitor', '-ts_view_pre',
                 '-diff_filter_ksp_max_it', '50', '-diff_filter_ksp_monitor',
                 '-degree', '1',
                 '-sgs_train_enable',
@@ -130,7 +130,7 @@ class SmartSimTest(object):
                 '-dm_plex_shape', 'zbox',
                 '-dm_plex_box_bd', 'none,none,periodic',
                 '-dm_plex_box_faces', '4,6,1',
-                '-mesh_transform',
+                '-mesh_transform', '-ts_monitor_smartsim_solution',
             ]
 
             run_settings = RunSettings(exe_path, exe_args=arguments)
@@ -154,8 +154,19 @@ class SmartSimTest(object):
             assert client.poll_tensor("num_filter_widths", 250, 5)
             assert_equal(client.get_tensor("num_filter_widths")[0], 2)
 
-            assert client.poll_tensor("step", 250, 5)
+            assert client.poll_tensor("step", 250, 10)
             assert_equal(client.get_tensor("step")[0], 2)
+
+            assert client.poll_dataset("y.0.flow_solution", 250, 5)
+            test_data_path = test_output_dir / "y0flow_solution_output.npy"
+            assert test_data_path.is_file()
+            correct_value = np.load(test_data_path)
+            dataset = client.get_dataset("y.0.flow_solution")
+            assert "step" in dataset.get_metadata_field_names()
+            assert "time" in dataset.get_metadata_field_names()
+            assert_equal(dataset.get_meta_scalars("step")[0], 2)
+            database_value = dataset.get_tensor("solution")
+            verify_training_data(database_value, correct_value, ceed_resource)
 
             assert client.poll_tensor("y.0.0", 250, 5)
             test_data_path = test_output_dir / "y00_output.npy"

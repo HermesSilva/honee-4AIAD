@@ -6,7 +6,7 @@
 #include <differential_filter.h>
 #include <navierstokes.h>
 #include <petscdmplex.h>
-#include <smartsim.h>
+#include <smartsim-impl.h>
 
 typedef struct SGS_DD_TrainingData_ *SGS_DD_TrainingData;
 struct SGS_DD_TrainingData_ {
@@ -22,7 +22,7 @@ struct SGS_DD_TrainingData_ {
 
 #define SGS_DD_TRAIN_KEY "SGS Data Driven Training"
 
-PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData *sgs_dd_train) {
+static PetscErrorCode SGS_DD_TrainingDataDestroy(SGS_DD_TrainingData *sgs_dd_train) {
   SGS_DD_TrainingData sgs_dd_train_ = *sgs_dd_train;
 
   PetscFunctionBeginUser;
@@ -168,10 +168,11 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem) {
+PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee) {
   SGS_DDTrainingContext    sgsdd_train_ctx;
   SGS_DD_TrainingSetupData sgs_dd_train_setup_data;
   SGS_DD_TrainingData      sgs_dd_train;
+  ProblemData              problem = honee->problem_data;
 
   PetscFunctionBeginUser;
 
@@ -363,10 +364,10 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
       {
         const PetscScalar *training_data;
         PetscCall(VecGetArrayRead(TrainingData, &training_data));
-        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Train, 0, 0, 0, 0));
+        PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Write, 0, 0, 0, 0));
         PetscCallSmartRedis(put_tensor(smartsim->client, array_key, array_key_len, (void *)training_data, sgs_dd_train->training_data_array_dims, 2,
                                        SRTensorTypeDouble, SRMemLayoutContiguous));
-        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Train, 0, 0, 0, 0));
+        PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Write, 0, 0, 0, 0));
         PetscCall(VecRestoreArrayRead(TrainingData, &training_data));
       }
     }

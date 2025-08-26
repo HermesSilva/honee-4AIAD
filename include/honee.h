@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
+#include <ceed.h>
 #include <petsc.h>
 #include <stdbool.h>
 typedef struct Honee_private *Honee;

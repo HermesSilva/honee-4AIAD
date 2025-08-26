@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 // Based on the instructions from https://www.craylabs.org/docs/sr_integration.html and PHASTA implementation
 
-#include <smartsim.h>
+#include <smartsim-impl.h>
 
 #include <navierstokes.h>
 
@@ -67,6 +67,14 @@ static PetscErrorCode SmartSimSetup(Honee honee) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+  @brief Obtains the `SmartSimData` from the `Honee` object
+
+  If `SmartSimData` has not already been initialized, this will initialize and create the struct.
+
+  @param[in]  honee `Honee` object containing the SmartSim data
+  @param[out] smartsim `SmartSimData` containing the data
+**/
 PetscErrorCode HoneeGetSmartSimData(Honee honee, SmartSimData *smartsim) {
   PetscBool has_smartsim;
 
@@ -77,6 +85,16 @@ PetscErrorCode HoneeGetSmartSimData(Honee honee, SmartSimData *smartsim) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+/**
+  @brief Checks if a tensor with `name` is in the SmartRedis database
+
+  Function will error out if tensor does not exist.
+
+  @param[in] c_client SmartRedis client object
+  @param[in] name Name of the tensor
+  @param[in] name_length Length of the tensor name
+  @return An error code: 0 - success, otherwise - failure
+**/
 PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const size_t name_length) {
   bool does_exist = true;
 

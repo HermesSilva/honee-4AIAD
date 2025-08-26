@@ -15,7 +15,7 @@ PetscLogEvent HONEE_StrongBCInsert;
 PetscLogEvent HONEE_StrongBCCeed;
 PetscLogEvent HONEE_SmartRedis_Init;
 PetscLogEvent HONEE_SmartRedis_Meta;
-PetscLogEvent HONEE_SmartRedis_Train;
+PetscLogEvent HONEE_SmartRedis_Write;
 PetscLogEvent HONEE_TrainDataCompute;
 PetscLogEvent HONEE_DifferentialFilter;
 PetscLogEvent HONEE_VelocityGradientProjection;
@@ -34,7 +34,7 @@ PetscErrorCode RegisterLogEvents() {
   PetscCall(PetscClassIdRegister("onlineTrain", &onlineTrain_classid));
   PetscCall(PetscLogEventRegister("SmartRedis_Init", onlineTrain_classid, &HONEE_SmartRedis_Init));
   PetscCall(PetscLogEventRegister("SmartRedis_Meta", onlineTrain_classid, &HONEE_SmartRedis_Meta));
-  PetscCall(PetscLogEventRegister("SmartRedis_Train", onlineTrain_classid, &HONEE_SmartRedis_Train));
+  PetscCall(PetscLogEventRegister("SmartRedis_Write", onlineTrain_classid, &HONEE_SmartRedis_Write));
   PetscCall(PetscLogEventRegister("TrainDataCompute", onlineTrain_classid, &HONEE_TrainDataCompute));
 
   PetscCall(PetscClassIdRegister("SGS Model", &sgs_model_classid));

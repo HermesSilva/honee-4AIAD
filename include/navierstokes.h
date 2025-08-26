@@ -360,13 +360,6 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
 PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
 
 // -----------------------------------------------------------------------------
-// SGS Data-Driven Training via SmartSim
-// -----------------------------------------------------------------------------
-PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee, ProblemData problem);
-PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal solution_time, Vec Q, void *ctx);
-PetscErrorCode TSPostStep_SGS_DD_Training(TS ts);
-
-// -----------------------------------------------------------------------------
 // Divergence of Diffusive Flux Projection
 // -----------------------------------------------------------------------------
 PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMethod divFdiffproj_method, PetscInt num_diff_flux_comps,
