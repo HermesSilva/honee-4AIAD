@@ -4,6 +4,7 @@
 stages:
   - test:stage-lint
   - test:stage-full
+  - test:post
   - test:docs
   - deploy
 
@@ -103,8 +104,7 @@ noether-memcheck:
   script:
     - rm -f .SUCCESS
     # Environment
-    # -- NOTE: Coverage disabled because it doesn't play nice with the ASAN options
-    - export CC=clang-15
+    - export COVERAGE=1 CC=clang-15
     - export NPROC_POOL=8
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version
@@ -133,8 +133,14 @@ noether-memcheck:
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL)) CEED_BACKENDS="/cpu/self/memcheck" JUNIT_BATCH="cpu-serial-memcheck" junit search=navierstokes
     # Report status
     - touch .SUCCESS
+  after_script:
+    - |
+      if [ -f .SUCCESS ]; then
+        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
+      fi
   artifacts:
     paths:
+      - coverage-$CI_JOB_ID.json
       - build/*.junit
     reports:
       junit: build/*.junit
@@ -189,17 +195,13 @@ noether-cpu:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
+        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
       fi
-  coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
     paths:
-      - coverage.xml
+      - coverage-$CI_JOB_ID.json
       - build/*.junit
     reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
       junit: build/*.junit
       performance: performance.json
     expire_in: 28 days
@@ -251,17 +253,13 @@ noether-cpu-int64:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
+        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
       fi
-  coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
     paths:
-      - coverage.xml
+      - coverage-$CI_JOB_ID.json
       - build/*.junit
     reports:
-      coverage_report:
-        coverage_format: cobertura
-        path: coverage.xml
       junit: build/*.junit
       performance: performance.json
     expire_in: 28 days
@@ -314,15 +312,16 @@ noether-cpu-int64:
 #       if [ -f .SUCCESS ]; then
 #         gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
 #       fi
-#   coverage: '/^lines:\s+(\d+.\d\%)/'
+#   after_script:
+#     - |
+#       if [ -f .SUCCESS ]; then
+#         gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
+#       fi
 #   artifacts:
 #     paths:
-#       - coverage.xml
+#       - coverage-$CI_JOB_ID.json
 #       - build/*.junit
 #     reports:
-#       coverage_report:
-#         coverage_format: cobertura
-#         path: coverage.xml
 #       junit: build/*.junit
 #       performance: performance.json
 #     expire_in: 28 days
@@ -369,20 +368,44 @@ noether-cuda:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
+        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
       fi
+  artifacts:
+    paths:
+      - coverage-$CI_JOB_ID.json
+      - build/*.junit
+    reports:
+      junit: build/*.junit
+      performance: performance.json
+    expire_in: 28 days
+
+
+test-coverage:
+  stage: test:post
+  extends: .test
+  tags:
+    - noether
+    - shell
+  when: always
+  needs: [noether-memcheck, noether-cpu, noether-cpu-int64, noether-cuda, ]
+  script:
+    - ls coverage-*
+    - mkdir coverage
+    - gcovr --json-add-tracefile "coverage-*.json" --xml-pretty -o coverage.xml --print-summary --html-nested coverage/index.html --html-theme github.dark-blue
   coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
     paths:
       - coverage.xml
-      - build/*.junit
+      - coverage
+    when: always
     reports:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-      junit: build/*.junit
-      performance: performance.json
     expire_in: 28 days
+  environment:
+    name: coverage/$CI_COMMIT_REF_NAME
+    url: https://$CI_PROJECT_NAMESPACE.gitlab.io/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/coverage/index.html
 
 
 # ----------------------------------------------------------------------------------------
