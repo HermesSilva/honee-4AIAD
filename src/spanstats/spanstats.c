@@ -205,7 +205,7 @@ static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCt
       PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
     }
   }
-  PetscCall(VecScale(X_loc, honee->units->meter));
+  // Do not need to scale the coordinates. The DMClone operation has already copied the scaled coordinates
   PetscCall(VecCopyPetscToCeed(X_loc, (*stats_setup_data)->x_coord));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -228,7 +228,8 @@ static PetscErrorCode SpanwiseStatisticsSetupDataDestroy(SpanStatsSetupData data
 }
 
 // Create PetscSF for child-to-parent communication
-static PetscErrorCode SpanwiseStatisticsCreateSF(Honee honee, SpanStatsSetupData stats_setup_data, DM parentdm, DM childdm, PetscSF *statssf) {
+static PetscErrorCode SpanwiseStatisticsCreateSF(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_setup_data, DM parentdm, DM childdm,
+                                                 PetscSF *statssf) {
   Ceed     ceed = honee->ceed;
   PetscInt child_num_qpnts, parent_num_qpnts;
   CeedInt  num_comp_x;
@@ -269,7 +270,12 @@ static PetscErrorCode SpanwiseStatisticsCreateSF(Honee honee, SpanStatsSetupData
     PetscCall(PetscFree2(child_coords, parent_coords));
   }
 
-  PetscCall(PetscSFViewFromOptions(*statssf, NULL, "-spanstats_sf_view"));
+  {
+    char spanstats_sf_key[1024];
+    PetscCall(PetscSNPrintf(spanstats_sf_key, sizeof spanstats_sf_key, "-%ssf_view", spanstats->prefix));
+    PetscCall(PetscObjectSetName((PetscObject)*statssf, spanstats->prefix));
+    PetscCall(PetscSFViewFromOptions(*statssf, NULL, spanstats_sf_key));
+  }
 
   PetscCall(VecDestroy(&Child_qx_coords));
   PetscCall(VecDestroy(&Parent_qx_coords));
@@ -366,7 +372,7 @@ PetscErrorCode SpanwiseStatisticsSetupInitialize(Honee honee, PetscInt degree, P
   PetscCall(SpanwiseStatisticsSetupDataCreate(honee, spanstats_, stats_setup_data));
   //
   // Create SF for communicating child data back their respective parents
-  PetscCall(SpanwiseStatisticsCreateSF(honee, *stats_setup_data, honee->dm, spanstats_->dm, &spanstats_->sf));
+  PetscCall(SpanwiseStatisticsCreateSF(honee, spanstats_, *stats_setup_data, honee->dm, spanstats_->dm, &spanstats_->sf));
 
   *spanstats = spanstats_;
   PetscFunctionReturn(PETSC_SUCCESS);
