@@ -205,7 +205,7 @@ static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCt
       PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
     }
   }
-  PetscCall(VecScale(X_loc, honee->units->meter));
+  // Do not need to scale the coordinates. The DMClone operation has already copied the scaled coordinates
   PetscCall(VecCopyPetscToCeed(X_loc, (*stats_setup_data)->x_coord));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
