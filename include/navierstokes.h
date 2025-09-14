@@ -212,6 +212,12 @@ struct HoneeBCStruct_ {
   PetscCtxDestroyFn   *DestroyCtx;
 };
 
+// for strong BC
+typedef struct {
+  PetscScalar P, u, v, w, T;
+  PetscBool   setP, setu, setv, setw, setT;
+} StrongBCValues;
+
 PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx);
 PetscErrorCode HoneeBCDestroy(void **ctx);
 PetscErrorCode HoneeBCCreateIFunctionQF(BCDefinition bc_def, CeedQFunctionUser qf_func_ptr, const char *qf_loc, CeedQFunctionContext qfctx,

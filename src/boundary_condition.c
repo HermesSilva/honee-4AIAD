@@ -4,6 +4,13 @@
 #include <navierstokes.h>
 #include "petscerror.h"
 
+static PetscErrorCode StrongBCValuesDestroy(void **p) {
+  PetscFunctionBeginUser;
+  if (p && *p) PetscCall(PetscFree(*(void **)p));
+  if (p) *p = NULL;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /**
    @brief Add `BCDefinition` to a `PetscSegBuffer`
 
@@ -82,6 +89,82 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
 
   PetscCall(PetscOptionsBCDefinition("-bc_slip", "Face IDs to apply slip BC", NULL, "slip", &bc_def, NULL));
   PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+
+  // Strong BC
+  // Usage example: -bc_strong 3,5  -strong_comps 1,2,3  -strong_u 0  -strong_v 0  -strong_w 0
+  PetscCall(PetscOptionsBCDefinition("-bc_strong", "Face IDs to apply strong BC", NULL, "strong", &bc_def, &flg));
+  if (flg && bc_def) {
+    // Components to constrain 
+    PetscInt essential_comps[16];
+    PetscInt num_essential_comps = 16;
+    PetscCall(PetscOptionsIntArray("-strong_comps", "Array of constrained component numbers ", NULL, essential_comps,
+                                   &num_essential_comps, NULL));
+    PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
+
+    StrongBCValues *vals;
+    PetscCall(PetscNew(&vals));
+    vals->P = vals->u = vals->v = vals->w = vals->T = 0.0;
+    vals->setP = vals->setu = vals->setv = vals->setw = vals->setT = PETSC_FALSE;
+
+    PetscCall(PetscOptionsScalar("-strong_P", "Pressure for strong BC", NULL, vals->P, &vals->P, &vals->setP));
+    PetscCall(PetscOptionsScalar("-strong_u", "Velocity-x for strong BC", NULL, vals->u, &vals->u, &vals->setu));
+    PetscCall(PetscOptionsScalar("-strong_v", "Velocity-y for strong BC", NULL, vals->v, &vals->v, &vals->setv));
+    PetscCall(PetscOptionsScalar("-strong_w", "Velocity-z for strong BC", NULL, vals->w, &vals->w, &vals->setw));
+    PetscCall(PetscOptionsScalar("-strong_T", "Temperature for strong BC", NULL, vals->T, &vals->T, &vals->setT));
+
+    PetscCall(BCDefinitionSetContext(bc_def, StrongBCValuesDestroy, vals));
+
+    problem->use_strong_bc_ceed = PETSC_TRUE;
+    problem->set_bc_from_ics    = PETSC_FALSE;
+
+    PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+  }
+
+  // Additional numbered strong groups
+  for (PetscInt gi = 1; gi <= 16; gi++) {
+    char opt_faces[64];
+    snprintf(opt_faces, sizeof(opt_faces), "-bc_strong%" PetscInt_FMT, gi);
+
+    bc_def = NULL;
+    flg    = PETSC_FALSE;
+    PetscCall(PetscOptionsBCDefinition(opt_faces, "Face IDs to apply strong BC", NULL, "strong", &bc_def, &flg));
+    if (!flg || !bc_def) continue;
+
+    // Components for this group
+    PetscInt essential_comps[16];
+    PetscInt num_essential_comps = 16;
+    char     opt_comps[64];
+    snprintf(opt_comps, sizeof(opt_comps), "-strong%" PetscInt_FMT "_comps", gi);
+    PetscCall(PetscOptionsIntArray(opt_comps, "Array of constrained component numbers ", NULL, essential_comps,
+                                   &num_essential_comps, NULL));
+    PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
+
+    // Values for this group
+    StrongBCValues *vals;
+    PetscCall(PetscNew(&vals));
+    vals->P = vals->u = vals->v = vals->w = vals->T = 0.0;
+    vals->setP = vals->setu = vals->setv = vals->setw = vals->setT = PETSC_FALSE;
+
+    char optP[64], optu[64], optv[64], optw[64], optT[64];
+    snprintf(optP, sizeof(optP), "-strong%" PetscInt_FMT "_P", gi);
+    snprintf(optu, sizeof(optu), "-strong%" PetscInt_FMT "_u", gi);
+    snprintf(optv, sizeof(optv), "-strong%" PetscInt_FMT "_v", gi);
+    snprintf(optw, sizeof(optw), "-strong%" PetscInt_FMT "_w", gi);
+    snprintf(optT, sizeof(optT), "-strong%" PetscInt_FMT "_T", gi);
+
+    PetscCall(PetscOptionsScalar(optP, "Pressure for strong BC", NULL, vals->P, &vals->P, &vals->setP));
+    PetscCall(PetscOptionsScalar(optu, "Velocity-x for strong BC", NULL, vals->u, &vals->u, &vals->setu));
+    PetscCall(PetscOptionsScalar(optv, "Velocity-y for strong BC", NULL, vals->v, &vals->v, &vals->setv));
+    PetscCall(PetscOptionsScalar(optw, "Velocity-z for strong BC", NULL, vals->w, &vals->w, &vals->setw));
+    PetscCall(PetscOptionsScalar(optT, "Temperature for strong BC", NULL, vals->T, &vals->T, &vals->setT));
+
+    PetscCall(BCDefinitionSetContext(bc_def, StrongBCValuesDestroy, vals));
+
+    problem->use_strong_bc_ceed = PETSC_TRUE;
+    problem->set_bc_from_ics    = PETSC_FALSE;
+
+    PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+  }
 
   PetscOptionsEnd();
 

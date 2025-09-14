@@ -22,3 +22,23 @@ CEED_QFUNCTION(SetupStrongBC)(void *ctx, CeedInt Q, const CeedScalar *const *in,
   }
   return 0;
 }
+
+typedef struct {
+  CeedScalar q[5];
+  CeedInt    mask[5];
+} StrongContext;
+
+CEED_QFUNCTION(StrongQF)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
+  const CeedScalar(*scale) = (const CeedScalar(*))in[0];
+  CeedScalar(*bcval)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
+
+  const StrongContext *c = (const StrongContext *)ctx;
+
+  // Apply mask once to get the per component target in q space
+  CeedScalar q_set[5];
+  for (CeedInt j = 0; j < 5; j++) q_set[j] = c->mask[j] ? c->q[j] : 0.0;
+  CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
+    for (CeedInt j = 0; j < 5; j++) bcval[j][i] = scale[i] * q_set[j];
+  }
+  return 0;
+}
