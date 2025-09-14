@@ -94,11 +94,10 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
   // Usage example: -bc_strong 3,5  -strong_comps 1,2,3  -strong_u 0  -strong_v 0  -strong_w 0
   PetscCall(PetscOptionsBCDefinition("-bc_strong", "Face IDs to apply strong BC", NULL, "strong", &bc_def, &flg));
   if (flg && bc_def) {
-    // Components to constrain 
+    // Components to constrain
     PetscInt essential_comps[16];
     PetscInt num_essential_comps = 16;
-    PetscCall(PetscOptionsIntArray("-strong_comps", "Array of constrained component numbers ", NULL, essential_comps,
-                                   &num_essential_comps, NULL));
+    PetscCall(PetscOptionsIntArray("-strong_comps", "Array of constrained component numbers ", NULL, essential_comps, &num_essential_comps, NULL));
     PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
 
     StrongBCValues *vals;
@@ -135,8 +134,7 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     PetscInt num_essential_comps = 16;
     char     opt_comps[64];
     snprintf(opt_comps, sizeof(opt_comps), "-strong%" PetscInt_FMT "_comps", gi);
-    PetscCall(PetscOptionsIntArray(opt_comps, "Array of constrained component numbers ", NULL, essential_comps,
-                                   &num_essential_comps, NULL));
+    PetscCall(PetscOptionsIntArray(opt_comps, "Array of constrained component numbers ", NULL, essential_comps, &num_essential_comps, NULL));
     PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
 
     // Values for this group

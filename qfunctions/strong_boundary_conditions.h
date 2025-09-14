@@ -29,7 +29,7 @@ typedef struct {
 } StrongContext;
 
 CEED_QFUNCTION(StrongQF)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
-  const CeedScalar(*scale) = (const CeedScalar(*))in[0];
+  const CeedScalar(*scale)       = (const CeedScalar(*))in[0];
   CeedScalar(*bcval)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
   const StrongContext *c = (const StrongContext *)ctx;
