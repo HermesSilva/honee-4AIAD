@@ -431,7 +431,7 @@ PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData pro
     if (use_strongstg) {
       PetscCall(SetupStrongSTG_Ceed(ceed, honee, dm, problem, honee->phys, op_strong_bc));
     }
-    // Always attempt to setup generic strong BCs if definitions exist
+    // attempt to setup generic strong BC if definitions are given 
     PetscCall(SetupStrong_Ceed(ceed, honee, dm, problem, op_strong_bc));
   }
 
