@@ -186,6 +186,7 @@ int FreeContextPetsc(void *data) {
 **/
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData *context) {
   NodalProjectionData context_ = *context;
+
   PetscFunctionBeginUser;
   if (context_ == NULL) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(DMDestroy(&context_->dm));

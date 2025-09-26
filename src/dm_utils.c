@@ -69,7 +69,6 @@ PetscErrorCode DMPlexCeedElemRestrictionCreate(Ceed ceed, DM dm, DMLabel domain_
   PetscCallCeed(ceed, CeedElemRestrictionCreate(ceed, num_elem, elem_size, num_comp, 1, num_dof, CEED_MEM_HOST, CEED_COPY_VALUES,
                                                 restriction_offsets_ceed, restriction));
   PetscCall(PetscFree(restriction_offsets_ceed));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -97,7 +96,6 @@ PetscErrorCode DMPlexCeedElemRestrictionCoordinateCreate(Ceed ceed, DM dm, DMLab
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm_coord, domain_label, label_value, height, 0, restriction));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -216,7 +214,6 @@ static PetscErrorCode DMPlexCeedElemRestrictionStridedCreate(Ceed ceed, DM dm, D
   // Create the restriction
   PetscCallCeed(ceed, CeedElemRestrictionCreateStrided(ceed, num_elem, num_qpts, q_data_size, num_elem * num_qpts * q_data_size, CEED_STRIDES_BACKEND,
                                                        restriction));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -239,7 +236,6 @@ PetscErrorCode DMPlexCeedElemRestrictionQDataCreate(Ceed ceed, DM dm, DMLabel do
                                                     PetscInt q_data_size, CeedElemRestriction *restriction) {
   PetscFunctionBeginUser;
   PetscCall(DMPlexCeedElemRestrictionStridedCreate(ceed, dm, domain_label, label_value, height, q_data_size, PETSC_FALSE, restriction));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -262,7 +258,6 @@ PetscErrorCode DMPlexCeedElemRestrictionCollocatedCreate(Ceed ceed, DM dm, DMLab
                                                          PetscInt q_data_size, CeedElemRestriction *restriction) {
   PetscFunctionBeginUser;
   PetscCall(DMPlexCeedElemRestrictionStridedCreate(ceed, dm, domain_label, label_value, height, q_data_size, PETSC_TRUE, restriction));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -465,7 +460,6 @@ static inline PetscErrorCode GetClosurePermutationAndFieldOffsetAtDepth(DM dm, P
   PetscSection section;
 
   PetscFunctionBeginUser;
-
   *field_offset = 0;
 
   PetscCall(DMGetDimension(dm, &dim));
@@ -497,7 +491,6 @@ static inline PetscErrorCode GetClosurePermutationAndFieldOffsetAtDepth(DM dm, P
     *field_offset = offset;
     PetscCall(PetscSectionGetClosurePermutation(section, (PetscObject)dm, depth, size, permutation));
   }
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -632,7 +625,7 @@ static inline PetscErrorCode GetGlobalDMPlexPolytopeType(DM dm, DMLabel domain_l
     PetscInt cell_type_local = -1, cell_type_global = -1;
 
     if (first_point != -1) cell_type_local = (PetscInt)*cell_type;
-    PetscCall(MPIU_Allreduce(&cell_type_local, &cell_type_global, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)dm)));
+    PetscCallMPI(MPIU_Allreduce(&cell_type_local, &cell_type_global, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)dm)));
     *cell_type = (DMPolytopeType)cell_type_global;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -952,7 +945,7 @@ PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num
     PetscInt location_local = -1, location_global = -1;
 
     PetscCall(PetscFindInt(value, num_values_local, values_local, &location_local));
-    PetscCall(MPIU_Allreduce(&location_local, &location_global, 1, MPIU_INT, MPI_MAX, comm));
+    PetscCallMPI(MPIU_Allreduce(&location_local, &location_global, 1, MPIU_INT, MPI_MAX, comm));
     if (location_global < 0) continue;
     else {
       PetscInt *seg_slot;

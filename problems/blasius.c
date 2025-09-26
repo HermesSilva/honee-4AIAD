@@ -96,7 +96,7 @@ PetscErrorCode ComputeChebyshevCoefficients(BlasiusContext blasius) {
   PetscCall(SNESSetFromOptions(snes));
   PetscCall(SNESSolve(snes, NULL, sol));
   PetscCall(SNESGetConvergedReason(snes, &reason));
-  PetscCheck(reason >= 0, PETSC_COMM_WORLD, PETSC_ERR_CONV_FAILED, "The Chebyshev solve failed.\n");
+  PetscCheck(reason >= 0, PETSC_COMM_WORLD, PETSC_ERR_CONV_FAILED, "The Chebyshev solve failed.");
 
   // Assign Chebyshev coefficients
   PetscCall(VecGetArrayRead(sol, &cheb_coefs));

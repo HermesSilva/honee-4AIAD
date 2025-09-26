@@ -90,7 +90,6 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
   PetscCall(PetscSegBufferDestroy(&bc_defs_seg));
 
   //TODO: Verify that the BCDefinition don't have overlapping claims to boundary faces
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -105,7 +104,7 @@ PetscErrorCode HoneeBCDestroy(void **ctx) {
 
   PetscFunctionBeginUser;
   if (honee_bc->qfctx) PetscCallCeed(ceed, CeedQFunctionContextDestroy(&honee_bc->qfctx));
-  if (honee_bc->DestroyCtx) PetscCall((*(honee_bc->DestroyCtx))(&honee_bc->ctx));
+  if (honee_bc->DestroyCtx) PetscCall((*honee_bc->DestroyCtx)(&honee_bc->ctx));
   PetscCall(PetscFree(honee_bc));
   *ctx = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);

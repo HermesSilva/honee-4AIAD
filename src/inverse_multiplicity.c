@@ -32,7 +32,6 @@ PetscErrorCode GetInverseMultiplicity(Ceed ceed, DM dm, DMLabel domain_label, Pe
   CeedElemRestriction elem_restr;
 
   PetscFunctionBeginUser;
-
   PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, domain_label, label_value, height, 1, elem_restr_inv_multiplicity));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(*elem_restr_inv_multiplicity, inv_multiplicity, NULL));
 

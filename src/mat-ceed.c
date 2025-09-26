@@ -1333,7 +1333,6 @@ PetscErrorCode MatCeedContextCreate(DM dm_x, DM dm_y, Vec X_loc, Vec Y_loc_trans
   CeedSize x_loc_len, y_loc_len;
 
   PetscFunctionBeginUser;
-
   // Allocate
   PetscCall(PetscNew(ctx));
   (*ctx)->ref_count = 1;

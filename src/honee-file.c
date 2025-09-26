@@ -237,9 +237,9 @@ PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[], const P
 
 /**
   @brief Get the number of rows for the PHASTA file at path.
- 
+
   Assumes that the first line of the file has the number of rows and columns as the only two entries, separated by a single space.
- 
+
   @param[in]  comm  `MPI_Comm` for the program
   @param[in]  path  Path to the file
   @param[out] nrows Number of rows

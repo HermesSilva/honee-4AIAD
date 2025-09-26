@@ -182,9 +182,9 @@ PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt step, PetscReal solu
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# petsc_directory: %s\n", buf_const));
       PetscCall(PetscGetArchType(buf, sizeof(buf)));
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# petsc_arch: %s\n", buf));
-      if (strftime(buf, sizeof(buf), "%FT%T%z", localtime(&t)) == 0) SETERRQ(comm, PETSC_ERR_SYS, "strftime() call failed");
+      PetscCheck(strftime(buf, sizeof(buf), "%FT%T%z", localtime(&t)), comm, PETSC_ERR_SYS, "strftime() call failed");
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# date: %s\n", buf));
-      if (strftime(buf, sizeof(buf), "%Z", localtime(&t)) == 0) SETERRQ(comm, PETSC_ERR_SYS, "strftime() call failed");
+      PetscCheck(strftime(buf, sizeof(buf), "%Z", localtime(&t)), comm, PETSC_ERR_SYS, "strftime() call failed");
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# date_timezone: %s\n", buf));
       PetscCall(PetscGetUserName(buf, sizeof(buf)));
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# username: %s\n", buf));

@@ -166,6 +166,5 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
 
   PetscCall(BCDefinitionSetIFunction(bc_def, OutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
   PetscCall(BCDefinitionSetIJacobian(bc_def, OutflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
