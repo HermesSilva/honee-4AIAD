@@ -25,7 +25,7 @@ static PetscErrorCode CreateKSPMassOperator_Unstabilized(Honee honee, CeedOperat
     CeedOperatorField op_field;
     PetscInt          sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_q, &basis_q, NULL));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "qdata", &op_field));
@@ -266,8 +266,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
   if (!honee->phys->implicit) {  // RHS
     CeedOperator op_rhs;
 
-    PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_rhs));
-    PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_rhs, op_rhs_vol));
+    PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &op_rhs));
+    PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_rhs, op_rhs_vol));
     for (PetscCount b = 0; b < problem->num_bc_defs; b++) PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], op_rhs, NULL));
 
     PetscCall(OperatorApplyContextCreate(dm, dm, ceed, op_rhs, honee->q_ceed, honee->g_ceed, honee->Q_loc, NULL, &honee->op_rhs_ctx));
@@ -283,11 +283,11 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     CeedOperator op_ijacobian = NULL;
 
     // Create Composite Operaters
-    PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &honee->op_ifunction));
-    PetscCallCeed(ceed, CeedCompositeOperatorAddSub(honee->op_ifunction, op_ifunction_vol));
+    PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &honee->op_ifunction));
+    PetscCallCeed(ceed, CeedOperatorCompositeAddSub(honee->op_ifunction, op_ifunction_vol));
     if (op_ijacobian_vol) {
-      PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_ijacobian));
-      PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_ijacobian, op_ijacobian_vol));
+      PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &op_ijacobian));
+      PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_ijacobian, op_ijacobian_vol));
     }
     for (PetscCount b = 0; b < problem->num_bc_defs; b++) PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], honee->op_ifunction, op_ijacobian));
 
