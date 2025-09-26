@@ -3,7 +3,7 @@
 #pragma once
 
 #include <ceed.h>
-#include <petsc.h>
+#include <petscdm.h>
 
 PetscErrorCode DMPlexCeedElemRestrictionCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
                                                CeedElemRestriction *restriction);

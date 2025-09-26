@@ -1,7 +1,6 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2025, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
-#include <petsc.h>
 #include <petsc_ops.h>
 
 typedef struct {

@@ -4,7 +4,7 @@
 /// @file
 /// KSP related functiosn for HONEE
 
-#include <petsc.h>
+#include <petscksp.h>
 
 PetscErrorCode KSPPostSolve_Honee(KSP ksp, Vec rhs, Vec x, void *ctx) {
   const PetscReal *residual_history;

@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 #include <ceed.h>
-#include <petsc.h>
+#include <petscdm.h>
+#include <petscsection.h>
+#include <petscts.h>
 #include <stdbool.h>
 typedef struct Honee_private *Honee;
 
