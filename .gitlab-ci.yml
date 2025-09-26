@@ -54,6 +54,8 @@ noether-format:
     - rm -f .SUCCESS
     - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-15 && $CLANG_FORMAT --version
     - make -j$NPROC_CPU format && git diff --color=always --exit-code
+    - echo "-------------- make checkbadSource ---------"
+    - make -j$NPROC_CPU checkbadSource
     - touch .SUCCESS
 
 

@@ -123,7 +123,7 @@ CEED_QFUNCTION_HELPER void InternalDampingLayer_IFunction_Integrand(const State 
 
 /**
   @brief IJacobian integrand for Internal Damping Layer
- 
+
   @note This uses a Picard-type linearization of the damping and could be replaced by an `InternalDampingLayer_fwd` that uses s and ds.
 
   @param[in]    s         Solution `State`

@@ -99,8 +99,8 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
                                sizeof(app_ctx->ceed_resource), &ceed_flag));
 
   app_ctx->test_type = TESTTYPE_NONE;
-  PetscCall(PetscOptionsEnum("-test_type", "Type of test to run", NULL, TestTypes, (PetscEnum)(app_ctx->test_type), (PetscEnum *)&app_ctx->test_type,
-                             NULL));
+  PetscCall(
+      PetscOptionsEnum("-test_type", "Type of test to run", NULL, TestTypes, (PetscEnum)app_ctx->test_type, (PetscEnum *)&app_ctx->test_type, NULL));
 
   app_ctx->test_tol = 1E-11;
   PetscCall(PetscOptionsScalar("-compare_final_state_atol", "Test absolute tolerance", NULL, app_ctx->test_tol, &app_ctx->test_tol, NULL));
@@ -196,7 +196,7 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
   if (app_ctx->sgs_train_enable) honee->set_poststep = PETSC_TRUE;
 
   PetscCall(PetscOptionsEnum("-div_diff_flux_projection_method", "Method of divergence of diffusive flux projection", NULL,
-                             DivDiffFluxProjectionMethods, (PetscEnum)(app_ctx->divFdiffproj_method), (PetscEnum *)&app_ctx->divFdiffproj_method,
+                             DivDiffFluxProjectionMethods, (PetscEnum)app_ctx->divFdiffproj_method, (PetscEnum *)&app_ctx->divFdiffproj_method,
                              NULL));
 
   app_ctx->check_step_interval = -1;

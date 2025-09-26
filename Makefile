@@ -386,4 +386,89 @@ configure :
 	@echo "Configuration cached in $(CONFIG):"
 	@cat $(CONFIG)
 
+
+GITSRC = '*.[chF]' '*.hpp' '*.cpp' '*.cxx'
+checkbadSource:
+	@git --no-pager grep -n -P 'self\.gitcommit' -- config/BuildSystem/config/packages | grep 'origin/' ; if [[ "$$?" == "0" ]]; then echo "Error: Do not use a branch name in a configure package file"; false; fi
+	-@${RM} -f checkbadSource.out
+	-@touch checkbadSource.out
+	-@${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/check_header_guard.py --action=check --kind=pragma_once -- ./src ./include >> checkbadSource.out
+	-@echo "----- Double blank lines in file -----------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P '^$$' -- ${GITSRC} > doublelinecheck.out
+	-@${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/doublelinecheck.py doublelinecheck.out >> checkbadSource.out
+	-@${RM} -f doublelinecheck.out
+	-@echo "----- Tabs in file -------------------------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P '\t' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Tabs in makefiles --------------------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P '[ ]*[#A-Za-z0-9][ :=_A-Za-z0-9]*\t' -- makefile  >> checkbadSource.out;true
+	-@echo "----- White space at end of line -----------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P ' $$' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Two ;; -------------------------------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -e ';;' -- ${GITSRC} | grep -v ' for (' >> checkbadSource.out;true
+	-@echo "----- PetscCall for an MPI error code ------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -e 'PetscCall\(MPI[U]*_\w*\(.*\)\);' -- ${GITSRC} | grep -Ev 'MPIU_File' >> checkbadSource.out;true
+	-@echo "----- DOS file (with DOS newlines) ---------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P '\r' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- { before SETERRQ ---------------------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P '{SETERRQ' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- PetscCall following SETERRQ ----------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'SETERRQ' -- ${GITSRC} | grep ";PetscCall" >> checkbadSource.out;true
+	-@echo "----- SETERRQ() without defined error code -------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'SETERRQ\((?!\))' -- ${GITSRC} | grep -v PETSC_ERR  | grep " if " | grep -v "__VA_ARGS__" | grep -v "then;" | grep -v flow.c >> checkbadSource.out;true
+	-@echo "----- SETERRQ() with trailing newline ------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P "SETERRQ[1-9]?.*\\\n\"" -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Using if (condition) SETERRQ(...) instead of PetscCheck() ----" >> checkbadSource.out
+	-@git --no-pager grep -n -P ' if +(.*) *SETERRQ' -- ${GITSRC} | grep -v 'PetscUnlikelyDebug' | grep -v 'petscerror.h' | grep -v "then;" | grep -v "__VA_ARGS__"  >> checkbadSource.out;true
+	-@echo "----- Using if (PetscUnlikelyDebug(condition)) SETERRQ(...) instead of PetscAssert()" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E ' if +\(PetscUnlikelyDebug.*\) *SETERRQ' -- ${GITSRC} | grep -v petscerror.h >> checkbadSource.out;true
+	-@echo "----- Using PetscFunctionReturn(ierr) ------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'PetscFunctionReturn(ierr)' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Defining a returning macro without PetscMacroReturns() -------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'define .*\w+;\s+do' -- ${GITSRC} | grep -E -v '(PetscMacroReturns|PetscDrawCollectiveBegin|MatPreallocateBegin|PetscOptionsBegin|PetscObjectOptionsBegin|PetscOptionsHeadEnd)' >> checkbadSource.out;true
+	-@echo "----- Defining an error checking macro using CHKERR style ----------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'define\s+CHKERR\w*\(.*\)\s*do\s+{' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Using Petsc[Array|Mem]cpy() for ops instead of assignment ----" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'cpy\(.*(.|->)ops, .*\)' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Using PetscInfo() without carriage return --------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'PetscCall\(PetscInfo\(' -- ${GITSRC} | grep -v '\\n' >> checkbadSource.out;true
+	-@echo "----- Using Petsc(Assert|Check)() with carriage return -------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E 'Petsc(Assert|Check)\(.*[^\]\\\n' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Extra \"\" after format specifier ending a string --------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '_FMT \"\",' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- First blank line ---------------------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P \^\$$ -- ${GITSRC} | grep ':1:' >> checkbadSource.out;true
+	-@echo "----- Blank line after PetscFunctionBegin and derivatives ----------" >> checkbadSource.out
+	-@git --no-pager grep -n -E -A 1 '  PetscFunctionBegin(User|Hot){0,1};' -- ${GITSRC} | grep -E '\-[0-9]+-$$' | grep -v '^--$$' >> checkbadSource.out;true
+	-@echo "----- Blank line before PetscFunctionReturn ------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -E -B 1 '  PetscFunctionReturn' -- ${GITSRC} | grep -E '\-[0-9]+-$$' | grep -v '^--$$' >> checkbadSource.out;true
+	-@echo "----- No blank line before PetscFunctionBegin and derivatives ------" >> checkbadSource.out
+	-@git --no-pager grep -n -E -B 1 '  PetscFunctionBegin(User|Hot){0,1};' -- ${GITSRC} ':!src/sys/tests/*' ':!src/sys/tutorials/*' | grep -E '\-[0-9]+-.*;' | grep -v '^--$$' | grep -v '\\' >> checkbadSource.out;true
+	-@echo "----- Unneeded parentheses [!&~*](foo[->|.]bar) --------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '([\!\&\~\*\(]|\)\)|\([^,\*\(]+\**\))\(([a-zA-Z0-9_]+((\.|->)[a-zA-Z0-9_]+|\[[a-zA-Z0-9_ \%\+\*\-]+\])+)\)' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Use PetscSafePointerPlusOffset(ptr, n) instead of ptr ? ptr + n : NULL" >> checkbadSource.out
+	-@git --no-pager grep -n -Po ' ([^()\ ]+) \? (?1) \+ (.)* : NULL' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Wrong PETSc capitalization -----------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '[^a-zA-Z_*>{.]petsc [^+=]' -- ${GITSRC} | grep -v 'mat_solver_type petsc' | grep -v ' PETSc ' >> checkbadSource.out;true
+	-@echo "----- Unnecessary braces around one-liners -------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '[ ]*(if|for|while|do|else) \(.*\) \{[^;]*;[^;]*\}( \\)?$$' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- MPI_(Allreduce|Irecv|Isend) instead of MPIU_(Allreduce|Irecv|Isend)" >> checkbadSource.out
+	-@git --no-pager grep -n -P -E '\(MPI_(Allreduce|Irecv|Isend)\([^\)]' -- ${GITSRC} ':!*/tests/*' ':!*/tutorials/*' ':!src/sys/objects/pinit.c' >> checkbadSource.out;true
+	@a=`cat checkbadSource.out | wc -l`; l=`expr $$a - 36` ;\
+         if [ $$l -gt 0 ] ; then \
+           echo $$l " files with errors detected in source code formatting" ;\
+           cat checkbadSource.out ;\
+         else \
+	   ${RM} -f checkbadSource.out;\
+         fi;\
+         test ! $$l -gt 0
+	-@git --no-pager grep -P -n "[\x00-\x08\x0E-\x1F\x80-\xFF]" -- ${GITSRC} > badSourceChar.out;true
+	-@w=`cat badSourceChar.out | wc -l`;\
+         if [ $$w -gt 0 ] ; then \
+           echo "Source files with non-ASCII characters ----------------" ;\
+           cat badSourceChar.out ;\
+         else \
+	   ${RM} -f badSourceChar.out;\
+         fi
+	@test ! -s badSourceChar.out
+
 -include $(src.o:%.o=%.d)

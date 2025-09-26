@@ -107,7 +107,7 @@ static PetscErrorCode Surface_Forces_NS(DM dm, Vec G_loc, PetscInt num_walls, co
     PetscCall(ISRestoreIndices(wall_is, &points));
     PetscCall(ISDestroy(&wall_is));
   }
-  PetscCallMPI(MPI_Allreduce(MPI_IN_PLACE, reaction_force, dim * num_walls, MPIU_SCALAR, MPI_SUM, comm));
+  PetscCallMPI(MPIU_Allreduce(MPI_IN_PLACE, reaction_force, dim * num_walls, MPIU_SCALAR, MPI_SUM, comm));
   PetscCall(VecRestoreArrayRead(G_loc, &g_array));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -351,7 +351,7 @@ PetscErrorCode TSPostStep_MaxWallTime(TS ts) {
 /**
   @brief TSPostStep for HONEE
 
-  `TSSetPostStep()` only accepts a single function argument, so this function groups together all post-step 
+  `TSSetPostStep()` only accepts a single function argument, so this function groups together all post-step
   functionality needed for HONEE features
 
   @param[in] ts TS object

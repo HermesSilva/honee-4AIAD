@@ -211,7 +211,7 @@ PetscErrorCode GetStgContextData(const MPI_Comm comm, const DM dm, char stg_infl
     }
     CeedScalar kmin = M_PI / le_max;
 
-    CeedPragmaSIMD for (PetscInt i = 0; i < (*stg_ctx)->nmodes; i++) { kappa[i] = kmin * pow((*stg_ctx)->alpha, i); }
+    CeedPragmaSIMD for (PetscInt i = 0; i < (*stg_ctx)->nmodes; i++) kappa[i] = kmin * pow((*stg_ctx)->alpha, i);
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -262,7 +262,7 @@ PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter)
   PetscCall(PetscOptionsReal("-diff_filter_kernel_scaling", "Scaling to make differential kernel size \"equivalent\" to other filter kernels", NULL,
                              diff_filter_ctx->kernel_scaling, &diff_filter_ctx->kernel_scaling, NULL));
   PetscCall(PetscOptionsEnum("-diff_filter_wall_damping_function", "Damping function to use at the wall", NULL, DifferentialFilterDampingFunctions,
-                             (PetscEnum)(diff_filter_ctx->damping_function), (PetscEnum *)&diff_filter_ctx->damping_function, NULL));
+                             (PetscEnum)diff_filter_ctx->damping_function, (PetscEnum *)&diff_filter_ctx->damping_function, NULL));
   PetscCall(PetscOptionsReal("-diff_filter_wall_damping_constant", "Contant for the wall-damping function", NULL, diff_filter_ctx->damping_constant,
                              &diff_filter_ctx->damping_constant, NULL));
   PetscCall(PetscOptionsReal("-diff_filter_friction_length", "Friction length associated with the flow, \\delta_\\nu. For wall-damping functions",

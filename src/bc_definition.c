@@ -58,6 +58,7 @@ PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char *name, PetscInt num_
 **/
 PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
   BCDefinition bc_def_ = *bc_def;
+
   PetscFunctionBeginUser;
   if (!bc_def_) PetscFunctionReturn(PETSC_SUCCESS);
   PetscValidHeaderSpecific(bc_def_, BC_DEFINITION_CLASSID, 1);
@@ -65,7 +66,7 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
   if (bc_def_->label_values) PetscCall(PetscFree(bc_def_->label_values));
   if (bc_def_->essential_comps) PetscCall(PetscFree(bc_def_->essential_comps));
   if (bc_def_->dm) PetscCall(DMDestroy(&bc_def_->dm));
-  if (bc_def_->DestroyCtx) PetscCall((*(bc_def_->DestroyCtx))(&bc_def_->ctx));
+  if (bc_def_->DestroyCtx) PetscCall((*bc_def_->DestroyCtx)(&bc_def_->ctx));
   PetscCall(PetscHeaderDestroy(&bc_def_));
   *bc_def = NULL;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -247,6 +248,7 @@ PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm) {
 **/
 PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+
   PetscFunctionBeginUser;
   PetscAssertPointer(dm, 2);
   *dm = bc_def->dm;
@@ -263,7 +265,7 @@ PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
 PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
-  if (bc_def->DestroyCtx) PetscCall((*(bc_def->DestroyCtx))(&bc_def->ctx));
+  if (bc_def->DestroyCtx) PetscCall((*bc_def->DestroyCtx)(&bc_def->ctx));
   bc_def->ctx        = ctx;
   bc_def->DestroyCtx = destroy_ctx;
   PetscFunctionReturn(PETSC_SUCCESS);

@@ -175,7 +175,6 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee) {
   ProblemData              problem = honee->problem_data;
 
   PetscFunctionBeginUser;
-
   PetscCall(PetscNew(&sgsdd_train_ctx));
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
   PetscCall(PetscNew(&sgs_dd_train));
@@ -409,6 +408,5 @@ PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
     PetscCall(PetscPrintf(honee->comm, "-- Simulation stopped by 'check-run' tensor in Redis database\n"));
     PetscCall(TSSetConvergedReason(ts, TS_CONVERGED_USER));
   }
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }

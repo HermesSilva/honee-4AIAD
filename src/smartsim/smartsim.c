@@ -10,6 +10,7 @@
 
 static PetscErrorCode SmartSimDataDestroy(SmartSimData *smartsim) {
   SmartSimData smartsim_ = *smartsim;
+
   PetscFunctionBeginUser;
   if (!smartsim_) PetscFunctionReturn(PETSC_SUCCESS);
 

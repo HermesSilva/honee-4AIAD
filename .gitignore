@@ -24,6 +24,7 @@ config.mk
 vgcore*
 *.json
 tests/smartsim_test_dir
+checkbadSource.out
 
 # Python
 dist

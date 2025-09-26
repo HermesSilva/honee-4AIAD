@@ -24,6 +24,7 @@ typedef struct {
 // @brief Destroy `SgsDDData` object
 static PetscErrorCode SgsDDDataDestroy(SgsDDData *sgs_dd_data) {
   SgsDDData sgs_dd_data_ = *sgs_dd_data;
+
   PetscFunctionBeginUser;
   if (!sgs_dd_data_) PetscFunctionReturn(PETSC_SUCCESS);
   Ceed ceed = sgs_dd_data_->op_sgs_apply_ctx->ceed;
@@ -258,13 +259,13 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential_Torch(Ceed ceed, SgsD
   PetscCall(PetscOptionsGetString(NULL, NULL, "-sgs_model_dd_torch_model_path", model_path, sizeof(model_path), NULL));
 
   PetscCall(LoadModel_Torch(model_path, model_device_type));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Perform data-driven model inference using libtorch
 static PetscErrorCode SgsDDNodalStressEval_Sequential_Torch(Vec DD_Inputs_loc, Vec DD_Outputs_loc, void *ctx) {
   static PetscBool run_through = PETSC_FALSE;
+
   PetscFunctionBeginUser;
   if (!run_through) {
     PetscCall(VecViewFromOptions(DD_Inputs_loc, NULL, "-dd_inputs_loc_view"));
