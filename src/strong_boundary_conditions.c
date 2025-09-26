@@ -152,7 +152,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
       PetscCallCeed(ceed, CeedOperatorSetField(op_strong_bc_sub, "q", elem_restr_q_face, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
       // -- Add to composite operator
-      PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_strong_bc, op_strong_bc_sub));
+      PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_strong_bc, op_strong_bc_sub));
 
       PetscCallCeed(ceed, CeedVectorDestroy(&multiplicity));
       PetscCallCeed(ceed, CeedVectorDestroy(&x_stored));
@@ -224,7 +224,7 @@ PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData pro
     PetscCall(DMRestoreGlobalVector(dm, &global_vec));
   }
 
-  PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, &op_strong_bc));
+  PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &op_strong_bc));
   {
     PetscBool use_strongstg = PETSC_FALSE;
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-stg_strong", &use_strongstg, NULL));

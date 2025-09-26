@@ -90,7 +90,7 @@ PetscErrorCode CreateKSPMassOperator_AdvectionStabilized(Honee honee, CeedOperat
     CeedOperatorField op_field;
     PetscInt          sub_op_index = 0;  // will be 0 for the volume op
 
-    PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &op_field));
     PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_q, &basis_q, NULL));
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "qdata", &op_field));
@@ -160,11 +160,11 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    if (honee->op_ifunction) PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
-    else PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    if (honee->op_ifunction) PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_ifunction, &sub_ops));
+    else PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &advection_qfctx));
   }
-  PetscCallCeed(ceed, CeedCompositeOperatorCreate(ceed, op_rhs));
+  PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, op_rhs));
   {  // Add the volume integral CeedOperator
     CeedQFunction       qf_rhs_volume = NULL;
     CeedOperator        op_rhs_volume;
@@ -198,7 +198,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_volume, "diffusive flux RHS", elem_restr_diff_flux_volume, basis_diff_flux, CEED_VECTOR_ACTIVE));
 
-    PetscCallCeed(ceed, CeedCompositeOperatorAddSub(*op_rhs, op_rhs_volume));
+    PetscCallCeed(ceed, CeedOperatorCompositeAddSub(*op_rhs, op_rhs_volume));
 
     PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
     PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
@@ -268,7 +268,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
         PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_boundary, "diffusive flux RHS", elem_restr_diff_flux_boundary, basis_diff_flux_boundary,
                                                  CEED_VECTOR_ACTIVE));
 
-        PetscCallCeed(ceed, CeedCompositeOperatorAddSub(*op_rhs, op_rhs_boundary));
+        PetscCallCeed(ceed, CeedOperatorCompositeAddSub(*op_rhs, op_rhs_boundary));
 
         PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs_boundary));
         PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qdata));
@@ -316,8 +316,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(Honee honee
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    if (honee->op_ifunction) PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_ifunction, &sub_ops));
-    else PetscCallCeed(ceed, CeedCompositeOperatorGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    if (honee->op_ifunction) PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_ifunction, &sub_ops));
+    else PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &advection_qfctx));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
