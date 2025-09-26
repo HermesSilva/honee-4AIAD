@@ -30,7 +30,7 @@ PETSC_CEED_INTERN PetscErrorCode MatCeedSetShifts(Mat mat, PetscReal shift_v, Pe
 PETSC_CEED_EXTERN PetscErrorCode MatCeedSetContext(Mat mat, PetscCtxDestroyFn f, void *ctx);
 PETSC_CEED_EXTERN PetscErrorCode MatCeedGetContext(Mat mat, void *ctx);
 
-PETSC_CEED_EXTERN PetscErrorCode MatCeedSetOperation(Mat mat, MatOperation op, void (*g)(void));
+PETSC_CEED_EXTERN PetscErrorCode MatCeedSetOperation(Mat mat, MatOperation op, PetscErrorCodeFn *g);
 PETSC_CEED_EXTERN PetscErrorCode MatCeedSetCOOMatType(Mat mat, MatType type);
 PETSC_CEED_EXTERN PetscErrorCode MatCeedGetCOOMatType(Mat mat, MatType *type);
 

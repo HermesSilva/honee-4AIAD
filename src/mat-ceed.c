@@ -464,13 +464,13 @@ PetscErrorCode MatCreateCeed(DM dm_x, DM dm_y, CeedOperator op_mult, CeedOperato
   }
   // -- Set mat operations
   PetscCall(MatShellSetContextDestroy(*mat, (PetscCtxDestroyFn *)MatCeedContextDestroy));
-  PetscCall(MatShellSetOperation(*mat, MATOP_VIEW, (void (*)(void))MatView_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_MULT, (void (*)(void))MatMult_Ceed));
-  if (op_mult_transpose) PetscCall(MatShellSetOperation(*mat, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL, (void (*)(void))MatGetDiagonal_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL_BLOCK, (void (*)(void))MatGetDiagonalBlock_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_BLOCK_DIAGONAL, (void (*)(void))MatGetBlockDiagonal_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_VBLOCK_DIAGONAL, (void (*)(void))MatGetVariableBlockDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_VIEW, (PetscErrorCodeFn *)MatView_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_MULT, (PetscErrorCodeFn *)MatMult_Ceed));
+  if (op_mult_transpose) PetscCall(MatShellSetOperation(*mat, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)MatMultTranspose_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL, (PetscErrorCodeFn *)MatGetDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL_BLOCK, (PetscErrorCodeFn *)MatGetDiagonalBlock_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_BLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetBlockDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_VBLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetVariableBlockDiagonal_Ceed));
   PetscCall(MatShellSetVecType(*mat, vec_type));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -530,13 +530,13 @@ PetscErrorCode MatCeedCopy(Mat mat_ceed, Mat mat_other) {
     PetscCall(MatCeedContextReference(ctx));
     PetscCall(MatShellSetContext(mat_other, ctx));
     PetscCall(MatShellSetContextDestroy(mat_other, (PetscCtxDestroyFn *)MatCeedContextDestroy));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_VIEW, (void (*)(void))MatView_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_MULT, (void (*)(void))MatMult_Ceed));
-    if (ctx->op_mult_transpose) PetscCall(MatShellSetOperation(mat_other, MATOP_MULT_TRANSPOSE, (void (*)(void))MatMultTranspose_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL, (void (*)(void))MatGetDiagonal_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL_BLOCK, (void (*)(void))MatGetDiagonalBlock_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_BLOCK_DIAGONAL, (void (*)(void))MatGetBlockDiagonal_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_VBLOCK_DIAGONAL, (void (*)(void))MatGetVariableBlockDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_VIEW, (PetscErrorCodeFn *)MatView_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_MULT, (PetscErrorCodeFn *)MatMult_Ceed));
+    if (ctx->op_mult_transpose) PetscCall(MatShellSetOperation(mat_other, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)MatMultTranspose_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL, (PetscErrorCodeFn *)MatGetDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL_BLOCK, (PetscErrorCodeFn *)MatGetDiagonalBlock_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_BLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetBlockDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_VBLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetVariableBlockDiagonal_Ceed));
     {
       PetscInt block_size;
 
@@ -1008,7 +1008,7 @@ PetscErrorCode MatCeedGetContext(Mat mat, void *ctx) {
 
   @return An error code: 0 - success, otherwise - failure
 **/
-PetscErrorCode MatCeedSetOperation(Mat mat, MatOperation op, void (*g)(void)) {
+PetscErrorCode MatCeedSetOperation(Mat mat, MatOperation op, PetscErrorCodeFn *g) {
   PetscFunctionBeginUser;
   PetscCall(MatShellSetOperation(mat, op, g));
   PetscFunctionReturn(PETSC_SUCCESS);
