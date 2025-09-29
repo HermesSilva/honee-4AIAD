@@ -340,7 +340,7 @@ PetscErrorCode TSPostStep_MaxWallTime(TS ts) {
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   if (rank == 0) is_wall_time_exceeded = time(NULL) > honee->max_wall_time ? PETSC_TRUE : PETSC_FALSE;
   // Must broadcast to avoid race condition
-  PetscCallMPI(MPI_Bcast(&is_wall_time_exceeded, 1, MPIU_BOOL, 0, comm));
+  PetscCallMPI(MPI_Bcast(&is_wall_time_exceeded, 1, MPI_C_BOOL, 0, comm));
   if (PetscUnlikely(is_wall_time_exceeded)) {
     PetscCall(PetscPrintf(PetscObjectComm((PetscObject)ts), "Stopping TSSolve: Set max wall time exceeded\n"));
     PetscCall(TSSetConvergedReason(ts, TS_CONVERGED_USER));

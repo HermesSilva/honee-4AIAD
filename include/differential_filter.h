@@ -4,7 +4,6 @@
 
 #include <ceed.h>
 #include <honee.h>
-#include <petsc.h>
 #include <petsc_ops.h>
 
 typedef struct {

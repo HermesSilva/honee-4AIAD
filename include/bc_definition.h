@@ -3,7 +3,7 @@
 #pragma once
 
 #include <ceed.h>
-#include <petsc.h>
+#include <petscdm.h>
 #include <petsc/private/petscimpl.h>
 
 typedef struct _p_BCDefinition *BCDefinition;

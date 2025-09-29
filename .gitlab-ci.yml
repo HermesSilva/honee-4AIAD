@@ -84,6 +84,7 @@ noether-lint:
     - export PETSC_ARCH=arch-serial-cuda && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
+    - echo "-------------- HONEE ---------------" && make info
     # make with Werror, Wall, supress loop vectorization warnings
     - echo "-------------- make Werror ---------"
     - PEDANTIC=1 PEDANTICFLAGS="-Werror -Wall -Wno-pass-failed" make -j$NPROC_CPU
@@ -120,6 +121,7 @@ noether-memcheck:
     - export PETSC_ARCH=arch-serial-cpu-clang && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
+    - echo "-------------- HONEE ---------------" && make info
     # ASAN
     - echo "-------------- ASAN ----------------"
     - export ASAN=1 AFLAGS="-fsanitize=address -fsanitize=leak"

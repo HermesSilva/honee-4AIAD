@@ -3,7 +3,6 @@
 
 #include <ceed.h>
 #include <petsc-ceed.h>
-#include <petsc.h>
 #include "../qfunctions/mass.h"
 
 /**

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 #include <log_events.h>
-#include <petsc.h>
+#include <petscsys.h>
 
 static PetscClassId libCEED_classid, onlineTrain_classid, sgs_model_classid, misc_classid;
 

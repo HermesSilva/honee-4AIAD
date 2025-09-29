@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <petsc.h>
+#include <petscsys.h>
 
 extern PetscLogEvent HONEE_CeedOperatorApply;
 extern PetscLogEvent HONEE_CeedOperatorAssemble;

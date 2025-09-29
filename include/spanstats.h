@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #include <ceed.h>
 #include <honee.h>
-#include <petsc.h>
 #include <petsc_ops.h>
+#include <petscsys.h>
 
 typedef struct {
   DM                    dm;
