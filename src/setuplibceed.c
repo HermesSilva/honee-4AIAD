@@ -207,8 +207,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
   if (problem->apply_vol_ifunction.qf_func_ptr) {
     CeedQFunction qf_ifunction_vol;
 
-    PetscCallCeed(
-        ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ifunction.qf_func_ptr, problem->apply_vol_ifunction.qf_loc, &qf_ifunction_vol));
+    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ifunction.qf_func_ptr, problem->apply_vol_ifunction.qf_loc,
+                                                    &qf_ifunction_vol));
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ifunction_vol, problem->apply_vol_ifunction.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ifunction_vol, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "q", num_comp_q, CEED_EVAL_INTERP));
@@ -240,8 +240,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
   if (problem->apply_vol_ijacobian.qf_func_ptr) {
     CeedQFunction qf_ijacobian_vol;
 
-    PetscCallCeed(
-        ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ijacobian.qf_func_ptr, problem->apply_vol_ijacobian.qf_loc, &qf_ijacobian_vol));
+    PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->apply_vol_ijacobian.qf_func_ptr, problem->apply_vol_ijacobian.qf_loc,
+                                                    &qf_ijacobian_vol));
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_ijacobian_vol, problem->apply_vol_ijacobian.qfctx));
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ijacobian_vol, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ijacobian_vol, "dq", num_comp_q, CEED_EVAL_INTERP));

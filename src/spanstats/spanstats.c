@@ -107,8 +107,8 @@ static PetscErrorCode SpanwiseStatisticssCreateDM(Honee honee, SpanStatsCtx span
   PetscCall(DMViewFromOptions(spanstats->dm, NULL, "-dm_view"));
 
   // Create FE space for parent DM
-  PetscCall(
-      DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, 1, &spanstats->num_comp_stats, spanstats->dm));
+  PetscCall(DMSetupByOrder_FEM(PETSC_TRUE, PETSC_TRUE, honee->app_ctx->degree, 1, honee->app_ctx->q_extra, 1, &spanstats->num_comp_stats,
+                               spanstats->dm));
 
   PetscCall(PetscLogStagePop());
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -193,8 +193,8 @@ static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCt
 
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, (*stats_setup_data)->basis_stats, (*stats_setup_data)->elem_restr_parent_stats,
                                             &(*stats_setup_data)->elem_restr_parent_colloc));
-  PetscCall(
-      CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, honee->basis_q, honee->elem_restr_q, &(*stats_setup_data)->elem_restr_child_colloc));
+  PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, honee->basis_q, honee->elem_restr_q,
+                                            &(*stats_setup_data)->elem_restr_child_colloc));
 
   {  // -- Copy DM coordinates into CeedVector
     DM cdm;

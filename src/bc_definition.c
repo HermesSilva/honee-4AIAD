@@ -39,8 +39,8 @@ PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char *name, PetscInt num_
 
   PetscFunctionBeginUser;
   PetscCall(BCDefinitionInitalize());
-  PetscCall(
-      PetscHeaderCreate(bc_def_, BC_DEFINITION_CLASSID, "BCDefinition", "BCDefinition", "BCDefinition", comm, BCDefinitionDestroy, BCDefinitionView));
+  PetscCall(PetscHeaderCreate(bc_def_, BC_DEFINITION_CLASSID, "BCDefinition", "BCDefinition", "BCDefinition", comm, BCDefinitionDestroy,
+                              BCDefinitionView));
 
   PetscCall(PetscStrallocpy(name, &bc_def_->name));
   PetscCall(PetscObjectSetName((PetscObject)bc_def_, name));

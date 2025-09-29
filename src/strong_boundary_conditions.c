@@ -109,11 +109,11 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q_face, &multiplicity, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(elem_restr_q_face, multiplicity));
 
-      PetscCall(
-          DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, num_comp_x, &elem_restr_x_stored));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, num_comp_x,
+                                                          &elem_restr_x_stored));
       PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, 1, &elem_restr_scale));
-      PetscCall(
-          DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, stg_data_size, &elem_restr_stgdata));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, stg_data_size,
+                                                          &elem_restr_stgdata));
       PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, dXdx_size, &elem_restr_dXdx));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_x_stored, &x_stored, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_scale, &scale_stored, NULL));

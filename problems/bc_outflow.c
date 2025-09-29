@@ -126,13 +126,13 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
   CeedScalar temperature = reference->temperature / units->Kelvin;
   CeedScalar recirc = 1, softplus_velocity = 1e-2;
   PetscOptionsBegin(honee->comm, NULL, "Options for Outflow boundary condition", NULL);
-  PetscCall(
-      PetscOptionsEnum("-outflow_type", "Type of outflow condition", NULL, OutflowTypes, (PetscEnum)outflow_type, (PetscEnum *)&outflow_type, NULL));
+  PetscCall(PetscOptionsEnum("-outflow_type", "Type of outflow condition", NULL, OutflowTypes, (PetscEnum)outflow_type, (PetscEnum *)&outflow_type,
+                             NULL));
   PetscCall(PetscOptionsScalar("-outflow_pressure", "Pressure at outflow condition", NULL, pressure, &pressure, NULL));
   if (outflow_type == OUTFLOW_RIEMANN) {
     PetscCall(PetscOptionsScalar("-outflow_temperature", "Temperature at outflow condition", NULL, temperature, &temperature, NULL));
-    PetscCall(
-        PetscOptionsReal("-outflow_recirc", "Fraction of recirculation to allow in exterior velocity state [0,1]", NULL, recirc, &recirc, NULL));
+    PetscCall(PetscOptionsReal("-outflow_recirc", "Fraction of recirculation to allow in exterior velocity state [0,1]", NULL, recirc, &recirc,
+                               NULL));
     PetscCall(PetscOptionsReal("-outflow_softplus_velocity", "Characteristic velocity of softplus regularization", NULL, softplus_velocity,
                                &softplus_velocity, NULL));
   }

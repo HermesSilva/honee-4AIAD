@@ -41,12 +41,12 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
                         CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_2D_Prim, ChildStatsCollection_2D_Prim_loc, &qf_stats_collect));
           break;
         case STATEVAR_CONSERVATIVE:
-          PetscCallCeed(
-              ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_2D_Conserv, ChildStatsCollection_2D_Conserv_loc, &qf_stats_collect));
+          PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_2D_Conserv, ChildStatsCollection_2D_Conserv_loc,
+                                                          &qf_stats_collect));
           break;
         case STATEVAR_ENTROPY:
-          PetscCallCeed(
-              ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_2D_Entropy, ChildStatsCollection_2D_Entropy_loc, &qf_stats_collect));
+          PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_2D_Entropy, ChildStatsCollection_2D_Entropy_loc,
+                                                          &qf_stats_collect));
           break;
       }
       break;
@@ -57,12 +57,12 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
                         CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_3D_Prim, ChildStatsCollection_3D_Prim_loc, &qf_stats_collect));
           break;
         case STATEVAR_CONSERVATIVE:
-          PetscCallCeed(
-              ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_3D_Conserv, ChildStatsCollection_3D_Conserv_loc, &qf_stats_collect));
+          PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_3D_Conserv, ChildStatsCollection_3D_Conserv_loc,
+                                                          &qf_stats_collect));
           break;
         case STATEVAR_ENTROPY:
-          PetscCallCeed(
-              ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_3D_Entropy, ChildStatsCollection_3D_Entropy_loc, &qf_stats_collect));
+          PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollection_3D_Entropy, ChildStatsCollection_3D_Entropy_loc,
+                                                          &qf_stats_collect));
           break;
       }
       break;

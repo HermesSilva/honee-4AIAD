@@ -239,10 +239,11 @@ PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, Pet
           PetscCall(PetscObjectGetTabLevel((PetscObject)ts, &tab_level));
           PetscCall(PetscViewerASCIIAddTab(viewer, tab_level + 1));
           if (filename) {
-            PetscCall(PetscViewerASCIIPrintf(
-                viewer,
-                "Spanwise turbulent statistics written to %s for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",
-                filename, spanstats->initial_solution_time / second, solution_time / second, spanstats->initial_solution_step, steps));
+            PetscCall(PetscViewerASCIIPrintf(viewer,
+                                             "Spanwise turbulent statistics written to %s for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT
+                                             ",%" PetscInt_FMT "]\n",
+                                             filename, spanstats->initial_solution_time / second, solution_time / second,
+                                             spanstats->initial_solution_step, steps));
           } else {
             PetscCall(PetscViewerASCIIPrintf(
                 viewer, "Spanwise statistics (%s) file written for time span (%0.12e,%0.12e] and step span [%" PetscInt_FMT ",%" PetscInt_FMT "]\n",

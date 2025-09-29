@@ -99,8 +99,8 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
                                sizeof(app_ctx->ceed_resource), &ceed_flag));
 
   app_ctx->test_type = TESTTYPE_NONE;
-  PetscCall(
-      PetscOptionsEnum("-test_type", "Type of test to run", NULL, TestTypes, (PetscEnum)app_ctx->test_type, (PetscEnum *)&app_ctx->test_type, NULL));
+  PetscCall(PetscOptionsEnum("-test_type", "Type of test to run", NULL, TestTypes, (PetscEnum)app_ctx->test_type, (PetscEnum *)&app_ctx->test_type,
+                             NULL));
 
   app_ctx->test_tol = 1E-11;
   PetscCall(PetscOptionsScalar("-compare_final_state_atol", "Test absolute tolerance", NULL, app_ctx->test_tol, &app_ctx->test_tol, NULL));
@@ -138,10 +138,10 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
                                sizeof(app_ctx->cont_file), NULL));
   if (app_ctx->cont_file[0] != '\0') app_ctx->use_continue_file = PETSC_TRUE;
 
-  PetscCall(
-      PetscOptionsDeprecated("-continue", NULL, "HONEE 0.0.0", "Set -continue_filename to non-empty string to continue from previous solution"));
-  PetscCall(
-      PetscOptionsDeprecated("-continue_time_filename", NULL, "HONEE 0.0.0", "HONEE no longer supports reading in solution times from binary file"));
+  PetscCall(PetscOptionsDeprecated("-continue", NULL, "HONEE 0.0.0",
+                                   "Set -continue_filename to non-empty string to continue from previous solution"));
+  PetscCall(PetscOptionsDeprecated("-continue_time_filename", NULL, "HONEE 0.0.0",
+                                   "HONEE no longer supports reading in solution times from binary file"));
 
   app_ctx->degree = 1;
   PetscCall(PetscOptionsInt("-degree", "Polynomial degree of finite elements", NULL, app_ctx->degree, &app_ctx->degree, NULL));
@@ -191,8 +191,8 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
   PetscCall(PetscOptionsEnum("-mesh_transform", "Mesh transform to perform", NULL, MeshTransformTypes, (PetscEnum)app_ctx->mesh_transform_type,
                              (PetscEnum *)&app_ctx->mesh_transform_type, NULL));
 
-  PetscCall(
-      PetscOptionsBool("-sgs_train_enable", "Enable Data-Driven SGS training", NULL, app_ctx->sgs_train_enable, &app_ctx->sgs_train_enable, NULL));
+  PetscCall(PetscOptionsBool("-sgs_train_enable", "Enable Data-Driven SGS training", NULL, app_ctx->sgs_train_enable, &app_ctx->sgs_train_enable,
+                             NULL));
   if (app_ctx->sgs_train_enable) honee->set_poststep = PETSC_TRUE;
 
   PetscCall(PetscOptionsEnum("-div_diff_flux_projection_method", "Method of divergence of diffusive flux projection", NULL,

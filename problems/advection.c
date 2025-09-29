@@ -178,12 +178,12 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
                        &q_data_size));
     switch (dim) {
       case 2:
-        PetscCallCeed(
-            ceed, CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxVolumeRHS_AdvDif_2D, DivDiffusiveFluxVolumeRHS_AdvDif_2D_loc, &qf_rhs_volume));
+        PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxVolumeRHS_AdvDif_2D, DivDiffusiveFluxVolumeRHS_AdvDif_2D_loc,
+                                                        &qf_rhs_volume));
         break;
       case 3:
-        PetscCallCeed(
-            ceed, CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxVolumeRHS_AdvDif_3D, DivDiffusiveFluxVolumeRHS_AdvDif_3D_loc, &qf_rhs_volume));
+        PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxVolumeRHS_AdvDif_3D, DivDiffusiveFluxVolumeRHS_AdvDif_3D_loc,
+                                                        &qf_rhs_volume));
         break;
     }
     PetscCheck(qf_rhs_volume, honee->comm, PETSC_ERR_SUP, "%s not valid for DM of dimension %" PetscInt_FMT, __func__, dim);
@@ -259,8 +259,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
         PetscCall(CreateBasisFromPlex(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
-        PetscCall(
-            QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, honee->x_coord, &elem_restr_qdata, &q_data, &q_data_size));
+        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, honee->x_coord, &elem_restr_qdata, &q_data,
+                                           &q_data_size));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
         PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_boundary, "Grad_q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -453,8 +453,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscOptionsScalar("-advection_ic_wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
       break;
     case ADVDIF_IC_BOUNDARY_LAYER:
-      PetscCall(
-          PetscOptionsScalar("-advection_ic_bl_height_factor", "Height of boundary layer in IC", NULL, bl_height_factor, &bl_height_factor, NULL));
+      PetscCall(PetscOptionsScalar("-advection_ic_bl_height_factor", "Height of boundary layer in IC", NULL, bl_height_factor, &bl_height_factor,
+                                   NULL));
       break;
     case ADVDIF_IC_BUBBLE_CYLINDER:
     case ADVDIF_IC_BUBBLE_SPHERE:
@@ -476,8 +476,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   }
   if (wind_type == ADVDIF_WIND_TRANSLATION && advectionic_type == ADVDIF_IC_BUBBLE_CYLINDER && wind[2] != 0.) {
     wind[2] = 0;
-    PetscCall(
-        PetscPrintf(comm, "Warning! Background wind in the z direction should be zero (-wind_translation x,x,0) with -advection_ic_type cylinder\n"));
+    PetscCall(PetscPrintf(comm,
+                          "Warning! Background wind in the z direction should be zero (-wind_translation x,x,0) with -advection_ic_type cylinder\n"));
   }
   if (stab == STAB_NONE && CtauS != 0) {
     PetscCall(PetscPrintf(comm, "Warning! Use -CtauS only with -stab su or -stab supg\n"));

@@ -83,8 +83,8 @@ PetscErrorCode TSMonitor_SmartSimSolution(TS ts, PetscInt step_num, PetscReal so
       const PetscScalar *Q_output_array;
       PetscCall(VecGetArrayRead(Q_output, &Q_output_array));
       PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Write, 0, 0, 0, 0));
-      PetscCallSmartRedis(
-          add_tensor(dataset, "solution", 8, (void *)Q_output_array, smartsimsol->local_array_dims, 2, SRTensorTypeDouble, SRMemLayoutContiguous));
+      PetscCallSmartRedis(add_tensor(dataset, "solution", 8, (void *)Q_output_array, smartsimsol->local_array_dims, 2, SRTensorTypeDouble,
+                                     SRMemLayoutContiguous));
       PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Write, 0, 0, 0, 0));
       PetscCall(VecRestoreArrayRead(Q_output, &Q_output_array));
     }
