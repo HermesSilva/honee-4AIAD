@@ -65,8 +65,8 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
 
     switch (state_var_input) {
       case STATEVAR_PRIMITIVE:
-        PetscCallCeed(
-            ceed, CeedQFunctionCreateInterior(ceed, 1, VelocityGradientProjectionRHS_Prim, VelocityGradientProjectionRHS_Prim_loc, &qf_rhs_assemble));
+        PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, VelocityGradientProjectionRHS_Prim, VelocityGradientProjectionRHS_Prim_loc,
+                                                        &qf_rhs_assemble));
         break;
       case STATEVAR_CONSERVATIVE:
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, VelocityGradientProjectionRHS_Conserv, VelocityGradientProjectionRHS_Conserv_loc,

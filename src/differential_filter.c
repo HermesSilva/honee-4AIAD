@@ -282,9 +282,10 @@ PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter)
   PetscCallCeed(ceed, CeedQFunctionContextCreate(ceed, &diff_filter_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(diff_filter_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*diff_filter_ctx), diff_filter_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(diff_filter_qfctx, CEED_MEM_HOST, FreeContextPetsc));
-  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(
-                          diff_filter_qfctx, "filter width scaling", offsetof(struct DifferentialFilterContext_, width_scaling),
-                          sizeof(diff_filter_ctx->width_scaling) / sizeof(diff_filter_ctx->width_scaling[0]), "Filter width scaling"));
+  PetscCallCeed(ceed, CeedQFunctionContextRegisterDouble(diff_filter_qfctx, "filter width scaling",
+                                                         offsetof(struct DifferentialFilterContext_, width_scaling),
+                                                         sizeof(diff_filter_ctx->width_scaling) / sizeof(diff_filter_ctx->width_scaling[0]),
+                                                         "Filter width scaling"));
 
   // -- Setup Operators
   PetscCall(DifferentialFilterCreateOperators(honee, diff_filter_qfctx, diff_filter_));

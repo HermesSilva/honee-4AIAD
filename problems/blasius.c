@@ -290,9 +290,9 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscOptionsScalar("-velocity_infinity", "Velocity at boundary layer edge", NULL, U_inf, &U_inf, NULL));
   PetscCall(PetscOptionsScalar("-temperature_infinity", "Temperature at boundary layer edge", NULL, T_inf, &T_inf, NULL));
   PetscCall(PetscOptionsHasName(NULL, NULL, "-P0", &P0_set));  // For maintaining behavior of -P0 flag (which is deprecated)
-  PetscCall(
-      PetscOptionsDeprecated("-P0", "-pressure_infinity", "libCEED 0.12.0",
-                             "Use -pressure_infinity to set pressure at boundary layer edge and -idl_pressure to set the IDL reference pressure"));
+  PetscCall(PetscOptionsDeprecated("-P0", "-pressure_infinity", "libCEED 0.12.0",
+                                   "Use -pressure_infinity to set pressure at boundary layer edge and -idl_pressure to set the IDL reference "
+                                   "pressure"));
   PetscCall(PetscOptionsScalar("-pressure_infinity", "Pressure at boundary layer edge", NULL, P_inf, &P_inf, NULL));
   PetscCall(PetscOptionsScalar("-temperature_wall", "Temperature at wall", NULL, T_wall, &T_wall, NULL));
   PetscCall(PetscOptionsScalar("-delta0", "Boundary layer height at inflow", NULL, delta0, &delta0, NULL));
@@ -304,8 +304,8 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
     PetscCall(PetscOptionsScalar("-platemesh_refine_height", "Height of boundary layer mesh refinement", NULL, mesh_refine_height,
                                  &mesh_refine_height, NULL));
     PetscCall(PetscOptionsScalar("-platemesh_growth", "Geometric growth rate of boundary layer mesh", NULL, mesh_growth, &mesh_growth, NULL));
-    PetscCall(
-        PetscOptionsScalar("-platemesh_top_angle", "Geometric top_angle rate of boundary layer mesh", NULL, mesh_top_angle, &mesh_top_angle, NULL));
+    PetscCall(PetscOptionsScalar("-platemesh_top_angle", "Geometric top_angle rate of boundary layer mesh", NULL, mesh_top_angle, &mesh_top_angle,
+                                 NULL));
     PetscCall(PetscOptionsString("-platemesh_y_node_locs_path",
                                  "Path to file with y node locations. "
                                  "If empty, will use the algorithmic mesh warping.",

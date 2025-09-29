@@ -373,8 +373,8 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
 
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, &elem_restr_sgs));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_sgs, &sgs_dd_data->sgs_nodal_ceed, NULL));
-  PetscCall(
-      DMPlexCeedElemRestrictionCollocatedCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, num_comp_eigvec, &elem_restr_eigvec));
+  PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, num_comp_eigvec,
+                                                      &elem_restr_eigvec));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_eigvec, &eigvec, NULL));
 
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_inputs, domain_label, label_value, height, dm_field, &elem_restr_dd_inputs));
@@ -528,8 +528,8 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "km_sgs", sgs_dd_setup_data->elem_restr_sgs, basis_sgs, sgs_dd_data->sgs_nodal_ceed));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "Grad_v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
 
-  PetscCall(
-      OperatorApplyContextCreate(honee->dm, honee->dm, ceed, op_sgs_apply, honee->q_ceed, honee->g_ceed, NULL, NULL, &sgs_dd_data->op_sgs_apply_ctx));
+  PetscCall(OperatorApplyContextCreate(honee->dm, honee->dm, ceed, op_sgs_apply, honee->q_ceed, honee->g_ceed, NULL, NULL,
+                                       &sgs_dd_data->op_sgs_apply_ctx));
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));

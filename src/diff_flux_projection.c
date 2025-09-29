@@ -299,8 +299,8 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, DivDiffFl
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_calc_divergence, NULL, NULL, &op_calc_divergence));
     PetscCallCeed(ceed, CeedOperatorSetField(op_calc_divergence, "Grad F_diff", elem_restr_diff_flux, basis_diff_flux, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_calc_divergence, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
-    PetscCallCeed(
-        ceed, CeedOperatorSetField(op_calc_divergence, "Div F_diff", elem_restr_div_diff_flux, CEED_BASIS_NONE, diff_flux_proj->div_diff_flux_ceed));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_calc_divergence, "Div F_diff", elem_restr_div_diff_flux, CEED_BASIS_NONE,
+                                             diff_flux_proj->div_diff_flux_ceed));
 
     PetscCall(OperatorApplyContextCreate(projection->dm, NULL, ceed, op_calc_divergence, NULL, CEED_VECTOR_NONE, NULL, NULL,
                                          &diff_flux_proj->calc_div_diff_flux));

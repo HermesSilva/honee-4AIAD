@@ -85,8 +85,8 @@ PetscErrorCode NS_DENSITY_CURRENT(ProblemData problem, DM dm, void *ctx) {
   density_current_ctx->newt_ctx = *newtonian_ig_ctx;
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newtonian_ig_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &density_current_qfctx));
-  PetscCallCeed(
-      ceed, CeedQFunctionContextSetData(density_current_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*density_current_ctx), density_current_ctx));
+  PetscCallCeed(ceed, CeedQFunctionContextSetData(density_current_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*density_current_ctx),
+                                                  density_current_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(density_current_qfctx, CEED_MEM_HOST, FreeContextPetsc));
 
   // ------------------------------------------------------

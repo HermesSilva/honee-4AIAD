@@ -245,8 +245,8 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee) {
         array_info[5] = rank;
 
         PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
-        PetscCallSmartRedis(
-            put_tensor(smartsim->client, tensor_name, strlen(tensor_name), array_info, &array_info_dim, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
+        PetscCallSmartRedis(put_tensor(smartsim->client, tensor_name, strlen(tensor_name), array_info, &array_info_dim, 1, SRTensorTypeInt64,
+                                       SRMemLayoutContiguous));
         PetscCall(SmartRedisVerifyPutTensor(smartsim->client, tensor_name, strlen(tensor_name)));
         PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
       }
@@ -257,8 +257,8 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee) {
         size_t     dim_2[1]            = {2};
 
         PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
-        PetscCallSmartRedis(
-            put_tensor(smartsim->client, tensor_name, strlen(tensor_name), tensor_overwrite, dim_2, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
+        PetscCallSmartRedis(put_tensor(smartsim->client, tensor_name, strlen(tensor_name), tensor_overwrite, dim_2, 1, SRTensorTypeInt64,
+                                       SRMemLayoutContiguous));
         PetscCall(SmartRedisVerifyPutTensor(smartsim->client, tensor_name, strlen(tensor_name)));
         PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
       }
@@ -269,8 +269,8 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee) {
         size_t     dim_2             = 1;
 
         PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
-        PetscCallSmartRedis(
-            put_tensor(smartsim->client, tensor_name, strlen(tensor_name), &num_filter_widths, &dim_2, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
+        PetscCallSmartRedis(put_tensor(smartsim->client, tensor_name, strlen(tensor_name), &num_filter_widths, &dim_2, 1, SRTensorTypeInt64,
+                                       SRMemLayoutContiguous));
         PetscCall(SmartRedisVerifyPutTensor(smartsim->client, tensor_name, strlen(tensor_name)));
         PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
       }
@@ -378,8 +378,8 @@ PetscErrorCode TSMonitor_SGS_DD_Training(TS ts, PetscInt step_num, PetscReal sol
     PetscInt64 step_array[2] = {step_num, step_num};
 
     PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
-    PetscCallSmartRedis(
-        put_tensor(smartsim->client, tensor_name, strlen(tensor_name), step_array, dim_2, 1, SRTensorTypeInt64, SRMemLayoutContiguous));
+    PetscCallSmartRedis(put_tensor(smartsim->client, tensor_name, strlen(tensor_name), step_array, dim_2, 1, SRTensorTypeInt64,
+                                   SRMemLayoutContiguous));
     PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   }
 
@@ -401,8 +401,8 @@ PetscErrorCode TSPostStep_SGS_DD_Training(TS ts) {
   PetscCall(HoneeGetSmartSimData(honee, &smartsim));
 
   PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
-  PetscCallSmartRedis(
-      unpack_tensor(smartsim->client, check_run_key, check_run_key_size, check_run, check_run_dims, 1, SRTensorTypeDouble, SRMemLayoutContiguous));
+  PetscCallSmartRedis(unpack_tensor(smartsim->client, check_run_key, check_run_key_size, check_run, check_run_dims, 1, SRTensorTypeDouble,
+                                    SRMemLayoutContiguous));
   PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   if (check_run[0] == 0) {
     PetscCall(PetscPrintf(honee->comm, "-- Simulation stopped by 'check-run' tensor in Redis database\n"));

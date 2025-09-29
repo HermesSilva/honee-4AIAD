@@ -224,8 +224,8 @@ PetscErrorCode WriteOutput(Honee honee, Vec Q, PetscInt step_no, PetscScalar tim
       PetscCall(VecZeroEntries(Q_refined_loc));
       PetscCall(DMGlobalToLocal(honee->dm_viz, Q_refined, INSERT_VALUES, Q_refined_loc));
 
-      PetscCall(
-          PetscSNPrintf(file_path_refined, sizeof file_path_refined, "%s/nsrefined-%03" PetscInt_FMT ".vtu", honee->app_ctx->output_dir, step_no));
+      PetscCall(PetscSNPrintf(file_path_refined, sizeof file_path_refined, "%s/nsrefined-%03" PetscInt_FMT ".vtu", honee->app_ctx->output_dir,
+                              step_no));
 
       PetscCall(PetscViewerVTKOpen(PetscObjectComm((PetscObject)Q_refined), file_path_refined, FILE_MODE_WRITE, &viewer_refined));
       PetscCall(VecView(Q_refined_loc, viewer_refined));
@@ -479,8 +479,8 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_cfl", "Monitor element CFL statistics", NULL, TSMonitor_Cfl, SetupMontiorCfl));
 
-  PetscCall(
-      PetscOptionsDeprecated("-ts_monitor_turbulence_spanstats_viewer_interval", "-ts_monitor_spanstats_turbulence_interval", "HONEE 0.0", NULL));
+  PetscCall(PetscOptionsDeprecated("-ts_monitor_turbulence_spanstats_viewer_interval", "-ts_monitor_spanstats_turbulence_interval", "HONEE 0.0",
+                                   NULL));
   PetscCall(PetscOptionsDeprecated("-ts_monitor_turbulence_spanstats_viewer", "-ts_monitor_spanstats_turbulence", "HONEE 0.0", NULL));
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_spanstats_turbulence", "Setup spanwise statistics collection", NULL,
                                     TSMonitor_SpanwiseStatisticsTurbulence, SpanwiseStatisticsSetup_Turbulence));

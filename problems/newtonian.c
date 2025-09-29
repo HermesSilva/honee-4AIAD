@@ -222,8 +222,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
         PetscCall(CreateBasisFromPlex(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
-        PetscCall(
-            QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, honee->x_coord, &elem_restr_qdata, &q_data, &q_data_size));
+        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, honee->x_coord, &elem_restr_qdata, &q_data,
+                                           &q_data_size));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
         PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_boundary, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -455,8 +455,8 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
     if (idl_decay_time < 0) idl_enable = PETSC_FALSE;
     newtonian_ig_ctx->idl_enable = idl_enable;
 
-    PetscCall(
-        PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, newtonian_ig_ctx->idl_start, &newtonian_ig_ctx->idl_start, NULL));
+    PetscCall(PetscOptionsScalar("-idl_start", "Start of IDL in the x direction", NULL, newtonian_ig_ctx->idl_start, &newtonian_ig_ctx->idl_start,
+                                 NULL));
     PetscCall(PetscOptionsScalar("-idl_length", "Length of IDL in the positive x direction", NULL, newtonian_ig_ctx->idl_length,
                                  &newtonian_ig_ctx->idl_length, NULL));
     newtonian_ig_ctx->idl_pressure = reference.pressure;
