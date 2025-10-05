@@ -271,7 +271,7 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         PetscCallCeed(ceed, CeedOperatorSetField(op_dir_sub, "scale", elem_restr_scale, CEED_BASIS_NONE, scale_stored));
         PetscCallCeed(ceed, CeedOperatorSetField(op_dir_sub, "q", elem_restr_q_face, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
-        PetscCallCeed(ceed, CeedCompositeOperatorAddSub(op_strong_bc, op_dir_sub));
+        PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_strong_bc, op_dir_sub));
 
         PetscCallCeed(ceed, CeedOperatorDestroy(&op_dir_sub));
         PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_strong));
