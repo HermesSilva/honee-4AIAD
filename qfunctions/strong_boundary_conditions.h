@@ -23,9 +23,15 @@ CEED_QFUNCTION(SetupStrongBC)(void *ctx, CeedInt Q, const CeedScalar *const *in,
   return 0;
 }
 
+/* Keep STRONG_BC_MAX_COMPONENTS consistent with include/navierstokes.h */
+#ifndef STRONG_BC_MAX_COMPONENTS
+#define STRONG_BC_MAX_COMPONENTS 32
+#endif
+
 typedef struct {
   CeedInt    num_comp;
-  CeedScalar data[];
+  CeedScalar q[STRONG_BC_MAX_COMPONENTS];
+  CeedScalar mask[STRONG_BC_MAX_COMPONENTS];
 } StrongContext;
 
 CEED_QFUNCTION(StrongQF)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
@@ -34,8 +40,8 @@ CEED_QFUNCTION(StrongQF)(void *ctx, CeedInt Q, const CeedScalar *const *in, Ceed
 
   const StrongContext *c        = (const StrongContext *)ctx;
   const CeedInt        num_comp = c->num_comp;
-  const CeedScalar    *q        = c->data;
-  const CeedScalar    *mask     = c->data + num_comp;
+  const CeedScalar    *q        = c->q;
+  const CeedScalar    *mask     = c->mask;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     for (CeedInt j = 0; j < num_comp; j++) bcval[j][i] = scale[i] * mask[j] * q[j];

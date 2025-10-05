@@ -218,7 +218,7 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         PetscScalar q_tmp[STRONG_BC_MAX_COMPONENTS];
         PetscScalar mask_tmp[STRONG_BC_MAX_COMPONENTS];
         PetscBool   value_set[STRONG_BC_MAX_COMPONENTS];
-        for (CeedInt j = 0; j < strong_num_comp; j++) {
+        for (CeedInt j = 0; j < STRONG_BC_MAX_COMPONENTS; j++) {
           q_tmp[j]     = 0.0;
           mask_tmp[j]  = 0.0;
           value_set[j] = PETSC_FALSE;
@@ -246,15 +246,12 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
           mask_tmp[comp] = 1.0;
         }
 
-        size_t         context_bytes = sizeof(StrongContext) + 2 * (size_t)strong_num_comp * sizeof(CeedScalar);
         StrongContext *c;
-        PetscCall(PetscMalloc(context_bytes, (void **)&c));
-        c->num_comp        = strong_num_comp;
-        CeedScalar *q_data = c->data;
-        CeedScalar *mask   = c->data + strong_num_comp;
-        for (CeedInt j = 0; j < strong_num_comp; j++) {
-          q_data[j] = q_tmp[j];
-          mask[j]   = mask_tmp[j];
+        PetscCall(PetscNew(&c));
+        c->num_comp = strong_num_comp;
+        for (CeedInt j = 0; j < STRONG_BC_MAX_COMPONENTS; j++) {
+          c->q[j]    = q_tmp[j];
+          c->mask[j] = mask_tmp[j];
         }
 
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, StrongQF, StrongQF_loc, &qf_strong));
@@ -262,7 +259,7 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         PetscCallCeed(ceed, CeedQFunctionAddInput(qf_strong, "scale", 1, CEED_EVAL_NONE));
         PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_strong, "q", strong_num_comp, CEED_EVAL_NONE));
         PetscCallCeed(ceed, CeedQFunctionContextCreate(ceed, &qfctx));
-        PetscCallCeed(ceed, CeedQFunctionContextSetData(qfctx, CEED_MEM_HOST, CEED_USE_POINTER, context_bytes, c));
+        PetscCallCeed(ceed, CeedQFunctionContextSetData(qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*c), c));
         PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(qfctx, CEED_MEM_HOST, FreeContextPetsc));
         PetscCallCeed(ceed, CeedQFunctionSetContext(qf_strong, qfctx));
 
