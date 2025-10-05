@@ -8,7 +8,7 @@ typedef struct {
   PetscInt  write_data_interval;
   size_t    local_array_dims[2];
   PetscBool overwrite_training_data;
-} *SmartSimSolutionData;
+} * SmartSimSolutionData;
 
 PetscErrorCode TSMonitor_SmartSimSolutionSetup(TS ts, PetscViewerAndFormat *ctx) {
   SmartSimSolutionData smartsimsol;

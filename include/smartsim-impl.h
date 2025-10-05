@@ -30,7 +30,7 @@ typedef struct {
   void    *client;
   char     rank_id_name[16];
   PetscInt collocated_database_num_ranks;
-} *SmartSimData;
+} * SmartSimData;
 
 PetscErrorCode HoneeGetSmartSimData(Honee honee, SmartSimData *smartsim);
 

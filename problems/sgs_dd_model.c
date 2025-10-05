@@ -19,7 +19,7 @@ typedef struct {
   SgsDDNodalStressInference sgs_nodal_inference;
   void                     *sgs_nodal_inference_ctx;
   PetscErrorCode (*sgs_nodal_inference_ctx_destroy)(void *ctx);
-} *SgsDDData;
+} * SgsDDData;
 
 // @brief Destroy `SgsDDData` object
 static PetscErrorCode SgsDDDataDestroy(SgsDDData *sgs_dd_data) {
@@ -49,7 +49,7 @@ typedef struct {
   CeedVector               grid_aniso_ceed;
   CeedQFunctionContext     sgsdd_qfctx, ifunction_qfctx;
   SGSModelDDImplementation sgs_dd_model_implementation;
-} *SgsDDSetupData;
+} * SgsDDSetupData;
 
 #define GRAD_VELO_PROJ_KEY "Gradient of Velocity Projection"
 #define SGS_DD_DATA_KEY "SGS Data Driven Data"

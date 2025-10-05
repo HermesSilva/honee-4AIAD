@@ -213,9 +213,12 @@ struct HoneeBCStruct_ {
 };
 
 // for strong BC
+#define STRONG_BC_MAX_COMPONENTS 32
 typedef struct {
-  PetscScalar P, u, v, w, T;
-  PetscBool   setP, setu, setv, setw, setT;
+  PetscInt     count;
+  PetscInt    *components;
+  PetscScalar *values;
+  char        *label;
 } StrongBCValues;
 
 PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx);

@@ -6,8 +6,50 @@
 
 static PetscErrorCode StrongBCValuesDestroy(void **p) {
   PetscFunctionBeginUser;
-  if (p && *p) PetscCall(PetscFree(*(void **)p));
-  if (p) *p = NULL;
+  if (p && *p) {
+    StrongBCValues *vals = *(StrongBCValues **)p;
+    PetscCall(PetscFree(vals->components));
+    PetscCall(PetscFree(vals->values));
+    PetscCall(PetscFree(vals->label));
+    PetscCall(PetscFree(vals));
+    *p = NULL;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode StrongBCValuesAssign(MPI_Comm comm, const char description[], PetscInt ncomps, const PetscInt comps[],
+                                           const PetscScalar values[], PetscInt num_values, StrongBCValues *vals) {
+  PetscFunctionBeginUser;
+  PetscCall(PetscFree(vals->components));
+  PetscCall(PetscFree(vals->values));
+  PetscCall(PetscFree(vals->label));
+  vals->components = NULL;
+  vals->values     = NULL;
+  vals->label      = NULL;
+  vals->count      = 0;
+
+  if (!ncomps) {
+    PetscCheck(num_values == 0, comm, PETSC_ERR_USER, "%s strong BC provided values but no components", description ? description : "Strong");
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
+  PetscCheck(num_values == ncomps, comm, PETSC_ERR_USER, "%s strong BC expects %" PetscInt_FMT " values, received %" PetscInt_FMT,
+             description ? description : "Strong", ncomps, num_values);
+  PetscCheck(values, comm, PETSC_ERR_PLIB, "%s strong BC encountered missing values array", description ? description : "Strong");
+  PetscCheck(ncomps <= STRONG_BC_MAX_COMPONENTS, comm, PETSC_ERR_SUP, "%s strong BC supports at most %d components",
+             description ? description : "Strong", STRONG_BC_MAX_COMPONENTS);
+
+  PetscCall(PetscStrallocpy(description ? description : "Strong", &vals->label));
+  PetscCall(PetscMalloc1(ncomps, &vals->components));
+  PetscCall(PetscMalloc1(ncomps, &vals->values));
+
+  for (PetscInt j = 0; j < ncomps; j++) {
+    PetscInt comp = comps[j];
+    PetscCheck(comp >= 0, comm, PETSC_ERR_USER, "%s strong BC constrained component %" PetscInt_FMT " must be non-negative",
+               description ? description : "Strong", comp);
+    vals->components[j] = comp;
+    vals->values[j]     = values[j];
+  }
+  vals->count = ncomps;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -95,21 +137,24 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
   PetscCall(PetscOptionsBCDefinition("-bc_strong", "Face IDs to apply strong BC", NULL, "strong", &bc_def, &flg));
   if (flg && bc_def) {
     // Components to constrain
-    PetscInt essential_comps[16];
-    PetscInt num_essential_comps = 16;
-    PetscCall(PetscOptionsIntArray("-strong_comps", "Array of constrained component numbers ", NULL, essential_comps, &num_essential_comps, NULL));
+    PetscInt    essential_comps[STRONG_BC_MAX_COMPONENTS];
+    PetscInt    num_essential_comps = STRONG_BC_MAX_COMPONENTS;
+    PetscBool   comps_set           = PETSC_FALSE;
+    PetscScalar comp_values[STRONG_BC_MAX_COMPONENTS];
+    PetscInt    num_comp_values = STRONG_BC_MAX_COMPONENTS;
+    PetscBool   values_set      = PETSC_FALSE;
+
+    PetscCall(
+        PetscOptionsIntArray("-strong_comps", "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &comps_set));
+    if (!comps_set) num_essential_comps = 0;
+
+    PetscCall(PetscOptionsScalarArray("-strong_values", "Values for constrained components", NULL, comp_values, &num_comp_values, &values_set));
+    if (!values_set) num_comp_values = 0;
     PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
 
     StrongBCValues *vals;
     PetscCall(PetscNew(&vals));
-    vals->P = vals->u = vals->v = vals->w = vals->T = 0.0;
-    vals->setP = vals->setu = vals->setv = vals->setw = vals->setT = PETSC_FALSE;
-
-    PetscCall(PetscOptionsScalar("-strong_P", "Pressure for strong BC", NULL, vals->P, &vals->P, &vals->setP));
-    PetscCall(PetscOptionsScalar("-strong_u", "Velocity-x for strong BC", NULL, vals->u, &vals->u, &vals->setu));
-    PetscCall(PetscOptionsScalar("-strong_v", "Velocity-y for strong BC", NULL, vals->v, &vals->v, &vals->setv));
-    PetscCall(PetscOptionsScalar("-strong_w", "Velocity-z for strong BC", NULL, vals->w, &vals->w, &vals->setw));
-    PetscCall(PetscOptionsScalar("-strong_T", "Temperature for strong BC", NULL, vals->T, &vals->T, &vals->setT));
+    PetscCall(StrongBCValuesAssign(honee->comm, "-strong_values", num_essential_comps, essential_comps, comp_values, num_comp_values, vals));
 
     PetscCall(BCDefinitionSetContext(bc_def, StrongBCValuesDestroy, vals));
 
@@ -122,39 +167,51 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
   // Additional numbered strong groups
   for (PetscInt gi = 1; gi <= 16; gi++) {
     char opt_faces[64];
-    snprintf(opt_faces, sizeof(opt_faces), "-bc_strong%" PetscInt_FMT, gi);
+    PetscCall(PetscSNPrintf(opt_faces, sizeof(opt_faces), "-bc_strong%" PetscInt_FMT, gi));
 
     bc_def = NULL;
     flg    = PETSC_FALSE;
     PetscCall(PetscOptionsBCDefinition(opt_faces, "Face IDs to apply strong BC", NULL, "strong", &bc_def, &flg));
-    if (!flg || !bc_def) continue;
+    if (!flg || !bc_def) {
+      char      opt_faces_alt[64];
+      PetscBool flg_alt = PETSC_FALSE;
+      PetscCall(PetscSNPrintf(opt_faces_alt, sizeof(opt_faces_alt), "-bc_strong_%" PetscInt_FMT, gi));
+      PetscCall(PetscOptionsBCDefinition(opt_faces_alt, "Face IDs to apply strong BC", NULL, "strong", &bc_def, &flg_alt));
+      if (!flg_alt || !bc_def) continue;
+      PetscCall(PetscStrncpy(opt_faces, opt_faces_alt, sizeof(opt_faces)));
+    }
 
     // Components for this group
-    PetscInt essential_comps[16];
-    PetscInt num_essential_comps = 16;
-    char     opt_comps[64];
-    snprintf(opt_comps, sizeof(opt_comps), "-strong%" PetscInt_FMT "_comps", gi);
-    PetscCall(PetscOptionsIntArray(opt_comps, "Array of constrained component numbers ", NULL, essential_comps, &num_essential_comps, NULL));
+    PetscInt    essential_comps[STRONG_BC_MAX_COMPONENTS];
+    PetscInt    num_essential_comps = STRONG_BC_MAX_COMPONENTS;
+    PetscBool   comps_set           = PETSC_FALSE;
+    PetscScalar comp_values[STRONG_BC_MAX_COMPONENTS];
+    PetscInt    num_comp_values = STRONG_BC_MAX_COMPONENTS;
+    PetscBool   values_set      = PETSC_FALSE;
+    char        opt_comps[64], opt_values[64], opt_comps_old[64], opt_values_old[64];
+    PetscCall(PetscSNPrintf(opt_comps, sizeof(opt_comps), "-strong_%" PetscInt_FMT "_comps", gi));
+    PetscCall(PetscSNPrintf(opt_comps_old, sizeof(opt_comps_old), "-strong%" PetscInt_FMT "_comps", gi));
+    PetscCall(PetscSNPrintf(opt_values, sizeof(opt_values), "-strong_%" PetscInt_FMT "_values", gi));
+    PetscCall(PetscSNPrintf(opt_values_old, sizeof(opt_values_old), "-strong%" PetscInt_FMT "_values", gi));
+    const char *values_label = opt_values;
+    PetscCall(PetscOptionsIntArray(opt_comps, "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &comps_set));
+    if (!comps_set) {
+      PetscCall(
+          PetscOptionsIntArray(opt_comps_old, "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &comps_set));
+    }
+    if (!comps_set) num_essential_comps = 0;
+    PetscCall(PetscOptionsScalarArray(opt_values, "Values for constrained components", NULL, comp_values, &num_comp_values, &values_set));
+    if (!values_set) {
+      PetscCall(PetscOptionsScalarArray(opt_values_old, "Values for constrained components", NULL, comp_values, &num_comp_values, &values_set));
+      if (values_set) values_label = opt_values_old;
+    }
+    if (!values_set) num_comp_values = 0;
     PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
 
     // Values for this group
     StrongBCValues *vals;
     PetscCall(PetscNew(&vals));
-    vals->P = vals->u = vals->v = vals->w = vals->T = 0.0;
-    vals->setP = vals->setu = vals->setv = vals->setw = vals->setT = PETSC_FALSE;
-
-    char optP[64], optu[64], optv[64], optw[64], optT[64];
-    snprintf(optP, sizeof(optP), "-strong%" PetscInt_FMT "_P", gi);
-    snprintf(optu, sizeof(optu), "-strong%" PetscInt_FMT "_u", gi);
-    snprintf(optv, sizeof(optv), "-strong%" PetscInt_FMT "_v", gi);
-    snprintf(optw, sizeof(optw), "-strong%" PetscInt_FMT "_w", gi);
-    snprintf(optT, sizeof(optT), "-strong%" PetscInt_FMT "_T", gi);
-
-    PetscCall(PetscOptionsScalar(optP, "Pressure for strong BC", NULL, vals->P, &vals->P, &vals->setP));
-    PetscCall(PetscOptionsScalar(optu, "Velocity-x for strong BC", NULL, vals->u, &vals->u, &vals->setu));
-    PetscCall(PetscOptionsScalar(optv, "Velocity-y for strong BC", NULL, vals->v, &vals->v, &vals->setv));
-    PetscCall(PetscOptionsScalar(optw, "Velocity-z for strong BC", NULL, vals->w, &vals->w, &vals->setw));
-    PetscCall(PetscOptionsScalar(optT, "Temperature for strong BC", NULL, vals->T, &vals->T, &vals->setT));
+    PetscCall(StrongBCValuesAssign(honee->comm, values_label, num_essential_comps, essential_comps, comp_values, num_comp_values, vals));
 
     PetscCall(BCDefinitionSetContext(bc_def, StrongBCValuesDestroy, vals));
 

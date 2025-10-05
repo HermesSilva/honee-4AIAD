@@ -9,6 +9,81 @@
 #include <navierstokes.h>
 #include "../problems/stg_shur14.h"
 
+static PetscErrorCode StrongBCScaleValue(StateVariable state_var, PetscInt comp, PetscScalar raw_value, Units units, const char label[],
+                                         MPI_Comm comm, PetscScalar *scaled) {
+  const char *name = label ? label : "Strong";
+  PetscScalar scale;
+
+  PetscFunctionBeginUser;
+  switch (state_var) {
+    case STATEVAR_CONSERVATIVE: {
+      const PetscScalar density_scale  = units->kilogram / (units->meter * units->meter * units->meter);
+      const PetscScalar velocity_scale = units->meter / units->second;
+      const PetscScalar momentum_scale = density_scale * velocity_scale;
+      const PetscScalar energy_scale   = units->Pascal;
+      switch (comp) {
+        case 0:
+          scale = density_scale;
+          break;
+        case 1:
+        case 2:
+        case 3:
+          scale = momentum_scale;
+          break;
+        case 4:
+          scale = energy_scale;
+          break;
+        default:
+          SETERRQ(comm, PETSC_ERR_SUP, "%s strong BC component %" PetscInt_FMT " unsupported for conservative state variables", name, comp);
+      }
+      break;
+    }
+    case STATEVAR_PRIMITIVE: {
+      const PetscScalar velocity_scale = units->meter / units->second;
+      switch (comp) {
+        case 0:
+          scale = units->Pascal;
+          break;
+        case 1:
+        case 2:
+        case 3:
+          scale = velocity_scale;
+          break;
+        case 4:
+          scale = units->Kelvin;
+          break;
+        default:
+          SETERRQ(comm, PETSC_ERR_SUP, "%s strong BC component %" PetscInt_FMT " unsupported for primitive state variables", name, comp);
+      }
+      break;
+    }
+    case STATEVAR_ENTROPY: {
+      const PetscScalar time_length    = units->second / units->meter;
+      const PetscScalar time_length_sq = time_length * time_length;
+      switch (comp) {
+        case 0:
+          scale = 1.0;
+          break;
+        case 1:
+        case 2:
+        case 3:
+          scale = time_length;
+          break;
+        case 4:
+          scale = time_length_sq;
+          break;
+        default:
+          SETERRQ(comm, PETSC_ERR_SUP, "%s strong BC component %" PetscInt_FMT " unsupported for entropy state variables", name, comp);
+      }
+      break;
+    }
+    default:
+      scale = 1.0;
+  }
+  *scaled = raw_value * scale;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData problem, CeedOperator op_strong_bc) {
   const PetscInt dm_field = 0, height_face = 1, height_cell = 0;
   PetscInt       dim, num_comp_x;
@@ -30,6 +105,22 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
   if (!have_strong) PetscFunctionReturn(PETSC_SUCCESS);
 
   PetscCall(DMGetLabel(dm, "Face Sets", &face_sets_label));
+
+  const CeedInt qf_setup_dxdx_comp = num_comp_x * (dim - height_cell);
+  const CeedInt strong_num_comp    = problem->num_components;
+
+  PetscCheck(strong_num_comp > 0, honee->comm, PETSC_ERR_SUP, "Strong BC requires problem to define number of components");
+  PetscCheck(strong_num_comp <= STRONG_BC_MAX_COMPONENTS, honee->comm, PETSC_ERR_SUP, "Strong BC supports up to %d components (got %" CeedInt_FMT ")",
+             STRONG_BC_MAX_COMPONENTS, strong_num_comp);
+
+  CeedQFunction qf_setup = NULL;
+  PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, SetupStrongBC, SetupStrongBC_loc, &qf_setup));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup, "x", num_comp_x, CEED_EVAL_INTERP));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup, "dxdX", qf_setup_dxdx_comp, CEED_EVAL_GRAD));
+  PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup, "multiplicity", strong_num_comp, CEED_EVAL_NONE));
+  PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_setup, "x stored", num_comp_x, CEED_EVAL_NONE));
+  PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_setup, "scale", 1, CEED_EVAL_NONE));
+  PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_setup, "dXdx", qf_setup_dxdx_comp, CEED_EVAL_NONE));
 
   CeedBasis basis_x_to_q_face;
   {
@@ -99,16 +190,7 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_scale, &scale_stored, NULL));
 
         //compute geometry and multiplicity based scale
-        CeedQFunction qf_setup;
-        CeedOperator  op_setup;
-        PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, SetupStrongBC, SetupStrongBC_loc, &qf_setup));
-        PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup, "x", num_comp_x, CEED_EVAL_INTERP));
-        PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup, "dxdX", num_comp_x * (dim - height_cell), CEED_EVAL_GRAD));
-        PetscCallCeed(ceed, CeedQFunctionAddInput(qf_setup, "multiplicity", 5, CEED_EVAL_NONE));
-        PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_setup, "x stored", num_comp_x, CEED_EVAL_NONE));
-        PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_setup, "scale", 1, CEED_EVAL_NONE));
-        PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_setup, "dXdx", num_comp_x * (dim - height_cell), CEED_EVAL_NONE));
-
+        CeedOperator op_setup;
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_setup, NULL, NULL, &op_setup));
         PetscCallCeed(ceed, CeedOperatorSetField(op_setup, "x", elem_restr_x_face, basis_x_to_q_face, CEED_VECTOR_ACTIVE));
         PetscCallCeed(ceed, CeedOperatorSetField(op_setup, "dxdX", elem_restr_x_cell, basis_x_to_q_cell, CEED_VECTOR_ACTIVE));
@@ -131,56 +213,58 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         const PetscInt      *ess_comps = NULL;
         PetscCall(BCDefinitionGetEssential(bc_def, &ncomps, &ess_comps));
         StrongBCValues *vals = NULL;
-        {
-          void *ctxptr = NULL;
-          PetscCall(BCDefinitionGetContext(bc_def, &ctxptr));
-          // Only require values if there are constrained components
-          if (ncomps > 0) {
-            PetscCheck(ctxptr, honee->comm, PETSC_ERR_USER,
-                       "Strong BC requires values to be set (e.g. -strong_P, -strong_u, -strong_v, -strong_w, -strong_T)");
-          }
-          vals = (StrongBCValues *)ctxptr;
+        PetscCall(BCDefinitionGetContext(bc_def, &vals));
+
+        PetscScalar q_tmp[STRONG_BC_MAX_COMPONENTS];
+        PetscScalar mask_tmp[STRONG_BC_MAX_COMPONENTS];
+        PetscBool   value_set[STRONG_BC_MAX_COMPONENTS];
+        for (CeedInt j = 0; j < strong_num_comp; j++) {
+          q_tmp[j]     = 0.0;
+          mask_tmp[j]  = 0.0;
+          value_set[j] = PETSC_FALSE;
         }
 
-        // Require provided values for each essential component
-        if (ncomps > 0) {
-          for (PetscInt j = 0; j < ncomps; j++) {
-            PetscInt comp = ess_comps[j];
-            PetscCheck(!(comp == 0 && !vals->setP), honee->comm, PETSC_ERR_USER, "Strong BC missing required value P for constrained component 0");
-            PetscCheck(!(comp == 1 && !vals->setu), honee->comm, PETSC_ERR_USER, "Strong BC missing required value u for constrained component 1");
-            PetscCheck(!(comp == 2 && !vals->setv), honee->comm, PETSC_ERR_USER, "Strong BC missing required value v for constrained component 2");
-            PetscCheck(!(comp == 3 && !vals->setw), honee->comm, PETSC_ERR_USER, "Strong BC missing required value w for constrained component 3");
-            PetscCheck(!(comp == 4 && !vals->setT), honee->comm, PETSC_ERR_USER, "Strong BC missing required value T for constrained component 4");
+        const char *label = (vals && vals->label) ? vals->label : "Strong";
+        if (vals) {
+          for (PetscInt k = 0; k < vals->count; k++) {
+            PetscInt comp = vals->components[k];
+            PetscCheck(comp >= 0 && comp < strong_num_comp, honee->comm, PETSC_ERR_USER,
+                       "%s strong BC component %" PetscInt_FMT " is out of range [0, %" CeedInt_FMT ")", label, comp, strong_num_comp);
+            PetscScalar scaled;
+            PetscCall(StrongBCScaleValue(honee->phys->state_var, comp, vals->values[k], honee->units, label, honee->comm, &scaled));
+            q_tmp[comp]     = scaled;
+            value_set[comp] = PETSC_TRUE;
           }
         }
 
-        // Fill StrongContext with target qvalues
-        StrongContext *c;
-        PetscCall(PetscMalloc1(1, &c));
-        {
-          Units      U = honee->units;
-          CeedScalar Strong[5];
-          Strong[0] = vals->P * U->Pascal;
-          Strong[1] = vals->u * (U->meter / U->second);
-          Strong[2] = vals->v * (U->meter / U->second);
-          Strong[3] = vals->w * (U->meter / U->second);
-          Strong[4] = vals->T * U->Kelvin;
-          for (PetscInt j = 0; j < 5; j++) c->q[j] = Strong[j];
-        }
-        for (PetscInt j = 0; j < 5; j++) c->mask[j] = 0;
         for (PetscInt j = 0; j < ncomps; j++) {
           PetscInt comp = ess_comps[j];
-          if (0 <= comp && comp < 5) c->mask[comp] = 1;
+          PetscCheck(comp >= 0 && comp < strong_num_comp, honee->comm, PETSC_ERR_USER,
+                     "%s strong BC constrained component %" PetscInt_FMT " is out of range [0, %" CeedInt_FMT ")", label, comp, strong_num_comp);
+          PetscCheck(value_set[comp], honee->comm, PETSC_ERR_USER, "%s strong BC missing value for constrained component %" PetscInt_FMT, label,
+                     comp);
+          mask_tmp[comp] = 1.0;
+        }
+
+        size_t         context_bytes = sizeof(StrongContext) + 2 * (size_t)strong_num_comp * sizeof(CeedScalar);
+        StrongContext *c;
+        PetscCall(PetscMalloc(context_bytes, (void **)&c));
+        c->num_comp        = strong_num_comp;
+        CeedScalar *q_data = c->data;
+        CeedScalar *mask   = c->data + strong_num_comp;
+        for (CeedInt j = 0; j < strong_num_comp; j++) {
+          q_data[j] = q_tmp[j];
+          mask[j]   = mask_tmp[j];
         }
 
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, StrongQF, StrongQF_loc, &qf_strong));
-        PetscCallCeed(ceed, CeedQFunctionContextCreate(ceed, &qfctx));
-        PetscCallCeed(ceed, CeedQFunctionContextSetData(qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*c), c));
-        PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(qfctx, CEED_MEM_HOST, FreeContextPetsc));
-        PetscCallCeed(ceed, CeedQFunctionSetContext(qf_strong, qfctx));
         PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_strong, 0));
         PetscCallCeed(ceed, CeedQFunctionAddInput(qf_strong, "scale", 1, CEED_EVAL_NONE));
-        PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_strong, "q", 5, CEED_EVAL_NONE));
+        PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_strong, "q", strong_num_comp, CEED_EVAL_NONE));
+        PetscCallCeed(ceed, CeedQFunctionContextCreate(ceed, &qfctx));
+        PetscCallCeed(ceed, CeedQFunctionContextSetData(qfctx, CEED_MEM_HOST, CEED_USE_POINTER, context_bytes, c));
+        PetscCallCeed(ceed, CeedQFunctionContextSetDataDestroy(qfctx, CEED_MEM_HOST, FreeContextPetsc));
+        PetscCallCeed(ceed, CeedQFunctionSetContext(qf_strong, qfctx));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_strong, NULL, NULL, &op_dir_sub));
         PetscCallCeed(ceed, CeedOperatorSetName(op_dir_sub, "Strong"));
@@ -191,7 +275,6 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
 
         PetscCallCeed(ceed, CeedOperatorDestroy(&op_dir_sub));
         PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_strong));
-        PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_setup));
         PetscCallCeed(ceed, CeedOperatorDestroy(&op_setup));
         PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q_face));
         PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x_face));
@@ -210,11 +293,12 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
   }
 
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_to_q_face));
+  PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_setup));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData problem, Physics phys, CeedOperator op_strong_bc) {
-  CeedInt             num_comp_x, num_comp_q = 5, stg_data_size = 1, dXdx_size;
+  CeedInt             num_comp_x, num_comp_q, stg_data_size = 1, dXdx_size;
   CeedVector          multiplicity, x_stored, scale_stored, stg_data, dXdx, x_coord;
   CeedBasis           basis_x_to_q_face;
   CeedElemRestriction elem_restr_x_face, elem_restr_q_face, elem_restr_x_stored, elem_restr_scale, elem_restr_stgdata, elem_restr_dXdx;
@@ -229,6 +313,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
   PetscCall(DMGetLabel(dm, "Face Sets", &domain_label));
   PetscCall(DMGetDimension(dm, &dim));
   num_comp_x = dim;
+  num_comp_q = problem->num_components;
   dXdx_size  = num_comp_x * (dim - height_cell);
 
   {  // Basis

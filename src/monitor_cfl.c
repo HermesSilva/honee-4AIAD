@@ -10,7 +10,7 @@ typedef struct {
   PetscInt             num_comps;
   PetscInt             tab_level;
   PetscBool            is_header_written;
-} *MonitorCflCtx;
+} * MonitorCflCtx;
 
 static PetscErrorCode MonitorCflCtxDestroy(MonitorCflCtx *monitor_ctx) {
   MonitorCflCtx monitor_ctx_ = *monitor_ctx;

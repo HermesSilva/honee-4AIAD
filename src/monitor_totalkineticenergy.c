@@ -13,7 +13,7 @@ typedef struct {
   PetscInt             num_comps;
   PetscInt             tab_level;
   PetscBool            is_header_written;
-} *MonitorTotalKE;
+} * MonitorTotalKE;
 
 static PetscErrorCode MonitorTotalKEDestroy(MonitorTotalKE *monitor_ctx) {
   MonitorTotalKE monitor_ctx_ = *monitor_ctx;
