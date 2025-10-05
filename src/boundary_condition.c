@@ -133,7 +133,7 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
   PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
 
   // Strong BC
-  // Usage example: -bc_strong 3,5  -strong_comps 1,2,3  -strong_u 0  -strong_v 0  -strong_w 0
+  // Usage example: bc_strong_1:  3 , strong_1_comps:   1,2,3,4, strong_1_values:  0,0,0,300
   PetscCall(PetscOptionsBCDefinition("-bc_strong", "Face IDs to apply strong BC", NULL, "strong", &bc_def, &flg));
   if (flg && bc_def) {
     // Components to constrain

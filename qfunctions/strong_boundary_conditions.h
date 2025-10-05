@@ -23,7 +23,6 @@ CEED_QFUNCTION(SetupStrongBC)(void *ctx, CeedInt Q, const CeedScalar *const *in,
   return 0;
 }
 
-/* Keep STRONG_BC_MAX_COMPONENTS consistent with include/navierstokes.h */
 #ifndef STRONG_BC_MAX_COMPONENTS
 #define STRONG_BC_MAX_COMPONENTS 32
 #endif
