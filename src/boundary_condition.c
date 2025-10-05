@@ -144,8 +144,8 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     PetscInt    num_comp_values = STRONG_BC_MAX_COMPONENTS;
     PetscBool   values_set      = PETSC_FALSE;
 
-    PetscCall(
-        PetscOptionsIntArray("-strong_comps", "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &comps_set));
+    PetscCall(PetscOptionsIntArray("-strong_comps", "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps,
+                                   &comps_set));
     if (!comps_set) num_essential_comps = 0;
 
     PetscCall(PetscOptionsScalarArray("-strong_values", "Values for constrained components", NULL, comp_values, &num_comp_values, &values_set));
@@ -196,8 +196,8 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     const char *values_label = opt_values;
     PetscCall(PetscOptionsIntArray(opt_comps, "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &comps_set));
     if (!comps_set) {
-      PetscCall(
-          PetscOptionsIntArray(opt_comps_old, "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &comps_set));
+      PetscCall(PetscOptionsIntArray(opt_comps_old, "Array of constrained component numbers", NULL, essential_comps, &num_essential_comps,
+                                     &comps_set));
     }
     if (!comps_set) num_essential_comps = 0;
     PetscCall(PetscOptionsScalarArray(opt_values, "Values for constrained components", NULL, comp_values, &num_comp_values, &values_set));

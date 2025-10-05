@@ -183,8 +183,8 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q_face, &multiplicity, NULL));
         PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(elem_restr_q_face, multiplicity));
 
-        PetscCall(
-            DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, num_comp_x, &elem_restr_x_stored));
+        PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, num_comp_x,
+                                                            &elem_restr_x_stored));
         PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, 1, &elem_restr_scale));
         PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_x_stored, &x_stored, NULL));
         PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_scale, &scale_stored, NULL));
