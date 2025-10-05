@@ -20,7 +20,7 @@ typedef struct {
   PetscInt              initial_solution_step;
   PetscInt              collect_interval;
   char                 *prefix;
-} * SpanStatsCtx;
+} *SpanStatsCtx;
 
 PetscErrorCode SpanStatsCtxDestroy(SpanStatsCtx *spanstats);
 
@@ -28,7 +28,7 @@ typedef struct {
   CeedElemRestriction elem_restr_parent_x, elem_restr_parent_stats, elem_restr_parent_colloc, elem_restr_child_colloc;
   CeedBasis           basis_x, basis_stats;
   CeedVector          x_coord;
-} * SpanStatsSetupData;
+} *SpanStatsSetupData;
 
 PetscErrorCode SpanwiseStatisticsSetupInitialize(Honee honee, PetscInt degree, PetscInt num_comps, const char *prefix,
                                                  SpanStatsSetupData *stats_setup_data, SpanStatsCtx *spanstats_new);

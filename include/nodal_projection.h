@@ -8,6 +8,6 @@ typedef struct {
   PetscInt             num_comp;
   OperatorApplyContext l2_rhs_ctx;
   KSP                  ksp;
-} * NodalProjectionData;
+} *NodalProjectionData;
 
 PetscErrorCode NodalProjectionDataDestroy(NodalProjectionData *context);

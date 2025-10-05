@@ -20,7 +20,7 @@ typedef enum {
 
 typedef struct {
   OutflowType outflow_type;
-} * OutflowHoneeBCCtx;
+} *OutflowHoneeBCCtx;
 
 static PetscErrorCode OutflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
   Honee         honee;

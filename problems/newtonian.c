@@ -397,12 +397,12 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
       .tau_coeffs =
           {
                 .Ctau_t = 1.0,
-                .Ctau_v = Cv_func[(CeedInt)Min(3,                                              degree) - 1],
+                .Ctau_v = Cv_func[(CeedInt)Min(3, degree) - 1],
                 .Ctau_C = 0.25 / degree,
                 .Ctau_M = 0.25 / degree,
                 .Ctau_E = 0.125,
                 },
-      .g            = {0, 0,0}, // m/s^2
+      .g            = {0, 0, 0}, // m/s^2
       .idl_start    = 0,
       .idl_length   = 0,
       .idl_pressure = reference.pressure,

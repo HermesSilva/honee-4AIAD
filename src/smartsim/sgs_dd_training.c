@@ -40,7 +40,7 @@ typedef struct {
   CeedElemRestriction  elem_restr_grid_aniso;
   CeedVector           grid_aniso_ceed;
   CeedQFunctionContext sgs_dd_train_qfctx;
-} * SGS_DD_TrainingSetupData;
+} *SGS_DD_TrainingSetupData;
 
 static PetscErrorCode SGS_DD_TrainingSetupDataDestroy(SGS_DD_TrainingSetupData sgs_dd_train_setup_data) {
   Ceed ceed;

@@ -18,7 +18,7 @@ static PetscErrorCode RiemannSolverUnitTests(NewtonianIGProperties gas, CeedScal
 
 typedef struct {
   RiemannFluxType flux_type;
-} * FreestreamHoneeBCCtx;
+} *FreestreamHoneeBCCtx;
 
 static PetscErrorCode FreestreamBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
   Honee         honee;

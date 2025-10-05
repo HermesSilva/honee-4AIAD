@@ -16,7 +16,7 @@ typedef struct {
   PetscObjectState      X_loc_state;
   PetscBool             do_mms_test;
   CeedContextFieldLabel filter_width_scaling_label;
-} * DiffFilterData;
+} *DiffFilterData;
 
 PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter);
 PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData *diff_filter);
