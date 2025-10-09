@@ -4,9 +4,9 @@
 
 #include <ceed.h>
 #include <petsc-ceed.h>
+#include <petsc/private/petscimpl.h>
 #include <petscdm.h>
 #include <petscmat.h>
-#include <petsc/private/petscimpl.h>
 
 // MatCeed context for applying composite CeedOperator on a DM
 typedef struct MatCeedContext_private *MatCeedContext;
@@ -23,6 +23,7 @@ struct MatCeedContext_private {
   CeedVector     x_loc, y_loc, coo_values_full, coo_values_pbd;
   CeedOperator   op_mult, op_mult_transpose;
   PetscLogDouble flops_mult, flops_mult_transpose;
+  PetscBool      coo_reuse_preallocation;
 };
 
 // Context data

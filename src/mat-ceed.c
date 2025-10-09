@@ -16,6 +16,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if PETSC_VERSION_LT(3, 24, 0)
+typedef void (*MatSetOpFn)(void);
+#else
+typedef PetscErrorCodeFn *MatSetOpFn;
+#endif
+
 PetscClassId  MATCEED_CLASSID;
 PetscLogEvent MATCEED_MULT, MATCEED_MULT_CEEDOP, MATCEED_MULT_TRANSPOSE, MATCEED_MULT_TRANSPOSE_CEEDOP, MATCEED_ASSEMBLE_DIAGONAL,
     MATCEED_ASSEMBLE_DIAGONAL_CEEDOP, MATCEED_SETUP_PBDIAGONAL, MATCEED_SETUP_PBDIAGONAL_CEEDOP, MATCEED_ASSEMBLE_PBDIAGONAL,
@@ -270,6 +276,7 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
   {
     PetscBool is_detailed     = format == PETSC_VIEWER_ASCII_INFO_DETAIL;
     char      rank_string[16] = {'\0'};
+    PetscInt  num_tabs        = 0;
     FILE     *file;
 
     PetscCall(PetscViewerASCIIPrintf(viewer, "MatCEED:\n"));
@@ -279,20 +286,64 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
     PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator Apply %s:\n", is_detailed ? rank_string : "Summary"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "libCEED PB Diagonal Assembly: %s\n", ctx->is_ceed_pbd_valid ? "True" : "False"));
     PetscCall(PetscViewerASCIIPrintf(viewer, "libCEED VPB Diagonal Assembly: %s\n", ctx->is_ceed_vpbd_valid ? "True" : "False"));
+    PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator Apply %s:\n", is_detailed ? rank_string : "Summary"));
     PetscCall(PetscViewerASCIIGetPointer(viewer, &file));
     PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
+    PetscCall(PetscViewerASCIIGetTab(viewer, &num_tabs));
+    PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult, num_tabs));
     if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult, file));
     else PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult, file));
+    PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult, 0));
     PetscCall(PetscViewerASCIIPopTab(viewer));  // CeedOperator
     if (ctx->op_mult_transpose) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator ApplyTranspose %s:\n", is_detailed ? rank_string : "Summary"));
       PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
+      PetscCall(PetscViewerASCIIGetTab(viewer, &num_tabs));
+      PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult_transpose, num_tabs));
       if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult_transpose, file));
       else PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult_transpose, file));
+      PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult_transpose, 0));
       PetscCall(PetscViewerASCIIPopTab(viewer));  // CeedOperator
     }
     PetscCall(PetscViewerASCIIPopTab(viewer));  // MatCEED
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Set options for MatCeed from command-line iterface
+
+  @note This is a PETSc interface, thus the odd signature
+  @note The name of the second parameter must be `PetscOptionsObject` due to abuse of PETSc macros
+
+  Collective across MPI processes.
+
+  @param[in]  mat_ceed            `Mat` object to set up
+  @param[in]  PetscOptionsObject  `PetscOptionItems` object to read options from
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode MatSetFromOptions_Ceed(Mat mat_ceed, PetscOptionItems PetscOptionsObject) {
+  MatCeedContext ctx;
+  char           coo_mat_type_cl[PETSC_MAX_OPTION_NAME];
+  PetscBool      is_coo_mat_type_cl;
+
+  PetscFunctionBegin;
+  PetscCall(MatShellGetContext(mat_ceed, &ctx));
+
+  PetscOptionsHeadBegin(PetscOptionsObject, "MATCEED options");
+  // Check for specific CL coo mat type for this Mat
+  PetscCall(PetscOptionsFList("-mat_ceed_coo_mat_type", "Default MATCEED COO assembly MatType", NULL, MatList, coo_mat_type_cl, coo_mat_type_cl,
+                              sizeof(coo_mat_type_cl), &is_coo_mat_type_cl));
+  if (is_coo_mat_type_cl) {
+    PetscCall(PetscFree(ctx->coo_mat_type));
+    PetscCall(PetscStrallocpy(coo_mat_type_cl, &ctx->coo_mat_type));
+  }
+  // Check for COO mat reuse flag
+  PetscCall(PetscOptionsBool("-mat_ceed_coo_reuse_preallocation",
+                             "Flag to allow the MatCeed to reuse existing COO preallocations, even if not set by this MatCeed", NULL,
+                             ctx->coo_reuse_preallocation, &ctx->coo_reuse_preallocation, NULL));
+  PetscOptionsHeadEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -464,13 +515,14 @@ PetscErrorCode MatCreateCeed(DM dm_x, DM dm_y, CeedOperator op_mult, CeedOperato
   }
   // -- Set mat operations
   PetscCall(MatShellSetContextDestroy(*mat, (PetscCtxDestroyFn *)MatCeedContextDestroy));
-  PetscCall(MatShellSetOperation(*mat, MATOP_VIEW, (PetscErrorCodeFn *)MatView_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_MULT, (PetscErrorCodeFn *)MatMult_Ceed));
-  if (op_mult_transpose) PetscCall(MatShellSetOperation(*mat, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)MatMultTranspose_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL, (PetscErrorCodeFn *)MatGetDiagonal_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL_BLOCK, (PetscErrorCodeFn *)MatGetDiagonalBlock_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_BLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetBlockDiagonal_Ceed));
-  PetscCall(MatShellSetOperation(*mat, MATOP_GET_VBLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetVariableBlockDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_VIEW, (MatSetOpFn)MatView_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_MULT, (MatSetOpFn)MatMult_Ceed));
+  if (op_mult_transpose) PetscCall(MatShellSetOperation(*mat, MATOP_MULT_TRANSPOSE, (MatSetOpFn)MatMultTranspose_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL, (MatSetOpFn)MatGetDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_DIAGONAL_BLOCK, (MatSetOpFn)MatGetDiagonalBlock_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_BLOCK_DIAGONAL, (MatSetOpFn)MatGetBlockDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_GET_VBLOCK_DIAGONAL, (MatSetOpFn)MatGetVariableBlockDiagonal_Ceed));
+  PetscCall(MatShellSetOperation(*mat, MATOP_SET_FROM_OPTIONS, (MatSetOpFn)MatSetFromOptions_Ceed));
   PetscCall(MatShellSetVecType(*mat, vec_type));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -499,7 +551,7 @@ PetscErrorCode MatCeedCopy(Mat mat_ceed, Mat mat_other) {
     PetscCheck(is_matceed, PETSC_COMM_SELF, PETSC_ERR_LIB, "mat_ceed must have type " MATCEED);
     PetscCall(MatGetType(mat_other, &mat_type_other));
     PetscCall(PetscStrcmp(mat_type_other, MATCEED, &is_matceed));
-    PetscCall(PetscStrcmp(mat_type_other, MATSHELL, &is_matceed));
+    PetscCall(PetscStrcmp(mat_type_other, MATSHELL, &is_matshell));
     PetscCheck(is_matceed || is_matshell, PETSC_COMM_SELF, PETSC_ERR_LIB, "mat_other must have type " MATCEED " or " MATSHELL);
   }
 
@@ -530,13 +582,13 @@ PetscErrorCode MatCeedCopy(Mat mat_ceed, Mat mat_other) {
     PetscCall(MatCeedContextReference(ctx));
     PetscCall(MatShellSetContext(mat_other, ctx));
     PetscCall(MatShellSetContextDestroy(mat_other, (PetscCtxDestroyFn *)MatCeedContextDestroy));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_VIEW, (PetscErrorCodeFn *)MatView_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_MULT, (PetscErrorCodeFn *)MatMult_Ceed));
-    if (ctx->op_mult_transpose) PetscCall(MatShellSetOperation(mat_other, MATOP_MULT_TRANSPOSE, (PetscErrorCodeFn *)MatMultTranspose_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL, (PetscErrorCodeFn *)MatGetDiagonal_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL_BLOCK, (PetscErrorCodeFn *)MatGetDiagonalBlock_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_BLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetBlockDiagonal_Ceed));
-    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_VBLOCK_DIAGONAL, (PetscErrorCodeFn *)MatGetVariableBlockDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_VIEW, (MatSetOpFn)MatView_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_MULT, (MatSetOpFn)MatMult_Ceed));
+    if (ctx->op_mult_transpose) PetscCall(MatShellSetOperation(mat_other, MATOP_MULT_TRANSPOSE, (MatSetOpFn)MatMultTranspose_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL, (MatSetOpFn)MatGetDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_DIAGONAL_BLOCK, (MatSetOpFn)MatGetDiagonalBlock_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_BLOCK_DIAGONAL, (MatSetOpFn)MatGetBlockDiagonal_Ceed));
+    PetscCall(MatShellSetOperation(mat_other, MATOP_GET_VBLOCK_DIAGONAL, (MatSetOpFn)MatGetVariableBlockDiagonal_Ceed));
     {
       PetscInt block_size;
 
@@ -600,27 +652,6 @@ PetscErrorCode MatCeedCreateMatCOO(Mat mat_ceed, Mat *mat_coo) {
 
   PetscCheck(ctx->dm_x == ctx->dm_y, PetscObjectComm((PetscObject)mat_ceed), PETSC_ERR_SUP, "COO assembly only supported for MATCEED on a single DM");
 
-  // Check cl mat type
-  {
-    PetscBool is_coo_mat_type_cl = PETSC_FALSE;
-    char      coo_mat_type_cl[PETSC_MAX_OPTION_NAME];
-
-    // Check for specific CL coo mat type for this Mat
-    {
-      const char *mat_ceed_prefix = NULL;
-
-      PetscCall(MatGetOptionsPrefix(mat_ceed, &mat_ceed_prefix));
-      PetscOptionsBegin(PetscObjectComm((PetscObject)mat_ceed), mat_ceed_prefix, "", NULL);
-      PetscCall(PetscOptionsFList("-ceed_coo_mat_type", "Default MATCEED COO assembly MatType", NULL, MatList, coo_mat_type_cl, coo_mat_type_cl,
-                                  sizeof(coo_mat_type_cl), &is_coo_mat_type_cl));
-      PetscOptionsEnd();
-      if (is_coo_mat_type_cl) {
-        PetscCall(PetscFree(ctx->coo_mat_type));
-        PetscCall(PetscStrallocpy(coo_mat_type_cl, &ctx->coo_mat_type));
-      }
-    }
-  }
-
   // Create sparse matrix
   {
     MatType dm_mat_type, dm_mat_type_copy;
@@ -653,26 +684,35 @@ PetscErrorCode MatCeedSetPreallocationCOO(Mat mat_ceed, Mat mat_coo) {
   PetscCall(MatShellGetContext(mat_ceed, &ctx));
 
   {
-    PetscInt     *rows_petsc = NULL, *cols_petsc = NULL;
-    CeedInt      *rows_ceed, *cols_ceed;
     PetscCount    num_entries;
     PetscLogStage stage_amg_setup;
+    PetscObject   coo_struct;
 
-    // -- Assemble sparsity pattern if mat hasn't been assembled before
     PetscCall(PetscLogStageGetId("MatCEED Asm Setup", &stage_amg_setup));
     if (stage_amg_setup == -1) {
       PetscCall(PetscLogStageRegister("MatCEED Asm Setup", &stage_amg_setup));
     }
     PetscCall(PetscLogStagePush(stage_amg_setup));
     PetscCall(PetscLogEventBegin(MATCEED_SETUP_FULL, mat_ceed, mat_coo, NULL, NULL));
-    PetscCall(PetscLogEventBegin(MATCEED_SETUP_FULL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
-    PetscCallCeed(ctx->ceed, CeedOperatorLinearAssembleSymbolic(ctx->op_mult, &num_entries, &rows_ceed, &cols_ceed));
-    PetscCall(PetscLogEventEnd(MATCEED_SETUP_FULL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
-    PetscCall(IntArrayCeedToPetsc(num_entries, &rows_ceed, &rows_petsc));
-    PetscCall(IntArrayCeedToPetsc(num_entries, &cols_ceed, &cols_petsc));
-    PetscCall(MatSetPreallocationCOOLocal(mat_coo, num_entries, rows_petsc, cols_petsc));
-    free(rows_petsc);
-    free(cols_petsc);
+    PetscCall(PetscObjectQuery((PetscObject)mat_coo, "__PETSc_MatCOOStruct_Host", (PetscObject *)&coo_struct));
+    // -- Check for existing assembly data
+    if (!ctx->coo_reuse_preallocation || !coo_struct) {
+      PetscInt *rows_petsc = NULL, *cols_petsc = NULL;
+      CeedInt  *rows_ceed, *cols_ceed;
+
+      // -- Assemble sparsity pattern if mat hasn't been assembled before
+      PetscCall(PetscLogEventBegin(MATCEED_SETUP_FULL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
+      PetscCallCeed(ctx->ceed, CeedOperatorLinearAssembleSymbolic(ctx->op_mult, &num_entries, &rows_ceed, &cols_ceed));
+      PetscCall(PetscLogEventEnd(MATCEED_SETUP_FULL_CEEDOP, mat_ceed, mat_coo, NULL, NULL));
+      PetscCall(IntArrayCeedToPetsc(num_entries, &rows_ceed, &rows_petsc));
+      PetscCall(IntArrayCeedToPetsc(num_entries, &cols_ceed, &cols_petsc));
+      PetscCall(MatSetPreallocationCOOLocal(mat_coo, num_entries, rows_petsc, cols_petsc));
+      free(rows_petsc);
+      free(cols_petsc);
+    } else {
+      PetscCallCeed(ctx->ceed, CeedOperatorLinearAssembleGetNumEntries(ctx->op_mult, &num_entries));
+    }
+
     if (!ctx->coo_values_full) PetscCallCeed(ctx->ceed, CeedVectorCreate(ctx->ceed, num_entries, &ctx->coo_values_full));
     PetscCall(PetscRealloc(++ctx->num_mats_assembled_full * sizeof(Mat), &ctx->mats_assembled_full));
     ctx->mats_assembled_full[ctx->num_mats_assembled_full - 1] = mat_coo;
@@ -712,7 +752,6 @@ PetscErrorCode MatCeedAssembleCOO(Mat mat_ceed, Mat mat_coo) {
 
   // Assemble mat_ceed
   PetscCall(PetscLogEventBegin(MATCEED_ASSEMBLE_FULL, mat_ceed, mat_coo, NULL, NULL));
-  PetscCall(MatAssemblyBegin(mat_coo, MAT_FINAL_ASSEMBLY));
   {
     const CeedScalar *values;
     CeedMemType       mem_type = CEED_MEM_HOST;
@@ -730,6 +769,7 @@ PetscErrorCode MatCeedAssembleCOO(Mat mat_ceed, Mat mat_coo) {
     if (is_spd_known) PetscCall(MatSetOption(mat_coo, MAT_SPD, is_spd));
     PetscCallCeed(ctx->ceed, CeedVectorRestoreArrayRead(ctx->coo_values_full, &values));
   }
+  PetscCall(MatAssemblyBegin(mat_coo, MAT_FINAL_ASSEMBLY));
   PetscCall(MatAssemblyEnd(mat_coo, MAT_FINAL_ASSEMBLY));
   PetscCall(PetscLogEventEnd(MATCEED_ASSEMBLE_FULL, mat_ceed, mat_coo, NULL, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -1008,9 +1048,49 @@ PetscErrorCode MatCeedGetContext(Mat mat, void *ctx) {
 
   @return An error code: 0 - success, otherwise - failure
 **/
-PetscErrorCode MatCeedSetOperation(Mat mat, MatOperation op, PetscErrorCodeFn *g) {
+PetscErrorCode MatCeedSetOperation(Mat mat, MatOperation op, void (*g)(void)) {
   PetscFunctionBeginUser;
-  PetscCall(MatShellSetOperation(mat, op, g));
+  PetscCall(MatShellSetOperation(mat, op, (MatSetOpFn)g));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Set the flag for whether the `MATCEED` should reuse a COO matrix, even if not created by this `MATCEED`.
+
+  @note Only set this flag if you are certain that the COO layout is properly set on incoming matrices.
+
+  Collective across MPI processes.
+
+  @param[in,out]  mat                      `MATCEED`
+  @param[in]      coo_reuse_preallocation  Flag value to set
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+PetscErrorCode MatCeedSetReusePreallocationCOO(Mat mat, PetscBool coo_reuse_preallocation) {
+  MatCeedContext ctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(MatShellGetContext(mat, &ctx));
+  ctx->coo_reuse_preallocation = coo_reuse_preallocation;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Gets the flag for whether the `MATCEED` should reuse a COO matrix, even if not created by this `MATCEED`.
+
+  Collective across MPI processes.
+
+  @param[in]  mat                      `MATCEED`
+  @param[in]  coo_reuse_preallocation  Address to store current flag value
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+PetscErrorCode MatCeedGetReusePreallocationCOO(Mat mat, PetscBool *coo_reuse_preallocation) {
+  MatCeedContext ctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(MatShellGetContext(mat, &ctx));
+  *coo_reuse_preallocation = ctx->coo_reuse_preallocation;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1366,7 +1446,9 @@ PetscErrorCode MatCeedContextCreate(DM dm_x, DM dm_y, Vec X_loc, Vec Y_loc_trans
   PetscCallCeed((*ctx)->ceed, CeedOperatorGetActiveVectorLengths(op_mult, &x_loc_len, &y_loc_len));
   PetscCallCeed((*ctx)->ceed, CeedOperatorReferenceCopy(op_mult, &(*ctx)->op_mult));
   if (op_mult_transpose) PetscCallCeed((*ctx)->ceed, CeedOperatorReferenceCopy(op_mult_transpose, &(*ctx)->op_mult_transpose));
+  if (x_loc_len == -1) x_loc_len = 0;
   PetscCallCeed((*ctx)->ceed, CeedVectorCreate((*ctx)->ceed, x_loc_len, &(*ctx)->x_loc));
+  if (y_loc_len == -1) y_loc_len = 0;
   PetscCallCeed((*ctx)->ceed, CeedVectorCreate((*ctx)->ceed, y_loc_len, &(*ctx)->y_loc));
 
   // Flop counting
