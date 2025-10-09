@@ -13,21 +13,6 @@ ReflowComments:               false
 CommentPragmas:               'TESTARGS'
 DerivePointerAlignment:       false
 IncludeBlocks:                Preserve
-IncludeCategories:
-  - Regex:                    '^<ceed/.*\.h>'
-    Priority:                 2
-  - Regex:                    '^<ceed.*\.h>'
-    Priority:                 1
-  - Regex:                    '^<.*/.*\.h>'
-    Priority:                 5
-  - Regex:                    '^<.*\.h>'
-    Priority:                 4
-  - Regex:                    '^<.*>'
-    Priority:                 3
-  - Regex:                    '^".*"'
-    Priority:                 6
-  - Regex:                    '.*'
-    Priority:                 7
 PointerAlignment:             Right
 TabWidth:                     4
 UseTab:                       Never
