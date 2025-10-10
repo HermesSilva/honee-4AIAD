@@ -582,7 +582,7 @@ CEED_QFUNCTION_HELPER void StatePhysicalGradientFromReference(CeedInt Q, CeedInt
                                                               const CeedScalar *grad_q, const CeedScalar dXdx[3][3], State grad_s[3]) {
   CeedScalar grad_qi[5][3], dq[5][3] = {{0.}};
 
-  GradUnpack3(Q, i, 5, grad_q, grad_qi);
+  GradUnpack3D(Q, i, 5, grad_q, grad_qi);
   MatMatNM((CeedScalar *)grad_qi, (CeedScalar *)dXdx, (CeedScalar *)dq, 5, 3, 3);
   for (CeedInt j = 0; j < 3; j++) {
     CeedScalar dqi[5];

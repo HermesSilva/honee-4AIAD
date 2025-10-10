@@ -26,7 +26,7 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_3D(CeedInt Q, CeedInt i, const 
                                                     CeedScalar *detJ_ptr) {
   CeedScalar dxdX[3][3];
 
-  GradUnpack3(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
+  GradUnpack3D(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
   MatInv3(dxdX, dXdx, detJ_ptr);
 }
 
@@ -48,7 +48,7 @@ CEED_QFUNCTION_HELPER void InvertMappingJacobian_2D(CeedInt Q, CeedInt i, const 
                                                     CeedScalar *detJ_ptr) {
   CeedScalar dxdX[2][2];
 
-  GradUnpack2(Q, i, 2, (CeedScalar *)dxdX_q, dxdX);
+  GradUnpack2D(Q, i, 2, (CeedScalar *)dxdX_q, dxdX);
   MatInv2(dxdX, dXdx, detJ_ptr);
 }
 
@@ -78,7 +78,7 @@ CEED_QFUNCTION_HELPER void NormalVectorFromdxdX_3D(CeedInt Q, CeedInt i, const C
                                                    CeedScalar *detJ_ptr) {
   CeedScalar dxdX[3][2];
 
-  GradUnpack2(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
+  GradUnpack2D(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
   // N1, N2, and N3 are given by the cross product of the columns of dxdX
   normal[0] = dxdX[1][0] * dxdX[2][1] - dxdX[2][0] * dxdX[1][1];
   normal[1] = dxdX[2][0] * dxdX[0][1] - dxdX[0][0] * dxdX[2][1];
@@ -141,7 +141,7 @@ CEED_QFUNCTION_HELPER void NormalVectorFromdxdX_2D(CeedInt Q, CeedInt i, const C
  */
 CEED_QFUNCTION_HELPER void InvertBoundaryMappingJacobian_3D(CeedInt Q, CeedInt i, const CeedScalar (*dxdX_q)[3][CEED_Q_VLA], CeedScalar dXdx[2][3]) {
   CeedScalar dxdX[3][2];
-  GradUnpack2(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
+  GradUnpack2D(Q, i, 3, (CeedScalar *)dxdX_q, dxdX);
 
   // dxdX_k,j * dxdX_j,k
   CeedScalar dxdXTdxdX[2][2] = {{0.}};

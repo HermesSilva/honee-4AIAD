@@ -552,7 +552,7 @@ CEED_QFUNCTION_HELPER int DivDiffusiveFluxVolumeRHS_AdvDif_Generic(void *ctx, Ce
     {  // Get physical diffusive flux
       CeedScalar Grad_qn[15], grad_E_ref[3];
 
-      GradUnpackN(Q, i, 5, dim, Grad_q, Grad_qn);
+      GradUnpackND(Q, i, 5, dim, Grad_q, Grad_qn);
       CopyN(&Grad_qn[4 * dim], grad_E_ref, dim);
       MatVecNM(dXdx, grad_E_ref, dim, dim, CEED_NOTRANSPOSE, F_diff);
       ScaleN(F_diff, -context->diffusion_coeff, dim);
@@ -589,7 +589,7 @@ CEED_QFUNCTION_HELPER int DivDiffusiveFluxBoundaryRHS_AdvDif_Generic(void *ctx, 
     {  // Get physical diffusive flux
       CeedScalar Grad_qn[15], grad_E_ref[3];
 
-      GradUnpackN(Q, i, 5, dim, Grad_q, Grad_qn);
+      GradUnpackND(Q, i, 5, dim, Grad_q, Grad_qn);
       CopyN(&Grad_qn[4 * dim], grad_E_ref, dim);
       MatVecNM(dXdx, grad_E_ref, dim, dim, CEED_NOTRANSPOSE, F_diff);
       ScaleN(F_diff, -context->diffusion_coeff, dim);
@@ -624,7 +624,7 @@ CEED_QFUNCTION_HELPER int DiffusiveFluxRHS_AdvDif_Generic(void *ctx, CeedInt Q, 
     {  // Get physical diffusive flux
       CeedScalar Grad_qn[15], grad_E_ref[3];
 
-      GradUnpackN(Q, i, 5, dim, Grad_q, Grad_qn);
+      GradUnpackND(Q, i, 5, dim, Grad_q, Grad_qn);
       CopyN(&Grad_qn[4 * dim], grad_E_ref, dim);
       MatVecNM(dXdx, grad_E_ref, dim, dim, CEED_NOTRANSPOSE, F_diff);
       ScaleN(F_diff, -context->diffusion_coeff, dim);

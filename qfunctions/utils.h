@@ -525,7 +525,7 @@ CEED_QFUNCTION_HELPER int QdataBoundaryGradientUnpack_2D(CeedInt Q, CeedInt i, c
   @param[in]  grad       QF gradient input, shape `[dim][num_comp][Q]`
   @param[out] grad_local Gradient array at quadrature point Q, shape `[num_comp][dim]`
 **/
-CEED_QFUNCTION_HELPER void GradUnpackN(CeedInt Q, CeedInt i, CeedInt num_comp, CeedInt dim, const CeedScalar *grad, CeedScalar *grad_local) {
+CEED_QFUNCTION_HELPER void GradUnpackND(CeedInt Q, CeedInt i, CeedInt num_comp, CeedInt dim, const CeedScalar *grad, CeedScalar *grad_local) {
   for (CeedInt d = 0; d < dim; d++) {
     for (CeedInt c = 0; c < num_comp; c++) {
       grad_local[dim * c + d] = grad[(Q * num_comp) * d + Q * c + i];
@@ -542,8 +542,8 @@ CEED_QFUNCTION_HELPER void GradUnpackN(CeedInt Q, CeedInt i, CeedInt num_comp, C
   @param[in]  grad       QF gradient input, shape `[3][num_comp][Q]`
   @param[out] grad_local Gradient array at quadrature point Q, shape `[num_comp][3]`
 **/
-CEED_QFUNCTION_HELPER void GradUnpack3(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*grad_local)[3]) {
-  GradUnpackN(Q, i, num_comp, 3, grad, (CeedScalar *)grad_local);
+CEED_QFUNCTION_HELPER void GradUnpack3D(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*grad_local)[3]) {
+  GradUnpackND(Q, i, num_comp, 3, grad, (CeedScalar *)grad_local);
 }
 
 /**
@@ -555,8 +555,8 @@ CEED_QFUNCTION_HELPER void GradUnpack3(CeedInt Q, CeedInt i, CeedInt num_comp, c
   @param[in]  grad       QF gradient input, shape `[2][num_comp][Q]`
   @param[out] grad_local Gradient array at quadrature point Q, shape `[num_comp][2]`
 **/
-CEED_QFUNCTION_HELPER void GradUnpack2(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*grad_local)[2]) {
-  GradUnpackN(Q, i, num_comp, 2, grad, (CeedScalar *)grad_local);
+CEED_QFUNCTION_HELPER void GradUnpack2D(CeedInt Q, CeedInt i, CeedInt num_comp, const CeedScalar *grad, CeedScalar (*grad_local)[2]) {
+  GradUnpackND(Q, i, num_comp, 2, grad, (CeedScalar *)grad_local);
 }
 
 /**
