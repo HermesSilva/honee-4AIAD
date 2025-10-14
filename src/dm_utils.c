@@ -43,7 +43,27 @@ PetscErrorCode DMFieldToDSField(DM dm, DMLabel domain_label, PetscInt dm_field, 
 }
 
 /**
+  @brief Destroy `ElemRestriction` in a `PetscContainer`.
+
+  Not collective across MPI processes.
+
+  @param[in,out]  ctx  `CeedElemRestriction`
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode DMPlexCeedElemRestrictionDestroy(void **ctx) {
+  CeedElemRestriction rstr = *(CeedElemRestriction *)ctx;
+
+  PetscFunctionBegin;
+  PetscCallCeed(CeedElemRestrictionReturnCeed(rstr), CeedElemRestrictionDestroy(&rstr));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Create `CeedElemRestriction` from `DMPlex`.
+
+ The `CeedElemRestriction` is stored in the `DMPlex` object for reuse;
+ if the routine is called again with the same arguments, the same `CeedElemRestriction` is returned.
 
   Not collective across MPI processes.
 
@@ -59,21 +79,48 @@ PetscErrorCode DMFieldToDSField(DM dm, DMLabel domain_label, PetscInt dm_field, 
 **/
 PetscErrorCode DMPlexCeedElemRestrictionCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
                                                CeedElemRestriction *restriction) {
-  PetscInt num_elem, elem_size, num_dof, num_comp, *restriction_offsets_petsc;
-  CeedInt *restriction_offsets_ceed = NULL;
+  char                container_name[1024];
+  CeedElemRestriction container_restriction;
 
   PetscFunctionBeginUser;
-  PetscCall(DMPlexGetLocalOffsets(dm, domain_label, label_value, height, dm_field, &num_elem, &elem_size, &num_comp, &num_dof,
-                                  &restriction_offsets_petsc));
-  PetscCall(IntArrayPetscToCeed(num_elem * elem_size, &restriction_offsets_petsc, &restriction_offsets_ceed));
-  PetscCallCeed(ceed, CeedElemRestrictionCreate(ceed, num_elem, elem_size, num_comp, 1, num_dof, CEED_MEM_HOST, CEED_COPY_VALUES,
-                                                restriction_offsets_ceed, restriction));
-  PetscCall(PetscFree(restriction_offsets_ceed));
+  {
+    const char *label_name = NULL;
+
+    if (domain_label) PetscCall(PetscObjectGetName((PetscObject)domain_label, &label_name));
+    PetscCall(PetscSNPrintf(container_name, sizeof(container_name),
+                            "DM CeedElemRestriction - label: %s label value: %" PetscInt_FMT " height: %" PetscInt_FMT " DM field: %" PetscInt_FMT,
+                            label_name ? label_name : "NONE", label_value, height, dm_field));
+  }
+  PetscCall(PetscObjectContainerQuery((PetscObject)dm, container_name, (void **)&container_restriction));
+
+  if (container_restriction) {
+    // Copy existing restriction
+    *restriction = NULL;
+    PetscCallCeed(ceed, CeedElemRestrictionReferenceCopy(container_restriction, restriction));
+  } else {
+    PetscInt num_elem, elem_size, num_dof, num_comp, *restriction_offsets_petsc;
+    CeedInt *restriction_offsets_ceed = NULL;
+
+    // Build restriction
+    PetscCall(DMPlexGetLocalOffsets(dm, domain_label, label_value, height, dm_field, &num_elem, &elem_size, &num_comp, &num_dof,
+                                    &restriction_offsets_petsc));
+    PetscCall(IntArrayPetscToCeed(num_elem * elem_size, &restriction_offsets_petsc, &restriction_offsets_ceed));
+    PetscCallCeed(ceed, CeedElemRestrictionCreate(ceed, num_elem, elem_size, num_comp, 1, num_dof, CEED_MEM_HOST, CEED_COPY_VALUES,
+                                                  restriction_offsets_ceed, restriction));
+    PetscCall(PetscFree(restriction_offsets_ceed));
+
+    // Set in container
+    PetscCallCeed(ceed, CeedElemRestrictionReferenceCopy(*restriction, &container_restriction));
+    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_restriction, DMPlexCeedElemRestrictionDestroy));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /**
   @brief Create `CeedElemRestriction` from `DMPlex` domain for mesh coordinates.
+
+ The `CeedElemRestriction` is stored in the coordinate `DMPlex` object for reuse;
+ if the routine is called again with the same arguments, the same `CeedElemRestriction` is returned.
 
   Not collective across MPI processes.
 
