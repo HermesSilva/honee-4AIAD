@@ -46,7 +46,7 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
 
   // -- Get Pre-requisite things
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grid_aniso_proj->dm, domain_label, label_value, height, dm_field, elem_restr_grid_aniso));
-  PetscCall(CreateBasisFromPlex(ceed, grid_aniso_proj->dm, domain_label, label_value, height, dm_field, &basis_grid_aniso));
+  PetscCall(DMPlexCeedBasisCreate(ceed, grid_aniso_proj->dm, domain_label, label_value, height, dm_field, &basis_grid_aniso));
   PetscCall(QDataGet(ceed, grid_aniso_proj->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
                      &q_data, &q_data_size));
 

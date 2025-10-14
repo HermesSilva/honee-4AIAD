@@ -734,7 +734,7 @@ static inline PetscErrorCode Create1DTabulation_Tensor(MPI_Comm comm, PetscFE fe
 
   @return An error code: 0 - success, otherwise - failure
 **/
-static PetscErrorCode RatelDMPlexCeedBasisDestroy(void **ctx) {
+static PetscErrorCode DMPlexCeedBasisDestroy(void **ctx) {
   CeedBasis basis = *(CeedBasis *)ctx;
 
   PetscFunctionBegin;
@@ -742,12 +742,30 @@ static PetscErrorCode RatelDMPlexCeedBasisDestroy(void **ctx) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// -----------------------------------------------------------------------------
-// Get CEED Basis from DMPlex
-// -----------------------------------------------------------------------------
-// TODO: Make name consistent with Element restriction
-PetscErrorCode CreateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field, CeedBasis *basis) {
-  MPI_Comm comm = PetscObjectComm((PetscObject)dm);
+//TODO Add macro for DMLABEL_DEFAULT and DMLABEL_DEFAULT_VALUE
+// Or could create them as actual static objects, like with CEED_VECTOR_NONE
+
+/**
+  @brief Create `CeedBasis` from `DMPlex`.
+
+ The `CeedBasis` is stored in the `DMPlex` object for reuse;
+ if the routine is called again with the same arguments, the same `CeedBasis` is returned.
+
+  Collective across MPI processes.
+
+  @param[in]   ceed          `Ceed` context
+  @param[in]   dm            `DMPlex` holding mesh
+  @param[in]   domain_label  `DMLabel` for `DMPlex` domain
+  @param[in]   label_value   Stratum value
+  @param[in]   height        Height of `DMPlex` topology
+  @param[in]   dm_field      Index of `DMPlex` field
+  @param[out]  basis         `CeedBasis` for `DMPlex`
+
+  @return An error code: 0 - success, otherwise - failure
+  **/
+PetscErrorCode DMPlexCeedBasisCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
+                                     CeedBasis *basis) {
+  MPI_Comm  comm = PetscObjectComm((PetscObject)dm);
   char      container_name[1024];
   CeedBasis container_basis;
 
@@ -840,7 +858,7 @@ PetscErrorCode CreateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, Petsc
     }
     // Set in container
     PetscCallCeed(ceed, CeedBasisReferenceCopy(*basis, &container_basis));
-    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_basis, RatelDMPlexCeedBasisDestroy));
+    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_basis, DMPlexCeedBasisDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -860,13 +878,13 @@ PetscErrorCode CreateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, Petsc
   @param[in]   height        Height of `DMPlex` topology
   @param[out]  basis         `CeedBasis` for coordinate space of `DMPlex`
 **/
-PetscErrorCode CreateCoordinateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis) {
+PetscErrorCode DMPlexCeedBasisCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis) {
   DM dm_coord = NULL;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetCellCoordinateDM(dm, &dm_coord));
   if (!dm_coord) PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-  PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, 0, basis));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, 0, basis));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

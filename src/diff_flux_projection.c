@@ -52,7 +52,8 @@ PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMet
                                                 &diff_flux_proj_->elem_restr_div_diff_flux));
       PetscCallCeed(honee->ceed,
                     CeedElemRestrictionCreateVector(diff_flux_proj_->elem_restr_div_diff_flux, &diff_flux_proj_->div_diff_flux_ceed, NULL));
-      PetscCall(CreateBasisFromPlex(honee->ceed, projection->dm, domain_label, label_value, height, dm_field, &diff_flux_proj_->basis_div_diff_flux));
+      PetscCall(DMPlexCeedBasisCreate(honee->ceed, projection->dm, domain_label, label_value, height, dm_field,
+                                      &diff_flux_proj_->basis_div_diff_flux));
       diff_flux_proj_->eval_mode_div_diff_flux = CEED_EVAL_INTERP;
 
       {  // Create face labels on projection->dm for boundary integrals
@@ -209,7 +210,7 @@ static PetscErrorCode DivDiffFluxProjectionSetup_Indirect(Honee honee, DivDiffFl
     DMLabel  domain_label = NULL;
 
     PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
-    PetscCall(CreateBasisFromPlex(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
+    PetscCall(DMPlexCeedBasisCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
     PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
                        &q_data_size));
   }

@@ -111,8 +111,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     DM       dm_coord;
 
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(CreateBasisFromPlex(ceed, dm, domain_label, label_value, height, dm_field, &honee->basis_q));
-    PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, dm_field, &honee->basis_x));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, dm_field, &honee->basis_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, dm_field, &honee->basis_x));
 
     PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, 0, &honee->elem_restr_q));
     PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &honee->elem_restr_x));

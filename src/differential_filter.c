@@ -71,7 +71,7 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
       CeedBasis           basis_filter;
 
       PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm_filter, domain_label, label_value, height, dm_field, &elem_restr_filter));
-      PetscCall(CreateBasisFromPlex(ceed, dm_filter, domain_label, label_value, height, dm_field, &basis_filter));
+      PetscCall(DMPlexCeedBasisCreate(ceed, dm_filter, domain_label, label_value, height, dm_field, &basis_filter));
 
       PetscCall(PetscSNPrintf(field_name, PETSC_MAX_PATH_LEN, "v%" PetscInt_FMT, dm_field));
       PetscCallCeed(ceed, CeedOperatorSetField(op_rhs, field_name, elem_restr_filter, basis_filter, CEED_VECTOR_ACTIVE));

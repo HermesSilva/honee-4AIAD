@@ -34,8 +34,8 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
     DMLabel  label       = NULL;
     PetscInt label_value = 0;
-    PetscCall(CreateBasisFromPlex(ceed, dm, label, label_value, height_face, dm_field, &basis_q_face));
-    PetscCall(CreateBasisFromPlex(ceed, dm_coord, label, label_value, height_face, dm_field, &basis_x_face));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm, label, label_value, height_face, dm_field, &basis_q_face));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, label, label_value, height_face, dm_field, &basis_x_face));
 
     PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x_face, basis_q_face, &basis_x_to_q_face));
 
@@ -97,7 +97,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
         CeedBasis basis_x_cell_to_face, basis_q_face;
 
         PetscCall(DMPlexCeedBasisCellToFaceCoordinateCreate(ceed, dm, face_orientation_label, orientation, orientation, &basis_x_cell_to_face));
-        PetscCall(CreateBasisFromPlex(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &basis_q_face));
+        PetscCall(DMPlexCeedBasisCreate(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &basis_q_face));
         PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x_cell_to_face, basis_q_face, &basis_x_to_q_cell));
         PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_cell_to_face));
         PetscCallCeed(ceed, CeedBasisDestroy(&basis_q_face));

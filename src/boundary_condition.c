@@ -248,8 +248,8 @@ PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, 
   }
 
   PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-  PetscCall(CreateBasisFromPlex(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &basis_q));
-  PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &basis_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &elem_restr_q));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &elem_restr_x));
   if (num_comps_jac_data > 0) {
@@ -328,8 +328,8 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
   }
 
   PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-  PetscCall(CreateBasisFromPlex(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &basis_q));
-  PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &basis_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
 
   {  // Get restriction and basis from the RHS function
     CeedOperatorField op_field;

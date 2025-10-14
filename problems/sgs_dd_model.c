@@ -499,7 +499,7 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
     DMLabel  domain_label = NULL;
     PetscInt label_value = 0, height = 0, dm_field = 0;
 
-    PetscCall(CreateBasisFromPlex(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, &basis_sgs));
+    PetscCall(DMPlexCeedBasisCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, &basis_sgs));
     PetscCall(QDataGet(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
                        &q_data, &q_data_size));
   }

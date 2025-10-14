@@ -187,8 +187,8 @@ static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCt
   {
     DM dm_coord;
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, dm_field, &(*stats_setup_data)->basis_x));
-    PetscCall(CreateBasisFromPlex(ceed, dm, domain_label, label_value, height, dm_field, &(*stats_setup_data)->basis_stats));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, dm_field, &(*stats_setup_data)->basis_x));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, dm_field, &(*stats_setup_data)->basis_stats));
   }
 
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, (*stats_setup_data)->basis_stats, (*stats_setup_data)->elem_restr_parent_stats,

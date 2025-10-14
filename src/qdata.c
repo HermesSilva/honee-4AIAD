@@ -322,7 +322,7 @@ PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, 
   CeedOperator        op_setup_sur;
 
   PetscFunctionBeginUser;
-  PetscCall(CreateCoordinateBasisFromPlex(ceed, dm, domain_label, label_value, height_face, &basis_x_face));
+  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, domain_label, label_value, height_face, &basis_x_face));
   PetscCall(DMPlexCeedBasisCellToFaceCoordinateCreate(ceed, dm, domain_label, label_value, label_value, &basis_x_cell_to_face));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_cell, &elem_restr_x_cell));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_face, &elem_restr_x_face));

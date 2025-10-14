@@ -55,7 +55,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
   PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_x, &num_comp_x));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_q, &num_comp_input));
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grad_velo_proj->dm, domain_label, label_value, height, dm_field, &elem_restr_grad_velo));
-  PetscCall(CreateBasisFromPlex(ceed, grad_velo_proj->dm, domain_label, label_value, height, dm_field, &basis_grad_velo));
+  PetscCall(DMPlexCeedBasisCreate(ceed, grad_velo_proj->dm, domain_label, label_value, height, dm_field, &basis_grad_velo));
   PetscCall(QDataGet(ceed, grad_velo_proj->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
                      &q_data, &q_data_size));
 
