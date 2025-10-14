@@ -302,7 +302,7 @@ PetscErrorCode UpdateBoundaryValues(Honee honee, Vec Q_loc, PetscReal t);
 // -----------------------------------------------------------------------------
 // Setup DM
 // -----------------------------------------------------------------------------
-PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType, VecType, DM *dm);
+PetscErrorCode CreateDM(Honee honee, ProblemData problem, MatType, VecType, DM *dm);
 PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, Physics phys);
 PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, Physics phys);
 

@@ -12,7 +12,8 @@
 #include "../problems/stg_shur14.h"
 
 // Create mesh
-PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, VecType vec_type, DM *dm) {
+PetscErrorCode CreateDM(Honee honee, ProblemData problem, MatType mat_type, VecType vec_type, DM *dm) {
+  MPI_Comm  comm = honee->comm;
   PetscBool isCGNS;
   char      filename[PETSC_MAX_PATH_LEN] = "";
 
@@ -61,6 +62,11 @@ PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType mat_type, Ve
       PetscCall(DMGetGlobalSection(*dm, &dummy));
     }
   }
+
+  PetscCall(DMPlexSetScale(*dm, PETSC_UNIT_LENGTH, honee->units->meter));
+  PetscCall(DMPlexSetScale(*dm, PETSC_UNIT_MASS, honee->units->kilogram));
+  PetscCall(DMPlexSetScale(*dm, PETSC_UNIT_TIME, honee->units->second));
+  PetscCall(DMPlexSetScale(*dm, PETSC_UNIT_TEMPERATURE, honee->units->Kelvin));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

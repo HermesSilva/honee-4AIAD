@@ -83,7 +83,7 @@ int main(int argc, char **argv) {
     else if (strstr(vec_type, VECKOKKOS)) mat_type = MATAIJKOKKOS;
     else mat_type = MATAIJ;
 
-    PetscCall(CreateDM(comm, problem, mat_type, vec_type, &dm));
+    PetscCall(CreateDM(honee, problem, mat_type, vec_type, &dm));
     honee->dm = dm;
     PetscCall(DMSetApplicationContext(dm, honee));
   }
