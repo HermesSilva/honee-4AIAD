@@ -100,37 +100,6 @@ PetscErrorCode DMPlexCeedElemRestrictionCoordinateCreate(Ceed ceed, DM dm, DMLab
 }
 
 /**
-  @brief Get the points in a label stratum which have requested height
-
-  Example, from the "Face Sets" label (which contains face, edge, and vertex points), return points that correspond to face points (height = 1) and have a label value of 3:
-  ```
-  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", 3, 1, &is_face_points));
-  ```
-
-  @param[in]  dm     DM which has the label
-  @param[in]  name   Name fo the label
-  @param[in]  value  Label value of points to return
-  @param[in]  height Height of points to return
-  @param[out] points `IS` of points, or `NULL` is there are no points in that stratum at height
-**/
-static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt value, PetscInt height, IS *points) {
-  PetscInt depth;
-  DMLabel  depth_label;
-  IS       label_is, depth_is;
-
-  PetscFunctionBeginUser;
-  PetscCall(DMPlexGetDepth(dm, &depth));
-  PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
-  PetscCall(DMLabelGetStratumIS(depth_label, depth - height, &depth_is));
-  PetscCall(DMGetStratumIS(dm, name, value, &label_is));
-  if (label_is == NULL || depth_is == NULL) *points = NULL;
-  else PetscCall(ISIntersect(depth_is, label_is, points));
-  PetscCall(ISDestroy(&depth_is));
-  PetscCall(ISDestroy(&label_is));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/**
   @brief Create `CeedElemRestriction` from `DMPlex` domain for auxilury `QFunction` data.
 
   Not collective across MPI processes.
@@ -827,6 +796,37 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
   PetscFunctionBeginUser;
   PetscCall(DMSetupByOrderBegin_FEM(setup_faces, setup_coords, degree, coord_order, q_extra, num_fields, field_sizes, dm));
   PetscCall(DMSetupByOrderEnd_FEM(setup_coords, dm));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get the points in a label stratum which have requested height
+
+  Example, from the "Face Sets" label (which contains face, edge, and vertex points), return points that correspond to face points (height = 1) and have a label value of 3:
+  ```
+  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", 3, 1, &is_face_points));
+  ```
+
+  @param[in]  dm     DM which has the label
+  @param[in]  name   Name fo the label
+  @param[in]  value  Label value of points to return
+  @param[in]  height Height of points to return
+  @param[out] points `IS` of points, or `NULL` is there are no points in that stratum at height
+**/
+static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt value, PetscInt height, IS *points) {
+  PetscInt depth;
+  DMLabel  depth_label;
+  IS       label_is, depth_is;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMPlexGetDepth(dm, &depth));
+  PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
+  PetscCall(DMLabelGetStratumIS(depth_label, depth - height, &depth_is));
+  PetscCall(DMGetStratumIS(dm, name, value, &label_is));
+  if (label_is == NULL || depth_is == NULL) *points = NULL;
+  else PetscCall(ISIntersect(depth_is, label_is, points));
+  PetscCall(ISDestroy(&depth_is));
+  PetscCall(ISDestroy(&label_is));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
