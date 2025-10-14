@@ -172,24 +172,20 @@ static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCt
   Ceed     ceed = honee->ceed;
   DM       dm   = spanstats->dm;
   Vec      X_loc;
-  DMLabel  domain_label = NULL;
   CeedInt  num_comp_x, num_comp_stats = spanstats->num_comp_stats;
-  PetscInt label_value = 0, height = 0, dm_field = 0;
+  PetscInt height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(stats_setup_data));
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, dm_field, &(*stats_setup_data)->elem_restr_parent_stats));
-  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &(*stats_setup_data)->elem_restr_parent_x));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+                                            &(*stats_setup_data)->elem_restr_parent_stats));
+  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height,
+                                                      &(*stats_setup_data)->elem_restr_parent_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents((*stats_setup_data)->elem_restr_parent_x, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector((*stats_setup_data)->elem_restr_parent_x, &(*stats_setup_data)->x_coord, NULL));
-
-  {
-    DM dm_coord;
-    PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, dm_field, &(*stats_setup_data)->basis_x));
-    PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, dm_field, &(*stats_setup_data)->basis_stats));
-  }
+  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, &(*stats_setup_data)->basis_x));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &(*stats_setup_data)->basis_stats));
 
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, (*stats_setup_data)->basis_stats, (*stats_setup_data)->elem_restr_parent_stats,
                                             &(*stats_setup_data)->elem_restr_parent_colloc));
@@ -290,8 +286,6 @@ static PetscErrorCode SpanwiseStatisticsSetupL2Projection(Honee honee, SpanStats
   CeedInt             q_data_size, num_comp_stats = spanstats->num_comp_stats;
   CeedElemRestriction elem_restr_qd;
   CeedVector          q_data;
-  DMLabel             domain_label = NULL;
-  PetscInt            label_value  = 0;
 
   PetscFunctionBeginUser;
   // -- Create Operator for RHS of L^2 projection of statistics
@@ -306,7 +300,7 @@ static PetscErrorCode SpanwiseStatisticsSetupL2Projection(Honee honee, SpanStats
 
   PetscCall(OperatorApplyContextCreate(NULL, spanstats->dm, ceed, op_proj_rhs, NULL, NULL, NULL, NULL, &spanstats->op_proj_rhs_ctx));
   PetscCall(CeedOperatorCreateLocalVecs(op_proj_rhs, DMReturnVecType(spanstats->dm), PETSC_COMM_SELF, &spanstats->Parent_Stats_loc, NULL));
-  PetscCall(QDataGet(ceed, spanstats->dm, domain_label, label_value, stats_setup_data->elem_restr_parent_x, stats_setup_data->basis_x,
+  PetscCall(QDataGet(ceed, spanstats->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, stats_setup_data->elem_restr_parent_x, stats_setup_data->basis_x,
                      stats_setup_data->x_coord, &elem_restr_qd, &q_data, &q_data_size));
 
   // Create Mass CeedOperator

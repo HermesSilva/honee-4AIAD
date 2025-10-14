@@ -742,9 +742,6 @@ static PetscErrorCode DMPlexCeedBasisDestroy(void **ctx) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-//TODO Add macro for DMLABEL_DEFAULT and DMLABEL_DEFAULT_VALUE
-// Or could create them as actual static objects, like with CEED_VECTOR_NONE
-
 /**
   @brief Create `CeedBasis` from `DMPlex`.
 

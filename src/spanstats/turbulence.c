@@ -17,7 +17,7 @@
 static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data, ProblemData problem) {
   Ceed                        ceed           = honee->ceed;
   CeedInt                     num_comp_stats = spanstats->num_comp_stats, num_comp_x, num_comp_q, q_data_size;
-  PetscInt                    dim, label_value = 0;
+  PetscInt                    dim;
   Turbulence_SpanStatsContext collect_ctx;
   NewtonianIdealGasContext    newtonian_ig_ctx;
   CeedQFunctionContext        collect_qfctx;
@@ -25,7 +25,6 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
   CeedOperator                op_stats_collect;
   CeedVector                  q_data;
   CeedElemRestriction         elem_restr_qd;
-  DMLabel                     domain_label = NULL;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(honee->dm, &dim));
@@ -50,8 +49,8 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
     PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollectionMMSTest, ChildStatsCollectionMMSTest_loc, &qf_stats_collect));
   }
 
-  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                     &q_data_size));
+  PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
 
   {  // Setup Collection Context
     PetscCall(PetscNew(&collect_ctx));
@@ -107,14 +106,12 @@ static PetscErrorCode SetupMMSErrorChecking(Honee honee, SpanStatsCtx spanstats,
   CeedQFunction       qf_error;
   CeedOperator        op_error;
   CeedVector          x_ceed, y_ceed;
-  DMLabel             domain_label = NULL;
-  PetscInt            label_value  = 0;
   CeedVector          q_data;
   CeedElemRestriction elem_restr_parent_qd;
 
   PetscFunctionBeginUser;
-  PetscCall(QDataGet(ceed, spanstats->dm, domain_label, label_value, stats_data->elem_restr_parent_x, stats_data->basis_x, stats_data->x_coord,
-                     &elem_restr_parent_qd, &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, spanstats->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, stats_data->elem_restr_parent_x, stats_data->basis_x,
+                     stats_data->x_coord, &elem_restr_parent_qd, &q_data, &q_data_size));
   PetscCallCeed(ceed, CeedBasisGetNumComponents(stats_data->basis_x, &num_comp_x));
 
   PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, ChildStatsCollectionMMSTest_Error, ChildStatsCollectionMMSTest_Error_loc, &qf_error));

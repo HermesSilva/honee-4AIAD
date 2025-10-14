@@ -181,3 +181,6 @@ PetscErrorCode HoneeHasContainer(Honee honee, const char key[], PetscBool *has_k
   *has_key = test_data == NULL ? PETSC_FALSE : PETSC_TRUE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+const DMLabel  DMLABEL_DEFAULT       = NULL;
+const PetscInt DMLABEL_DEFAULT_VALUE = 0;

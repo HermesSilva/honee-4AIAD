@@ -101,8 +101,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
   Ceed                 ceed       = honee->ceed;
   NodalProjectionData  projection = diff_flux_proj->projection;
   CeedInt              num_comp_q;
-  PetscInt             dim, label_value = 0;
-  DMLabel              domain_label    = NULL;
+  PetscInt             dim;
   CeedQFunctionContext newtonian_qfctx = NULL;
 
   PetscFunctionBeginUser;
@@ -127,8 +126,8 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
     CeedInt             q_data_size;
 
     PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_diff_flux_volume, &basis_diff_flux, NULL, NULL));
-    PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                       &q_data_size));
+    PetscCall(QDataGet(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
+                       &elem_restr_qd, &q_data, &q_data_size));
     switch (honee->phys->state_var) {
       case STATEVAR_PRIMITIVE:
         PetscCallCeed(ceed,
@@ -267,8 +266,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, Di
   CeedVector           q_data;
   CeedInt              num_comp_q, q_data_size;
   PetscInt             dim;
-  PetscInt             label_value = 0, height = 0, dm_field = 0;
-  DMLabel              domain_label = NULL;
+  PetscInt             height = 0, dm_field = 0;
   CeedQFunction        qf_rhs;
   CeedQFunctionContext newtonian_qfctx = NULL;
 
@@ -283,10 +281,10 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_NS(Honee honee, Di
     PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(main_op, &sub_ops));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newtonian_qfctx));
   }
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &elem_restr_diff_flux));
-  PetscCall(DMPlexCeedBasisCreate(ceed, projection->dm, domain_label, label_value, height, dm_field, &basis_diff_flux));
-  PetscCall(QDataGet(ceed, projection->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                     &q_data_size));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_diff_flux));
+  PetscCall(DMPlexCeedBasisCreate(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_diff_flux));
+  PetscCall(QDataGet(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
+                     &elem_restr_qd, &q_data, &q_data_size));
 
   switch (honee->phys->state_var) {
     case STATEVAR_PRIMITIVE:

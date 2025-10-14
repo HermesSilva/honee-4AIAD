@@ -14,9 +14,8 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
   CeedVector          q_data;
   CeedElemRestriction elem_restr_qd;
   CeedInt             q_data_size;
-  MPI_Comm            comm         = PetscObjectComm((PetscObject)honee->dm);
-  DMLabel             domain_label = NULL;
-  PetscInt            label_value = 0, height = 0, dm_field = 0;
+  MPI_Comm            comm   = PetscObjectComm((PetscObject)honee->dm);
+  PetscInt            height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&grid_aniso_proj));
@@ -45,10 +44,11 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
   }
 
   // -- Get Pre-requisite things
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grid_aniso_proj->dm, domain_label, label_value, height, dm_field, elem_restr_grid_aniso));
-  PetscCall(DMPlexCeedBasisCreate(ceed, grid_aniso_proj->dm, domain_label, label_value, height, dm_field, &basis_grid_aniso));
-  PetscCall(QDataGet(ceed, grid_aniso_proj->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+                                            elem_restr_grid_aniso));
+  PetscCall(DMPlexCeedBasisCreate(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_grid_aniso));
+  PetscCall(QDataGet(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
+                     &elem_restr_qd, &q_data, &q_data_size));
 
   {  // -- Build RHS operator
     CeedOperator  op_rhs_assemble;
@@ -130,15 +130,15 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
   CeedOperator        op_colloc;
   CeedVector          q_data;
   CeedElemRestriction elem_restr_qd;
-  DMLabel             domain_label = NULL;
-  PetscInt            label_value = 0, height = 0;
+  PetscInt            height = 0;
 
   PetscFunctionBeginUser;
   *num_comp_aniso = 7;
   PetscCallCeed(ceed, CeedBasisGetNumNodes(honee->basis_q, &num_nodes));
-  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, domain_label, label_value, height, *num_comp_aniso, elem_restr_grid_aniso));
-  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                     &q_data_size));
+  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, *num_comp_aniso,
+                                                 elem_restr_grid_aniso));
+  PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
 
   // -- Build collocation operator
   PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, AnisotropyTensorCollocate, AnisotropyTensorCollocate_loc, &qf_colloc));

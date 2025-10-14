@@ -118,8 +118,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   PetscInt            dim;
   CeedVector          inv_multiplicity;
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs;
-  DMLabel             domain_label = NULL;
-  PetscInt            label_value = 0, height = 0, dm_field = 0;
+  PetscInt            height = 0, dm_field = 0;
   NodalProjectionData grad_velo_proj;
 
   PetscFunctionBeginUser;
@@ -136,11 +135,11 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_grad_velo));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_grad_velo, &num_comp_grad_velo));
   }
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, &elem_restr_sgs));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_sgs));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_sgs, &sgs_dd_data->sgs_nodal_ceed, NULL));
 
-  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, PETSC_FALSE, &elem_restr_inv_multiplicity,
-                                   &inv_multiplicity));
+  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, PETSC_FALSE,
+                                   &elem_restr_inv_multiplicity, &inv_multiplicity));
 
   // -- Create operator for SGS DD model nodal evaluation
   switch (honee->phys->state_var) {
@@ -309,8 +308,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   NodalProjectionData grad_velo_proj;
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs, elem_restr_eigvec, elem_restr_dd_inputs,
       elem_restr_dd_outputs;
-  DMLabel  domain_label = NULL;
-  PetscInt label_value = 0, height = 0, dm_field = 0;
+  PetscInt height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
@@ -371,17 +369,19 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_grad_velo, &sgs_dd_data->grad_velo_ceed, NULL));
   }
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, &elem_restr_sgs));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_sgs));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_sgs, &sgs_dd_data->sgs_nodal_ceed, NULL));
-  PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, num_comp_eigvec,
+  PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, num_comp_eigvec,
                                                       &elem_restr_eigvec));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_eigvec, &eigvec, NULL));
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_inputs, domain_label, label_value, height, dm_field, &elem_restr_dd_inputs));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_outputs, domain_label, label_value, height, dm_field, &elem_restr_dd_outputs));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_inputs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+                                            &elem_restr_dd_inputs));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_outputs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+                                            &elem_restr_dd_outputs));
 
-  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, PETSC_FALSE, &elem_restr_inv_multiplicity,
-                                   &inv_multiplicity));
+  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, PETSC_FALSE,
+                                   &elem_restr_inv_multiplicity, &inv_multiplicity));
 
   {  // Create operator for data-driven input evaluation
     CeedQFunction qf_sgs_dd_inputs;
@@ -496,12 +496,11 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
 
   {
-    DMLabel  domain_label = NULL;
-    PetscInt label_value = 0, height = 0, dm_field = 0;
+    PetscInt height = 0, dm_field = 0;
 
-    PetscCall(DMPlexCeedBasisCreate(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, height, dm_field, &basis_sgs));
-    PetscCall(QDataGet(ceed, sgs_dd_data->dm_sgs, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
-                       &q_data, &q_data_size));
+    PetscCall(DMPlexCeedBasisCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_sgs));
+    PetscCall(QDataGet(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
+                       &elem_restr_qd, &q_data, &q_data_size));
   }
 
   switch (honee->phys->state_var) {

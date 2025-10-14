@@ -18,14 +18,13 @@
 static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data, ProblemData problem) {
   Ceed                   ceed           = honee->ceed;
   CeedInt                num_comp_stats = spanstats->num_comp_stats, num_comp_x, num_comp_q, q_data_size;
-  PetscInt               dim, label_value = 0;
+  PetscInt               dim;
   CflPe_SpanStatsContext collect_ctx;
   CeedQFunctionContext   collect_qfctx;
   CeedQFunction          qf_stats_collect = NULL;
   CeedOperator           op_stats_collect;
   CeedVector             q_data;
   CeedElemRestriction    elem_restr_qd;
-  DMLabel                domain_label = NULL;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(honee->dm, &dim));
@@ -71,8 +70,8 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
              "Could not create CFL/Pe spanstats collection QFunction for dim %" PetscInt_FMT " and state variable %s", dim,
              StateVariables[honee->phys->state_var]);
 
-  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                     &q_data_size));
+  PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
   {  // Setup Collection Context
     PetscBool is_advection;
 

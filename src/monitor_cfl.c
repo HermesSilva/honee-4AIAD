@@ -32,8 +32,7 @@ PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx) {
   CeedBasis            basis_q;
   CeedVector           q_data;
   CeedInt              num_comp_q, q_data_size;
-  DMLabel              domain_label = NULL;
-  PetscInt             label_value = 0, num_comp_cfl = 1, dim, tab_level;
+  PetscInt             num_comp_cfl = 1, dim, tab_level;
   MonitorCflCtx        monitor_ctx;
   CeedQFunctionContext newt_qfctx;
   PetscBool            is_ascii;
@@ -48,9 +47,9 @@ PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx) {
   PetscCall(PetscNew(&monitor_ctx));
 
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
-  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                     &q_data_size));
-  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, domain_label, label_value, 0, num_comp_cfl, &elem_restr_cfl));
+  PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
+  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, num_comp_cfl, &elem_restr_cfl));
 
   {  // Get restriction and basis from the RHS function
     CeedOperator     *sub_ops, main_op = honee->op_ifunction ? honee->op_ifunction : honee->op_rhs_ctx->op;
