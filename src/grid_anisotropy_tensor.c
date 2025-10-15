@@ -134,7 +134,12 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
 
   PetscFunctionBeginUser;
   *num_comp_aniso = 7;
-  PetscCallCeed(ceed, CeedBasisGetNumNodes(honee->basis_q, &num_nodes));
+  {
+    CeedBasis basis_q;
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+    PetscCallCeed(ceed, CeedBasisGetNumNodes(basis_q, &num_nodes));
+    PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
+  }
   PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, *num_comp_aniso,
                                                  elem_restr_grid_aniso));
   PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,

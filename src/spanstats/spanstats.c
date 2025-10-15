@@ -169,11 +169,13 @@ static PetscErrorCode GetQuadratureCoords(Ceed ceed, DM dm, CeedElemRestriction 
 }
 
 static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData *stats_setup_data) {
-  Ceed     ceed = honee->ceed;
-  DM       dm   = spanstats->dm;
-  Vec      X_loc;
-  CeedInt  num_comp_x, num_comp_stats = spanstats->num_comp_stats;
-  PetscInt height = 0, dm_field = 0;
+  Ceed                ceed = honee->ceed;
+  DM                  dm   = spanstats->dm;
+  Vec                 X_loc;
+  CeedInt             num_comp_x, num_comp_stats = spanstats->num_comp_stats;
+  PetscInt            height = 0, dm_field = 0;
+  CeedElemRestriction elem_restr_q;
+  CeedBasis           basis_q;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(stats_setup_data));
@@ -189,8 +191,11 @@ static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCt
 
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, (*stats_setup_data)->basis_stats, (*stats_setup_data)->elem_restr_parent_stats,
                                             &(*stats_setup_data)->elem_restr_parent_colloc));
-  PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, honee->basis_q, honee->elem_restr_q,
-                                            &(*stats_setup_data)->elem_restr_child_colloc));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+  PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, basis_q, elem_restr_q, &(*stats_setup_data)->elem_restr_child_colloc));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
 
   {  // -- Copy DM coordinates into CeedVector
     DM cdm;

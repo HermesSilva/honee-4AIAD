@@ -65,11 +65,9 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
   PetscCallCeed(ceed, CeedVectorDestroy(&honee_->g_ceed));
 
   // -- Bases
-  PetscCallCeed(ceed, CeedBasisDestroy(&honee_->basis_q));
   PetscCallCeed(ceed, CeedBasisDestroy(&honee_->basis_x));
 
   // -- Restrictions
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&honee_->elem_restr_q));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&honee_->elem_restr_x));
 
   // Destroy QFunction contexts after using

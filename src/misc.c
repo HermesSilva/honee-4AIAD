@@ -12,21 +12,22 @@
 #include <navierstokes.h>
 
 PetscErrorCode ICs_FixMultiplicity(DM dm, Honee honee, Vec Q_loc, Vec Q, CeedScalar time) {
-  Ceed         ceed = honee->ceed;
-  CeedVector   mult_vec;
-  PetscMemType m_mem_type;
-  Vec          Multiplicity, Multiplicity_loc;
+  Ceed                ceed = honee->ceed;
+  CeedVector          mult_vec;
+  PetscMemType        m_mem_type;
+  Vec                 Multiplicity, Multiplicity_loc;
+  CeedElemRestriction elem_restr_q;
 
   PetscFunctionBeginUser;
   if (honee->phys->ics_time_label) PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_ics_ctx->op, honee->phys->ics_time_label, &time));
   PetscCall(ApplyCeedOperatorLocalToGlobal(NULL, Q, honee->op_ics_ctx));
 
-  PetscCallCeed(ceed, CeedElemRestrictionCreateVector(honee->elem_restr_q, &mult_vec, NULL));
-
   // -- Get multiplicity
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+  PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &mult_vec, NULL));
   PetscCall(DMGetLocalVector(dm, &Multiplicity_loc));
   PetscCall(VecPetscToCeed(Multiplicity_loc, &m_mem_type, mult_vec));
-  PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(honee->elem_restr_q, mult_vec));
+  PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(elem_restr_q, mult_vec));
   PetscCall(VecCeedToPetsc(mult_vec, m_mem_type, Multiplicity_loc));
 
   PetscCall(DMGetGlobalVector(dm, &Multiplicity));
@@ -40,6 +41,7 @@ PetscErrorCode ICs_FixMultiplicity(DM dm, Honee honee, Vec Q_loc, Vec Q, CeedSca
   PetscCall(DMRestoreLocalVector(dm, &Multiplicity_loc));
   PetscCall(DMRestoreGlobalVector(dm, &Multiplicity));
   PetscCallCeed(ceed, CeedVectorDestroy(&mult_vec));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

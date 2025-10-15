@@ -117,14 +117,15 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   CeedInt             num_comp_q, num_comp_grad_velo, num_comp_x, num_comp_grid_aniso;
   PetscInt            dim;
   CeedVector          inv_multiplicity;
-  CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs;
+  CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs, elem_restr_q;
   PetscInt            height = 0, dm_field = 0;
   NodalProjectionData grad_velo_proj;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(honee->dm, &dim));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
+  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
   PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
   PetscCall(HoneeGetContainer(honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
@@ -155,8 +156,9 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   }
 
   // Mesh/geometry order and solution basis order may differ, therefore must interpolate
-  CeedBasis basis_x_to_q;
-  PetscCallCeed(ceed, CeedBasisCreateProjection(honee->basis_x, honee->basis_q, &basis_x_to_q));
+  CeedBasis basis_x_to_q, basis_q;
+  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+  PetscCallCeed(ceed, CeedBasisCreateProjection(honee->basis_x, basis_q, &basis_x_to_q));
 
   PetscCallCeed(ceed, CeedQFunctionSetContext(qf_sgs_dd_nodal, sgs_dd_setup_data->sgsdd_qfctx));
   PetscCallCeed(ceed, CeedQFunctionAddInput(qf_sgs_dd_nodal, "q", num_comp_q, CEED_EVAL_NONE));
@@ -167,7 +169,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_sgs_dd_nodal, "km_sgs", sgs_dd_data->num_comp_sgs, CEED_EVAL_NONE));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_sgs_dd_nodal, NULL, NULL, &op_sgs_dd_nodal));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_nodal, "q", honee->elem_restr_q, CEED_BASIS_NONE, honee->q_ceed));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_nodal, "q", elem_restr_q, CEED_BASIS_NONE, honee->q_ceed));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_nodal, "x", honee->elem_restr_x, basis_x_to_q, honee->x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_nodal, "gradient velocity", elem_restr_grad_velo, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_nodal, "anisotropy tensor", sgs_dd_setup_data->elem_restr_grid_aniso, CEED_BASIS_NONE,
@@ -183,6 +185,8 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
 
   PetscCallCeed(ceed, CeedVectorDestroy(&inv_multiplicity));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_to_q));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_inv_multiplicity));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_grad_velo));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_dd_nodal));
@@ -307,7 +311,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   CeedVector          inv_multiplicity, eigvec;
   NodalProjectionData grad_velo_proj;
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs, elem_restr_eigvec, elem_restr_dd_inputs,
-      elem_restr_dd_outputs;
+      elem_restr_dd_outputs, elem_restr_q;
   PetscInt height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
@@ -356,8 +360,9 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   }
 
   PetscCall(DMGetDimension(honee->dm, &dim));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
+  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
   PetscCall(HoneeGetContainer(honee, GRAD_VELO_PROJ_KEY, &grad_velo_proj));
 
@@ -411,7 +416,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_sgs_dd_inputs, "model inputs", sgs_dd_data->num_comp_inputs, CEED_EVAL_NONE));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_sgs_dd_inputs, NULL, NULL, &op_sgs_dd_inputs));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_inputs, "q", honee->elem_restr_q, CEED_BASIS_NONE, honee->q_ceed));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_inputs, "q", elem_restr_q, CEED_BASIS_NONE, honee->q_ceed));
     PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_inputs, "gradient velocity", elem_restr_grad_velo, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_dd_inputs, "anisotropy tensor", sgs_dd_setup_data->elem_restr_grid_aniso, CEED_BASIS_NONE,
                                              sgs_dd_setup_data->grid_aniso_ceed));
@@ -475,29 +480,32 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_dd_inputs));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_dd_outputs));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_grad_velo));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Create CeedOperator to compute SGS contribution to the residual
 static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupData sgs_dd_setup_data) {
   SgsDDData           sgs_dd_data;
-  CeedInt             num_comp_q, q_data_size, num_comp_x;
-  PetscInt            dim;
+  CeedInt             q_data_size;
+  PetscInt            dim, num_comp_q, num_comp_x;
   CeedQFunction       qf_sgs_apply;
   CeedOperator        op_sgs_apply;
-  CeedBasis           basis_sgs;
+  CeedBasis           basis_sgs, basis_q;
   CeedVector          q_data;
-  CeedElemRestriction elem_restr_qd;
+  CeedElemRestriction elem_restr_qd, elem_restr_q;
 
   PetscFunctionBeginUser;
   PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
   PetscCall(DMGetDimension(honee->dm, &dim));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+  PetscCall(DMGetFieldNumComps(honee->dm, 0, &num_comp_q));
+  PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
 
   {
     PetscInt height = 0, dm_field = 0;
 
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
     PetscCall(DMPlexCeedBasisCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_sgs));
     PetscCall(QDataGet(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
                        &elem_restr_qd, &q_data, &q_data_size));
@@ -522,10 +530,10 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
   PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_sgs_apply, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_sgs_apply, NULL, NULL, &op_sgs_apply));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "km_sgs", sgs_dd_setup_data->elem_restr_sgs, basis_sgs, sgs_dd_data->sgs_nodal_ceed));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "Grad_v", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_sgs_apply, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
 
   PetscCall(OperatorApplyContextCreate(honee->dm, honee->dm, ceed, op_sgs_apply, honee->q_ceed, honee->g_ceed, NULL, NULL,
                                        &sgs_dd_data->op_sgs_apply_ctx));
@@ -535,6 +543,8 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_sgs));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_sgs_apply));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_apply));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -641,7 +651,17 @@ PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem) {
   SgsDDData                sgs_dd_data;
 
   PetscFunctionBeginUser;
-  PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, honee->phys->state_var, honee->elem_restr_q, honee->basis_q, &grad_velo_proj));
+  {
+    CeedElemRestriction elem_restr_q;
+    CeedBasis           basis_q;
+
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+    // TODO: Should probably move the elem_restr_q and basis_q creation to inside the velocity gradient projection setup???
+    PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, honee->phys->state_var, elem_restr_q, basis_q, &grad_velo_proj));
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
+    PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
+  }
   PetscCall(HoneeSetContainer(honee, GRAD_VELO_PROJ_KEY, grad_velo_proj, (PetscCtxDestroyFn *)NodalProjectionDataDestroy));
 
   PetscCall(PetscNew(&sgs_dd_data));
