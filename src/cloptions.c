@@ -222,28 +222,26 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
                               "Number of timesteps between checking whether TSSolve should be stopped due to max_wall_time", NULL,
                               honee->max_wall_time_interval, &honee->max_wall_time_interval, NULL));
   }
+
   {
-    PetscScalar meter    = 1.0;
-    PetscScalar second   = 1.0;
-    PetscScalar kilogram = 1.0;
-    PetscScalar Kelvin   = 1.0;
+    Units units = honee->units;
+    *units      = (struct Units_private){
+             .meter    = 1.0,
+             .second   = 1.0,
+             .kilogram = 1.0,
+             .Kelvin   = 1.0,
+    };
 
-    PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, meter, &meter, NULL));
-    PetscCall(PetscOptionsScalar("-units_second", "1 second in scaled time units", NULL, second, &second, NULL));
-    PetscCall(PetscOptionsScalar("-units_kilogram", "1 kilogram in scaled mass units", NULL, kilogram, &kilogram, NULL));
-    PetscCall(PetscOptionsScalar("-units_kelvin", "1 Kelvin in scaled temperature units", NULL, Kelvin, &Kelvin, NULL));
+    PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, units->meter, &units->meter, NULL));
+    PetscCall(PetscOptionsScalar("-units_second", "1 second in scaled time units", NULL, units->second, &units->second, NULL));
+    PetscCall(PetscOptionsScalar("-units_kilogram", "1 kilogram in scaled mass units", NULL, units->kilogram, &units->kilogram, NULL));
+    PetscCall(PetscOptionsScalar("-units_kelvin", "1 Kelvin in scaled temperature units", NULL, units->Kelvin, &units->Kelvin, NULL));
 
-    Units units     = honee->units;
-    units->meter    = meter;
-    units->second   = second;
-    units->kilogram = kilogram;
-    units->Kelvin   = Kelvin;
-
-    units->Pascal          = kilogram / (meter * PetscSqr(second));
-    units->Joule           = kilogram * PetscSqr(meter) / PetscSqr(second);
-    units->J_per_kg_K      = units->Joule / (kilogram * Kelvin);
-    units->m_per_squared_s = meter / PetscSqr(second);
-    units->W_per_m_K       = units->Joule / (second * meter * Kelvin);
+    units->Pascal          = units->kilogram / (units->meter * PetscSqr(units->second));
+    units->Joule           = units->kilogram * PetscSqr(units->meter) / PetscSqr(units->second);
+    units->J_per_kg_K      = units->Joule / (units->kilogram * units->Kelvin);
+    units->m_per_squared_s = units->meter / PetscSqr(units->second);
+    units->W_per_m_K       = units->Joule / (units->second * units->meter * units->Kelvin);
   }
   PetscOptionsEnd();
   PetscFunctionReturn(PETSC_SUCCESS);
