@@ -500,7 +500,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   rc = fabs(rc) * units->meter;
   for (PetscInt i = 0; i < dim; i++) {
     wind[i] *= (units->meter / units->second);
-    domain_size[i] *= units->meter;
   }
 
   // -- Setup Context

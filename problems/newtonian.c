@@ -488,7 +488,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
   PetscReal domain_min[3], domain_max[3], domain_size[3];
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
-  for (PetscInt i = 0; i < 3; i++) domain_size[i] = (domain_max[i] - domain_min[i]) * units->meter;
+  for (PetscInt i = 0; i < 3; i++) domain_size[i] = (domain_max[i] - domain_min[i]);
 
   // -- Solver Settings
   honee->phys->implicit  = implicit;

@@ -39,3 +39,11 @@ PetscErrorCode HoneeHasContainer(Honee honee, const char key[], PetscBool *has_k
 
 extern const DMLabel  DMLABEL_DEFAULT;
 extern const PetscInt DMLABEL_DEFAULT_VALUE;
+
+// Mesh Transformation
+typedef enum {
+  MESH_TRANSFORM_NONE      = 0,
+  MESH_TRANSFORM_PLATEMESH = 1,
+} MeshTransform;
+static const char *const MeshTransforms[] = {"NONE", "PLATEMESH", "MeshTransform", "MESH_TRANSFORM_", NULL};
+PetscErrorCode           HoneeMeshTransformFromOptions(DM dm);

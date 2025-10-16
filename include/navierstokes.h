@@ -64,13 +64,6 @@ typedef enum {
 static const char *const SGSModelDDImplementations[] = {"FUSED", "SEQUENTIAL_CEED", "SEQUENTIAL_TORCH", "SGSModelDDImplementation", "SGS_MODEL_DD_",
                                                         NULL};
 
-// Mesh transformation type
-typedef enum {
-  MESH_TRANSFORM_NONE      = 0,
-  MESH_TRANSFORM_PLATEMESH = 1,
-} MeshTransformType;
-static const char *const MeshTransformTypes[] = {"NONE", "PLATEMESH", "MeshTransformType", "MESH_TRANSFORM_", NULL};
-
 // -----------------------------------------------------------------------------
 // Structs
 // -----------------------------------------------------------------------------
@@ -118,7 +111,6 @@ struct AppCtx_private {
   SGSModelType sgs_model_type;
   PetscBool    sgs_train_enable;
 
-  MeshTransformType mesh_transform_type;
   // Divergence of Diffusive Flux Projection
   DivDiffFluxProjectionMethod divFdiffproj_method;
 

@@ -76,8 +76,8 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
     PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
     for (PetscInt i = 0; i < 3; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
-    H      = 0.5 * domain_size[1] * units->meter;
-    center = H + domain_min[1] * units->meter;
+    H      = 0.5 * domain_size[1];
+    center = H + domain_min[1];
   }
 
   // Some properties depend on parameters from NewtonianIdealGas

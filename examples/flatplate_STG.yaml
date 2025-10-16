@@ -28,7 +28,9 @@ idl:
 
 degree: 1
 
-mesh_transform: platemesh
+meshtransform:
+  type: platemesh
+  platemesh_y_node_locs_path: examples/flatplate_STG_spacing.dat
 dm_plex:
    dim: 3
    box:
@@ -61,7 +63,6 @@ stg:
   u0: 1
   mean_only: false
   fluctuating_IC: false
-platemesh_y_node_locs_path: examples/flatplate_STG_spacing.dat
 
 # # Logging settings
 # ts_monitor:

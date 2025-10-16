@@ -186,11 +186,6 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
   PetscCall(PetscOptionsEnum("-sgs_model_type", "Subgrid Stress Model type", NULL, SGSModelTypes, (PetscEnum)app_ctx->sgs_model_type,
                              (PetscEnum *)&app_ctx->sgs_model_type, NULL));
 
-  // Mesh Transformation Options
-  app_ctx->mesh_transform_type = MESH_TRANSFORM_NONE;
-  PetscCall(PetscOptionsEnum("-mesh_transform", "Mesh transform to perform", NULL, MeshTransformTypes, (PetscEnum)app_ctx->mesh_transform_type,
-                             (PetscEnum *)&app_ctx->mesh_transform_type, NULL));
-
   PetscCall(PetscOptionsBool("-sgs_train_enable", "Enable Data-Driven SGS training", NULL, app_ctx->sgs_train_enable, &app_ctx->sgs_train_enable,
                              NULL));
   if (app_ctx->sgs_train_enable) honee->set_poststep = PETSC_TRUE;
