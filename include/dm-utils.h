@@ -25,3 +25,4 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_
 PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num_values, PetscInt **value_array);
 
 PetscErrorCode DMGetCoordinateNumComps(DM dm, PetscInt *num_comp_x);
+PetscErrorCode DMGetFieldNumComps(DM dm, PetscInt field, PetscInt *num_comp);

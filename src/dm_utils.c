@@ -1264,3 +1264,19 @@ PetscErrorCode DMGetCoordinateNumComps(DM dm, PetscInt *num_comp) {
   PetscCall(PetscSectionGetFieldComponents(section_coord, field, num_comp));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+/**
+  @brief Get the number of components for `dm`'s field
+
+  @param[in]  dm       DM
+  @param[in]  field    The field ID to get the number of components for
+  @param[out] num_comp Number of components for the coordinate field
+**/
+PetscErrorCode DMGetFieldNumComps(DM dm, PetscInt field, PetscInt *num_comp) {
+  PetscSection section;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetLocalSection(dm, &section));
+  PetscCall(PetscSectionGetFieldComponents(section, field, num_comp));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
