@@ -36,3 +36,6 @@ PetscErrorCode HoneeGetBuildConfiguration(const char **build_config);
 PetscErrorCode HoneeSetContainer(Honee honee, const char key[], void *container, PetscCtxDestroyFn *container_destroy);
 PetscErrorCode HoneeGetContainer(Honee honee, const char key[], void *container);
 PetscErrorCode HoneeHasContainer(Honee honee, const char key[], PetscBool *has_key);
+
+extern const DMLabel  DMLABEL_DEFAULT;
+extern const PetscInt DMLABEL_DEFAULT_VALUE;

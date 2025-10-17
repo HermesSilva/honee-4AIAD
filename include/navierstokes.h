@@ -180,8 +180,8 @@ struct Honee_private {
 
   // old CeedData
   CeedVector           x_coord;
-  CeedBasis            basis_x, basis_q;
-  CeedElemRestriction  elem_restr_x, elem_restr_q;
+  CeedBasis            basis_x;
+  CeedElemRestriction  elem_restr_x;
   OperatorApplyContext op_ics_ctx;
 
   PetscBool set_poststep;

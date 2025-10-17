@@ -94,15 +94,15 @@ static PetscErrorCode SetupTrainingDataCalculation(Ceed ceed, Honee honee, Probl
   CeedInt             num_comp_grad_velo, num_comp_grid_aniso;
   CeedVector          inv_multiplicity, filtered_fields;
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs_train;
-  DMLabel             domain_label = NULL;
-  PetscInt            label_value = 0, height = 0, dm_field = 0;
+  PetscInt            height = 0, dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(HoneeGetContainer(honee, SGS_DD_TRAIN_KEY, &sgs_dd_train));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_train_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_train->dm_dd_training, domain_label, label_value, height, dm_field, &elem_restr_sgs_train));
-  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_train->dm_dd_training, domain_label, label_value, height, dm_field, PETSC_TRUE,
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_train->dm_dd_training, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+                                            &elem_restr_sgs_train));
+  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_train->dm_dd_training, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, PETSC_TRUE,
                                    &elem_restr_inv_multiplicity, &inv_multiplicity));
 
   CeedElemRestriction elem_restr_filtered_state;

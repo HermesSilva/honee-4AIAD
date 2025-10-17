@@ -53,8 +53,7 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
   CeedBasis            basis_q;
   CeedVector           q_data;
   CeedInt              num_comp_q, q_data_size;
-  DMLabel              domain_label = NULL;
-  PetscInt             label_value = 0, num_comp_totalke = 5, dim, tab_level;
+  PetscInt             num_comp_totalke = 5, dim, tab_level;
   MonitorTotalKE       monitor_ctx;
   CeedQFunctionContext newt_qfctx;
   PetscBool            is_ascii;
@@ -68,23 +67,19 @@ PetscErrorCode SetupMontiorTotalKineticEnergy(TS ts, PetscViewerAndFormat *ctx) 
 
   PetscCall(PetscNew(&monitor_ctx));
   PetscCall(HoneeCalculateDomainSize(honee, &monitor_ctx->volume));
-
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
-  PetscCall(QDataGet(ceed, honee->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                     &q_data_size));
-
   {  // Get restriction and basis from the RHS function
-    CeedOperator     *sub_ops, main_op = honee->op_ifunction ? honee->op_ifunction : honee->op_rhs_ctx->op;
-    CeedOperatorField op_field;
-    PetscInt          sub_op_index = 0;  // will be 0 for the volume op
+    CeedOperator *sub_ops, main_op = honee->op_ifunction ? honee->op_ifunction : honee->op_rhs_ctx->op;
+    PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
     PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(main_op, &sub_ops));
-    PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_ops[sub_op_index], "q", &op_field));
-
-    PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_q, &basis_q, NULL));
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &newt_qfctx));
   }
+  PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_totalke, basis_q, elem_restr_q, &elem_restr_totalke));
+  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
 
   switch (honee->phys->state_var) {
     case STATEVAR_PRIMITIVE:

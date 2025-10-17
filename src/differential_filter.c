@@ -16,24 +16,24 @@ const char *const DifferentialFilterDampingFunctions[] = {"NONE", "VAN_DRIEST", 
 static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFunctionContext diff_filter_qfctx, DiffFilterData diff_filter) {
   Ceed                ceed      = honee->ceed;
   DM                  dm_filter = diff_filter->dm_filter;
-  CeedInt             num_comp_q, q_data_size, num_comp_x;
-  PetscInt            dim;
+  CeedInt             q_data_size;
+  PetscInt            num_comp_x, num_comp_q;
   CeedVector          q_data;
   CeedElemRestriction elem_restr_qd;
-  DMLabel             domain_label = NULL;
-  PetscInt            label_value = 0, height = 0;
+  PetscInt            height = 0;
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetDimension(honee->dm, &dim));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comp_x));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_q, &num_comp_q));
+  PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
+  PetscCall(DMGetFieldNumComps(honee->dm, 0, &num_comp_q));
 
-  PetscCall(QDataGet(ceed, dm_filter, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                     &q_data_size));
+  PetscCall(QDataGet(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
+                     &q_data, &q_data_size));
 
   {  // -- Create RHS MatopApplyContext
-    CeedQFunction qf_rhs;
-    CeedOperator  op_rhs;
+    CeedQFunction       qf_rhs;
+    CeedOperator        op_rhs;
+    CeedBasis           basis_q;
+    CeedElemRestriction elem_restr_q;
     switch (honee->phys->state_var) {
       case STATEVAR_PRIMITIVE:
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DifferentialFilter_RHS_Prim, DifferentialFilter_RHS_Prim_loc, &qf_rhs));
@@ -49,6 +49,8 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
       PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs));
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DifferentialFilter_MMS_RHS, DifferentialFilter_MMS_RHS_loc, &qf_rhs));
     }
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
 
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs, diff_filter_qfctx));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "q", num_comp_q, CEED_EVAL_INTERP));
@@ -62,7 +64,7 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
     }
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs, NULL, NULL, &op_rhs));
-    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs, "q", honee->elem_restr_q, honee->basis_q, CEED_VECTOR_ACTIVE));
+    PetscCallCeed(ceed, CeedOperatorSetField(op_rhs, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs, "x", honee->elem_restr_x, honee->basis_x, honee->x_coord));
     for (PetscInt dm_field = 0; dm_field < diff_filter->num_filtered_fields; dm_field++) {
@@ -70,8 +72,8 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
       CeedElemRestriction elem_restr_filter;
       CeedBasis           basis_filter;
 
-      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm_filter, domain_label, label_value, height, dm_field, &elem_restr_filter));
-      PetscCall(CreateBasisFromPlex(ceed, dm_filter, domain_label, label_value, height, dm_field, &basis_filter));
+      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_filter));
+      PetscCall(DMPlexCeedBasisCreate(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_filter));
 
       PetscCall(PetscSNPrintf(field_name, PETSC_MAX_PATH_LEN, "v%" PetscInt_FMT, dm_field));
       PetscCallCeed(ceed, CeedOperatorSetField(op_rhs, field_name, elem_restr_filter, basis_filter, CEED_VECTOR_ACTIVE));
@@ -82,6 +84,8 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
 
     PetscCall(OperatorApplyContextCreate(honee->dm, dm_filter, ceed, op_rhs, NULL, NULL, honee->Q_loc, NULL, &diff_filter->op_rhs_ctx));
 
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
+    PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_rhs));
   }

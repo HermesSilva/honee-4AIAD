@@ -41,6 +41,7 @@ static PetscErrorCode QDataGetStored(CeedVector q_data_created, CeedElemRestrict
     PetscCallCeed(ceed, CeedVectorCopy(q_data_vecs[i], difference_cvec));
     PetscCallCeed(ceed, CeedVectorAXPY(difference_cvec, -1, q_data_created));
     PetscCallCeed(ceed, CeedVectorNorm(difference_cvec, CEED_NORM_MAX, &max_difference));
+    //TODO Need to reduce across ranks to ensure all ranks are consistent (not a race condition though since the data is purely local)
     PetscCallCeed(ceed, CeedVectorDestroy(&difference_cvec));
     if (max_difference < 100 * CEED_EPSILON) {
       q_data_stored_index = i;
@@ -321,7 +322,7 @@ PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, 
   CeedOperator        op_setup_sur;
 
   PetscFunctionBeginUser;
-  PetscCall(CreateCoordinateBasisFromPlex(ceed, dm, domain_label, label_value, height_face, &basis_x_face));
+  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, domain_label, label_value, height_face, &basis_x_face));
   PetscCall(DMPlexCeedBasisCellToFaceCoordinateCreate(ceed, dm, domain_label, label_value, label_value, &basis_x_cell_to_face));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_cell, &elem_restr_x_cell));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_face, &elem_restr_x_face));

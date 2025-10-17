@@ -43,7 +43,27 @@ PetscErrorCode DMFieldToDSField(DM dm, DMLabel domain_label, PetscInt dm_field, 
 }
 
 /**
+  @brief Destroy `ElemRestriction` in a `PetscContainer`.
+
+  Not collective across MPI processes.
+
+  @param[in,out]  ctx  `CeedElemRestriction`
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode DMPlexCeedElemRestrictionDestroy(void **ctx) {
+  CeedElemRestriction rstr = *(CeedElemRestriction *)ctx;
+
+  PetscFunctionBegin;
+  PetscCallCeed(CeedElemRestrictionReturnCeed(rstr), CeedElemRestrictionDestroy(&rstr));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Create `CeedElemRestriction` from `DMPlex`.
+
+ The `CeedElemRestriction` is stored in the `DMPlex` object for reuse;
+ if the routine is called again with the same arguments, the same `CeedElemRestriction` is returned.
 
   Not collective across MPI processes.
 
@@ -59,21 +79,48 @@ PetscErrorCode DMFieldToDSField(DM dm, DMLabel domain_label, PetscInt dm_field, 
 **/
 PetscErrorCode DMPlexCeedElemRestrictionCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
                                                CeedElemRestriction *restriction) {
-  PetscInt num_elem, elem_size, num_dof, num_comp, *restriction_offsets_petsc;
-  CeedInt *restriction_offsets_ceed = NULL;
+  char                container_name[1024];
+  CeedElemRestriction container_restriction;
 
   PetscFunctionBeginUser;
-  PetscCall(DMPlexGetLocalOffsets(dm, domain_label, label_value, height, dm_field, &num_elem, &elem_size, &num_comp, &num_dof,
-                                  &restriction_offsets_petsc));
-  PetscCall(IntArrayPetscToCeed(num_elem * elem_size, &restriction_offsets_petsc, &restriction_offsets_ceed));
-  PetscCallCeed(ceed, CeedElemRestrictionCreate(ceed, num_elem, elem_size, num_comp, 1, num_dof, CEED_MEM_HOST, CEED_COPY_VALUES,
-                                                restriction_offsets_ceed, restriction));
-  PetscCall(PetscFree(restriction_offsets_ceed));
+  {
+    const char *label_name = NULL;
+
+    if (domain_label) PetscCall(PetscObjectGetName((PetscObject)domain_label, &label_name));
+    PetscCall(PetscSNPrintf(container_name, sizeof(container_name),
+                            "DM CeedElemRestriction - label: %s label value: %" PetscInt_FMT " height: %" PetscInt_FMT " DM field: %" PetscInt_FMT,
+                            label_name ? label_name : "NONE", label_value, height, dm_field));
+  }
+  PetscCall(PetscObjectContainerQuery((PetscObject)dm, container_name, (void **)&container_restriction));
+
+  if (container_restriction) {
+    // Copy existing restriction
+    *restriction = NULL;
+    PetscCallCeed(ceed, CeedElemRestrictionReferenceCopy(container_restriction, restriction));
+  } else {
+    PetscInt num_elem, elem_size, num_dof, num_comp, *restriction_offsets_petsc;
+    CeedInt *restriction_offsets_ceed = NULL;
+
+    // Build restriction
+    PetscCall(DMPlexGetLocalOffsets(dm, domain_label, label_value, height, dm_field, &num_elem, &elem_size, &num_comp, &num_dof,
+                                    &restriction_offsets_petsc));
+    PetscCall(IntArrayPetscToCeed(num_elem * elem_size, &restriction_offsets_petsc, &restriction_offsets_ceed));
+    PetscCallCeed(ceed, CeedElemRestrictionCreate(ceed, num_elem, elem_size, num_comp, 1, num_dof, CEED_MEM_HOST, CEED_COPY_VALUES,
+                                                  restriction_offsets_ceed, restriction));
+    PetscCall(PetscFree(restriction_offsets_ceed));
+
+    // Set in container
+    PetscCallCeed(ceed, CeedElemRestrictionReferenceCopy(*restriction, &container_restriction));
+    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_restriction, DMPlexCeedElemRestrictionDestroy));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 /**
   @brief Create `CeedElemRestriction` from `DMPlex` domain for mesh coordinates.
+
+ The `CeedElemRestriction` is stored in the coordinate `DMPlex` object for reuse;
+ if the routine is called again with the same arguments, the same `CeedElemRestriction` is returned.
 
   Not collective across MPI processes.
 
@@ -96,37 +143,6 @@ PetscErrorCode DMPlexCeedElemRestrictionCoordinateCreate(Ceed ceed, DM dm, DMLab
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm_coord, domain_label, label_value, height, 0, restriction));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/**
-  @brief Get the points in a label stratum which have requested height
-
-  Example, from the "Face Sets" label (which contains face, edge, and vertex points), return points that correspond to face points (height = 1) and have a label value of 3:
-  ```
-  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", 3, 1, &is_face_points));
-  ```
-
-  @param[in]  dm     DM which has the label
-  @param[in]  name   Name fo the label
-  @param[in]  value  Label value of points to return
-  @param[in]  height Height of points to return
-  @param[out] points `IS` of points, or `NULL` is there are no points in that stratum at height
-**/
-static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt value, PetscInt height, IS *points) {
-  PetscInt depth;
-  DMLabel  depth_label;
-  IS       label_is, depth_is;
-
-  PetscFunctionBeginUser;
-  PetscCall(DMPlexGetDepth(dm, &depth));
-  PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
-  PetscCall(DMLabelGetStratumIS(depth_label, depth - height, &depth_is));
-  PetscCall(DMGetStratumIS(dm, name, value, &label_is));
-  if (label_is == NULL || depth_is == NULL) *points = NULL;
-  else PetscCall(ISIntersect(depth_is, label_is, points));
-  PetscCall(ISDestroy(&depth_is));
-  PetscCall(ISDestroy(&label_is));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -261,47 +277,227 @@ PetscErrorCode DMPlexCeedElemRestrictionCollocatedCreate(Ceed ceed, DM dm, DMLab
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-// -----------------------------------------------------------------------------
-// Utility function - convert from DMPolytopeType to CeedElemTopology
-// -----------------------------------------------------------------------------
-static CeedElemTopology ElemTopologyP2C(DMPolytopeType cell_type) {
-  switch (cell_type) {
-    case DM_POLYTOPE_TRIANGLE:
-      return CEED_TOPOLOGY_TRIANGLE;
-    case DM_POLYTOPE_QUADRILATERAL:
-      return CEED_TOPOLOGY_QUAD;
-    case DM_POLYTOPE_TETRAHEDRON:
-      return CEED_TOPOLOGY_TET;
-    case DM_POLYTOPE_HEXAHEDRON:
-      return CEED_TOPOLOGY_HEX;
-    default:
-      return 0;
-  }
-}
+/**
+  @brief Creates a tensor-product uniform quadrature.
+         This is only for comparison studies and generally should not be used.
 
-// -----------------------------------------------------------------------------
-// Create libCEED Basis from PetscTabulation
-// -----------------------------------------------------------------------------
-PetscErrorCode BasisCreateFromTabulation(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt face, PetscFE fe,
-                                         PetscTabulation basis_tabulation, PetscQuadrature quadrature, CeedBasis *basis) {
-  PetscInt           first_point;
-  PetscInt           ids[1] = {label_value};
-  DMLabel            depth_label;
-  DMPolytopeType     cell_type;
-  CeedElemTopology   elem_topo;
-  PetscScalar       *q_points, *interp, *grad;
-  const PetscScalar *q_weights;
-  PetscDualSpace     dual_space;
-  PetscInt           num_dual_basis_vectors;
-  PetscInt           dim, num_comp, P, Q;
+  @param[in]   dim         Spatial dimension
+  @param[in]   num_comp    Number of components
+  @param[in]   num_points  Number of points in one dimension
+  @param[in]   a           Left end of interval (often -1)
+  @param[in]   b           Right end of interval (often +1)
+  @param[out]  q           `PetscQuadrature` object
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode PetscDTUniformTensorQuadrature(PetscInt dim, PetscInt num_comp, PetscInt num_points, PetscReal a, PetscReal b,
+                                                     PetscQuadrature *q) {
+  DMPolytopeType ct;
+  PetscInt       num_total_points = dim > 1 ? (dim > 2 ? (num_points * num_points * num_points) : (num_points * num_points)) : num_points;
+  PetscReal     *coords, *weights, *coords_1d;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscFEGetSpatialDimension(fe, &dim));
-  PetscCall(PetscFEGetNumComponents(fe, &num_comp));
-  PetscCall(PetscFEGetDualSpace(fe, &dual_space));
-  PetscCall(PetscDualSpaceGetDimension(dual_space, &num_dual_basis_vectors));
-  P = num_dual_basis_vectors / num_comp;
+  PetscCall(PetscMalloc1(num_total_points * dim, &coords));
+  PetscCall(PetscMalloc1(num_total_points * num_comp, &weights));
+  // Compute weights, points
+  switch (dim) {
+    case 0:
+      ct = DM_POLYTOPE_POINT;
+      PetscCall(PetscFree(coords));
+      PetscCall(PetscFree(weights));
+      PetscCall(PetscMalloc1(1, &coords));
+      PetscCall(PetscMalloc1(num_comp, &weights));
+      num_total_points = 1;
+      coords[0]        = 0.0;
+      for (PetscInt c = 0; c < num_comp; c++) weights[c] = 1.0;
+      break;
+    case 1: {
+      ct             = DM_POLYTOPE_SEGMENT;
+      PetscReal step = (b - a) / num_points;
 
+      for (PetscInt i = 0; i < num_points; i++) {
+        coords[i] = step * (i + 0.5) + a;
+        for (PetscInt c = 0; c < num_comp; c++) weights[i * num_comp + c] = 1.0;
+      }
+    } break;
+    case 2: {
+      ct = DM_POLYTOPE_QUADRILATERAL;
+      PetscCall(PetscMalloc1(num_points, &coords_1d));
+      PetscReal step = (b - a) / num_points;
+
+      for (PetscInt i = 0; i < num_points; i++) coords_1d[i] = step * (i + 0.5) + a;
+      for (PetscInt i = 0; i < num_points; i++) {
+        for (PetscInt j = 0; j < num_points; j++) {
+          coords[(i * num_points + j) * dim + 0] = coords_1d[i];
+          coords[(i * num_points + j) * dim + 1] = coords_1d[j];
+          for (PetscInt c = 0; c < num_comp; c++) weights[(i * num_points + j) * num_comp + c] = 1.0;
+        }
+      }
+      PetscCall(PetscFree(coords_1d));
+    } break;
+    case 3: {
+      ct = DM_POLYTOPE_HEXAHEDRON;
+      PetscCall(PetscMalloc1(num_points, &coords_1d));
+      PetscReal step = (b - a) / num_points;
+
+      for (PetscInt i = 0; i < num_points; i++) coords_1d[i] = step * (i + 0.5) + a;
+      for (PetscInt i = 0; i < num_points; i++) {
+        for (PetscInt j = 0; j < num_points; j++) {
+          for (PetscInt k = 0; k < num_points; k++) {
+            coords[((i * num_points + j) * num_points + k) * dim + 0] = coords_1d[i];
+            coords[((i * num_points + j) * num_points + k) * dim + 1] = coords_1d[j];
+            coords[((i * num_points + j) * num_points + k) * dim + 2] = coords_1d[k];
+            for (PetscInt c = 0; c < num_comp; c++) weights[((i * num_points + j) * num_points + k) * num_comp + c] = 1.0;
+          }
+        }
+      }
+      PetscCall(PetscFree(coords_1d));
+    } break;
+    // LCOV_EXCL_START
+    default:
+      SETERRQ(PETSC_COMM_SELF, PETSC_ERR_ARG_OUTOFRANGE, "Cannot construct quadrature rule for dimension %" PetscInt_FMT, dim);
+      // LCOV_EXCL_STOP
+  }
+  PetscCall(PetscQuadratureCreate(PETSC_COMM_SELF, q));
+  PetscCall(PetscQuadratureSetCellType(*q, ct));
+  PetscCall(PetscQuadratureSetOrder(*q, num_points));
+  PetscCall(PetscQuadratureSetData(*q, dim, num_comp, num_total_points, coords, weights));
+  PetscCall(PetscObjectChangeTypeName((PetscObject)*q, "UniformTensor"));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Setup `DM` with FE space of appropriate degree
+
+  @param[in]   comm        MPI communicator
+  @param[in]   dim         Spatial dimension
+  @param[in]   num_comp    Number of components
+  @param[in]   is_simplex  Flag for simplex or tensor product element
+  @param[in]   order       Polynomial order of space
+  @param[in]   q_order     Quadrature order
+  @param[in]   prefix      The options prefix, or `NULL`
+  @param[out]  fem         `PetscFE` object
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+PetscErrorCode PetscFECreateLagrangeFromOptions(MPI_Comm comm, PetscInt dim, PetscInt num_comp, PetscBool is_simplex, PetscInt order,
+                                                PetscInt q_order, const char prefix[], PetscFE *fem) {
+  PetscBool       is_tensor     = !is_simplex;
+  DMPolytopeType  polytope_type = DMPolytopeTypeSimpleShape(dim, is_simplex);
+  PetscSpace      fe_space;
+  PetscDualSpace  fe_dual_space;
+  PetscQuadrature quadrature, face_quadrature;
+
+  PetscFunctionBeginUser;
+  // Create space
+  PetscCall(PetscSpaceCreate(comm, &fe_space));
+  PetscCall(PetscSpaceSetType(fe_space, PETSCSPACEPOLYNOMIAL));
+  PetscCall(PetscObjectSetOptionsPrefix((PetscObject)fe_space, prefix));
+  PetscCall(PetscSpacePolynomialSetTensor(fe_space, is_tensor));
+  PetscCall(PetscSpaceSetNumComponents(fe_space, num_comp));
+  PetscCall(PetscSpaceSetNumVariables(fe_space, dim));
+  if (order >= 0) {
+    PetscCall(PetscSpaceSetDegree(fe_space, order, PETSC_DETERMINE));
+    if (polytope_type == DM_POLYTOPE_TRI_PRISM || polytope_type == DM_POLYTOPE_TRI_PRISM_TENSOR) {
+      PetscSpace fe_space_end, fe_space_side;
+
+      PetscCall(PetscSpaceSetNumComponents(fe_space, 1));
+      PetscCall(PetscSpaceCreate(comm, &fe_space_end));
+      PetscCall(PetscSpaceSetType(fe_space_end, PETSCSPACEPOLYNOMIAL));
+      PetscCall(PetscSpacePolynomialSetTensor(fe_space_end, PETSC_FALSE));
+      PetscCall(PetscSpaceSetNumComponents(fe_space_end, 1));
+      PetscCall(PetscSpaceSetNumVariables(fe_space_end, dim - 1));
+      PetscCall(PetscSpaceSetDegree(fe_space_end, order, PETSC_DETERMINE));
+      PetscCall(PetscSpaceCreate(comm, &fe_space_side));
+      PetscCall(PetscSpaceSetType(fe_space_side, PETSCSPACEPOLYNOMIAL));
+      PetscCall(PetscSpacePolynomialSetTensor(fe_space_side, PETSC_FALSE));
+      PetscCall(PetscSpaceSetNumComponents(fe_space_side, 1));
+      PetscCall(PetscSpaceSetNumVariables(fe_space_side, 1));
+      PetscCall(PetscSpaceSetDegree(fe_space_side, order, PETSC_DETERMINE));
+      PetscCall(PetscSpaceSetType(fe_space, PETSCSPACETENSOR));
+      PetscCall(PetscSpaceTensorSetNumSubspaces(fe_space, 2));
+      PetscCall(PetscSpaceTensorSetSubspace(fe_space, 0, fe_space_end));
+      PetscCall(PetscSpaceTensorSetSubspace(fe_space, 1, fe_space_side));
+      PetscCall(PetscSpaceDestroy(&fe_space_end));
+      PetscCall(PetscSpaceDestroy(&fe_space_side));
+
+      if (num_comp > 1) {
+        PetscSpace scalar_fe_space = fe_space;
+
+        PetscCall(PetscSpaceCreate(comm, &fe_space));
+        PetscCall(PetscSpaceSetNumVariables(fe_space, dim));
+        PetscCall(PetscSpaceSetNumComponents(fe_space, num_comp));
+        PetscCall(PetscSpaceSetType(fe_space, PETSCSPACESUM));
+        PetscCall(PetscSpaceSumSetNumSubspaces(fe_space, num_comp));
+        PetscCall(PetscSpaceSumSetConcatenate(fe_space, PETSC_TRUE));
+        PetscCall(PetscSpaceSumSetInterleave(fe_space, PETSC_TRUE, PETSC_FALSE));
+        for (PetscInt i = 0; i < num_comp; i++) PetscCall(PetscSpaceSumSetSubspace(fe_space, i, scalar_fe_space));
+        PetscCall(PetscSpaceDestroy(&scalar_fe_space));
+      }
+    }
+  }
+  PetscCall(PetscSpaceSetFromOptions(fe_space));
+  PetscCall(PetscSpaceSetUp(fe_space));
+  PetscCall(PetscSpaceGetDegree(fe_space, &order, NULL));
+  PetscCall(PetscSpacePolynomialGetTensor(fe_space, &is_tensor));
+  PetscCall(PetscSpaceGetNumComponents(fe_space, &num_comp));
+
+  // Create dual space
+  PetscCall(PetscDualSpaceCreate(comm, &fe_dual_space));
+  PetscCall(PetscDualSpaceSetType(fe_dual_space, PETSCDUALSPACELAGRANGE));
+  PetscCall(PetscObjectSetOptionsPrefix((PetscObject)fe_dual_space, prefix));
+  {
+    DM dual_space_dm;
+
+    PetscCall(DMPlexCreateReferenceCell(PETSC_COMM_SELF, polytope_type, &dual_space_dm));
+    PetscCall(PetscDualSpaceSetDM(fe_dual_space, dual_space_dm));
+    PetscCall(DMDestroy(&dual_space_dm));
+  }
+  PetscCall(PetscDualSpaceSetNumComponents(fe_dual_space, num_comp));
+  PetscCall(PetscDualSpaceSetOrder(fe_dual_space, order));
+  PetscCall(PetscDualSpaceLagrangeSetTensor(fe_dual_space, (is_tensor || (polytope_type == DM_POLYTOPE_TRI_PRISM)) ? PETSC_TRUE : PETSC_FALSE));
+  PetscCall(PetscDualSpaceSetFromOptions(fe_dual_space));
+  PetscCall(PetscDualSpaceSetUp(fe_dual_space));
+
+  // Create quadrature
+  q_order               = q_order >= 0 ? q_order : order;
+  PetscBool use_uniform = PETSC_FALSE;
+
+  PetscOptionsBegin(comm, NULL, "Uniform quadrature check", NULL);
+  PetscCall(PetscOptionsBool("-petscdt_uniform_tensor_quadrature", "", NULL, use_uniform, &use_uniform, NULL));
+  PetscOptionsEnd();
+  PetscCheck(!use_uniform || (is_tensor || dim == 1), comm, PETSC_ERR_SUP, "Can only use uniform quadrature on tensor product elements");
+  if (use_uniform) {
+    PetscCall(PetscDTUniformTensorQuadrature(dim, 1, q_order + 1, -1.0, 1.0, &quadrature));
+    PetscCall(PetscDTUniformTensorQuadrature(dim - 1, 1, q_order + 1, -1.0, 1.0, &face_quadrature));
+  } else {
+    PetscCall(PetscDTCreateDefaultQuadrature(polytope_type, q_order, &quadrature, &face_quadrature));
+  }
+
+  // Create finite element
+  PetscCall(PetscFECreateFromSpaces(fe_space, fe_dual_space, quadrature, face_quadrature, fem));
+  PetscCall(PetscFESetFromOptions(*fem));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get global `DMPlex` topology type.
+
+  Collective across MPI processes.
+
+  @param[in]   dm            `DMPlex` holding mesh
+  @param[in]   domain_label  `DMLabel` for `DMPlex` domain
+  @param[in]   label_value   Stratum value
+  @param[in]   height        Height of `DMPlex` topology
+  @param[out]  cell_type     `DMPlex` topology type
+**/
+static inline PetscErrorCode GetGlobalDMPlexPolytopeType(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
+                                                         DMPolytopeType *cell_type) {
+  PetscInt first_point;
+  PetscInt ids[1] = {label_value};
+  DMLabel  depth_label;
+
+  PetscFunctionBeginUser;
   // Use depth label if no domain label present
   if (!domain_label) {
     PetscInt depth;
@@ -313,132 +509,15 @@ PetscErrorCode BasisCreateFromTabulation(Ceed ceed, DM dm, DMLabel domain_label,
 
   // Get cell interp, grad, and quadrature data
   PetscCall(DMGetFirstLabeledPoint(dm, dm, domain_label ? domain_label : depth_label, 1, ids, height, &first_point, NULL));
-  PetscCall(DMPlexGetCellType(dm, first_point, &cell_type));
-  elem_topo = ElemTopologyP2C(cell_type);
-  PetscCheck(elem_topo, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "DMPlex topology not supported");
-  {
-    size_t             q_points_size;
-    const PetscScalar *q_points_petsc;
-    PetscInt           q_dim;
+  if (first_point != -1) PetscCall(DMPlexGetCellType(dm, first_point, cell_type));
 
-    PetscCall(PetscQuadratureGetData(quadrature, &q_dim, NULL, &Q, &q_points_petsc, &q_weights));
-    q_points_size = Q * dim * sizeof(CeedScalar);
-    PetscCall(PetscCalloc(q_points_size, &q_points));
-    for (PetscInt q = 0; q < Q; q++) {
-      for (PetscInt d = 0; d < q_dim; d++) q_points[q * dim + d] = q_points_petsc[q * q_dim + d];
-    }
+  {  // Form agreement about CellType
+    PetscInt cell_type_local = -1, cell_type_global = -1;
+
+    if (first_point != -1) cell_type_local = (PetscInt)*cell_type;
+    PetscCallMPI(MPIU_Allreduce(&cell_type_local, &cell_type_global, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)dm)));
+    *cell_type = (DMPolytopeType)cell_type_global;
   }
-
-  {  // Convert to libCEED orientation
-    PetscBool       is_simplex  = PETSC_FALSE;
-    IS              permutation = NULL;
-    const PetscInt *permutation_indices;
-
-    PetscCall(DMPlexIsSimplex(dm, &is_simplex));
-    if (!is_simplex) {
-      PetscSection section;
-
-      // -- Get permutation
-      PetscCall(DMGetLocalSection(dm, &section));
-      PetscCall(PetscSectionGetClosurePermutation(section, (PetscObject)dm, dim, num_comp * P, &permutation));
-      PetscCall(ISGetIndices(permutation, &permutation_indices));
-    }
-
-    // -- Copy interp, grad matrices
-    PetscCall(PetscCalloc(P * Q * sizeof(CeedScalar), &interp));
-    PetscCall(PetscCalloc(P * Q * dim * sizeof(CeedScalar), &grad));
-    const CeedInt c = 0;
-    for (CeedInt q = 0; q < Q; q++) {
-      for (CeedInt p_ceed = 0; p_ceed < P; p_ceed++) {
-        CeedInt p_petsc = is_simplex ? (p_ceed * num_comp) : permutation_indices[p_ceed * num_comp];
-
-        interp[q * P + p_ceed] = basis_tabulation->T[0][((face * Q + q) * P * num_comp + p_petsc) * num_comp + c];
-        for (CeedInt d = 0; d < dim; d++) {
-          grad[(d * Q + q) * P + p_ceed] = basis_tabulation->T[1][(((face * Q + q) * P * num_comp + p_petsc) * num_comp + c) * dim + d];
-        }
-      }
-    }
-
-    // -- Cleanup
-    if (permutation) PetscCall(ISRestoreIndices(permutation, &permutation_indices));
-    PetscCall(ISDestroy(&permutation));
-  }
-
-  // Finally, create libCEED basis
-  PetscCallCeed(ceed, CeedBasisCreateH1(ceed, elem_topo, num_comp, P, Q, interp, grad, q_points, q_weights, basis));
-  PetscCall(PetscFree(q_points));
-  PetscCall(PetscFree(interp));
-  PetscCall(PetscFree(grad));
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-// -----------------------------------------------------------------------------
-// Get CEED Basis from DMPlex
-// -----------------------------------------------------------------------------
-PetscErrorCode CreateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, CeedInt label_value, CeedInt height, CeedInt dm_field, CeedBasis *basis) {
-  PetscDS         ds;
-  PetscFE         fe;
-  PetscQuadrature quadrature;
-  PetscBool       is_simplex = PETSC_TRUE;
-  PetscInt        ds_field   = -1;
-
-  PetscFunctionBeginUser;
-  // Get element information
-  PetscCall(DMGetRegionDS(dm, domain_label, NULL, &ds, NULL));
-  PetscCall(DMFieldToDSField(dm, domain_label, dm_field, &ds_field));
-  PetscCall(PetscDSGetDiscretization(ds, ds_field, (PetscObject *)&fe));
-  PetscCall(PetscFEGetHeightSubspace(fe, height, &fe));
-  PetscCall(PetscFEGetQuadrature(fe, &quadrature));
-
-  // Check if simplex or tensor-product mesh
-  PetscCall(DMPlexIsSimplex(dm, &is_simplex));
-
-  // Build libCEED basis
-  if (is_simplex) {
-    PetscTabulation basis_tabulation;
-    PetscInt        num_derivatives = 1, face = 0;
-
-    PetscCall(PetscFEGetCellTabulation(fe, num_derivatives, &basis_tabulation));
-    PetscCall(BasisCreateFromTabulation(ceed, dm, domain_label, label_value, height, face, fe, basis_tabulation, quadrature, basis));
-  } else {
-    PetscDualSpace dual_space;
-    PetscInt       num_dual_basis_vectors;
-    PetscInt       dim, num_comp, P, Q;
-
-    PetscCall(PetscFEGetSpatialDimension(fe, &dim));
-    PetscCall(PetscFEGetNumComponents(fe, &num_comp));
-    PetscCall(PetscFEGetDualSpace(fe, &dual_space));
-    PetscCall(PetscDualSpaceGetDimension(dual_space, &num_dual_basis_vectors));
-    P = num_dual_basis_vectors / num_comp;
-    PetscCall(PetscQuadratureGetData(quadrature, NULL, NULL, &Q, NULL, NULL));
-
-    CeedInt P_1d = (CeedInt)round(pow(P, 1.0 / dim));
-    CeedInt Q_1d = (CeedInt)round(pow(Q, 1.0 / dim));
-
-    PetscCallCeed(ceed, CeedBasisCreateTensorH1Lagrange(ceed, dim, num_comp, P_1d, Q_1d, CEED_GAUSS, basis));
-  }
-  PetscFunctionReturn(PETSC_SUCCESS);
-}
-
-/**
-  @brief Create `CeedBasis` for coordinate space of `DMPlex`.
-
-  Collective across MPI processes.
-
-  @param[in]   ceed          `Ceed` context
-  @param[in]   dm            `DMPlex` holding mesh
-  @param[in]   domain_label  `DMLabel` for `DMPlex` domain
-  @param[in]   label_value   Stratum value
-  @param[in]   height        Height of `DMPlex` topology
-  @param[out]  basis         `CeedBasis` for coordinate space of `DMPlex`
-**/
-PetscErrorCode CreateCoordinateBasisFromPlex(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis) {
-  DM dm_coord = NULL;
-
-  PetscFunctionBeginUser;
-  PetscCall(DMGetCellCoordinateDM(dm, &dm_coord));
-  if (!dm_coord) PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-  PetscCall(CreateBasisFromPlex(ceed, dm_coord, domain_label, label_value, height, 0, basis));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -591,43 +670,218 @@ static inline PetscErrorCode GetQuadratureDataP2C(PetscFE fe, PetscQuadrature qu
 }
 
 /**
-  @brief Get global `DMPlex` topology type.
+  @brief Create 1D tabulation from `PetscFE`.
 
   Collective across MPI processes.
 
+  @note `q_weights` and `q_points` are allocated using `PetscCalloc1` and must be freed by the user.
+
+  @param[in]   comm          `MPI_Comm` for creating `FE` object from options
+  @param[in]   fe            PETSc basis `FE` object
+  @param[out]  tabulation    PETSc basis tabulation
+  @param[out]  q_points_1d   Quadrature points in libCEED orientation
+  @param[out]  q_weights_1d  Quadrature weights in libCEED orientation
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static inline PetscErrorCode Create1DTabulation_Tensor(MPI_Comm comm, PetscFE fe, PetscTabulation *tabulation, PetscReal **q_points_1d,
+                                                       CeedScalar **q_weights_1d) {
+  PetscFE         fe_1d;
+  PetscInt        dim, num_comp, Q = -1, q_dim = -1, num_derivatives = 1;
+  PetscQuadrature quadrature;
+
+  PetscFunctionBeginUser;
+  // Create 1D FE
+  PetscCall(PetscFEGetNumComponents(fe, &num_comp));
+  PetscCall(PetscFEGetSpatialDimension(fe, &dim));
+  {
+    const char     *prefix;
+    PetscBool       is_tensor;
+    PetscInt        num_comp, order, q_order;
+    PetscDualSpace  dual_space;
+    PetscQuadrature quadrature;
+
+    PetscCall(PetscObjectGetOptionsPrefix((PetscObject)fe, &prefix));
+    PetscCall(PetscFEGetDualSpace(fe, &dual_space));
+    PetscCall(PetscFEGetNumComponents(fe, &num_comp));
+    PetscCall(PetscDualSpaceLagrangeGetTensor(dual_space, &is_tensor));
+    PetscCall(PetscDualSpaceGetOrder(dual_space, &order));
+    PetscCall(PetscFEGetQuadrature(fe, &quadrature));
+    PetscCall(PetscQuadratureGetData(quadrature, NULL, NULL, &q_order, NULL, NULL));
+    PetscCall(PetscFECreateLagrangeFromOptions(comm, 1, num_comp, !is_tensor, order,
+                                               (PetscInt)PetscCeilReal(PetscPowReal(1.0 * q_order, 1.0 / dim)) - 1, prefix, &fe_1d));
+  }
+
+  // Get quadrature data
+  PetscCall(PetscFEGetQuadrature(fe_1d, &quadrature));
+  PetscCall(GetQuadratureDataP2C(fe_1d, quadrature, &q_dim, NULL, &Q, q_points_1d, q_weights_1d));
+
+  // Compute 1D tabulation
+  PetscCall(PetscFECreateTabulation(fe_1d, 1, Q, *q_points_1d, num_derivatives, tabulation));
+
+  // Cleanup
+  PetscCall(PetscFEDestroy(&fe_1d));
+
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Destroy `CeedBasis` in a `PetscContainer`.
+
+  Not collective across MPI processes.
+
+  @param[in,out]  ctx  `CeedBasis`
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode DMPlexCeedBasisDestroy(void **ctx) {
+  CeedBasis basis = *(CeedBasis *)ctx;
+
+  PetscFunctionBegin;
+  PetscCallCeed(CeedBasisReturnCeed(basis), CeedBasisDestroy(&basis));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Create `CeedBasis` from `DMPlex`.
+
+ The `CeedBasis` is stored in the `DMPlex` object for reuse;
+ if the routine is called again with the same arguments, the same `CeedBasis` is returned.
+
+  Collective across MPI processes.
+
+  @param[in]   ceed          `Ceed` context
   @param[in]   dm            `DMPlex` holding mesh
   @param[in]   domain_label  `DMLabel` for `DMPlex` domain
   @param[in]   label_value   Stratum value
   @param[in]   height        Height of `DMPlex` topology
-  @param[out]  cell_type     `DMPlex` topology type
-**/
-static inline PetscErrorCode GetGlobalDMPlexPolytopeType(DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
-                                                         DMPolytopeType *cell_type) {
-  PetscInt first_point;
-  PetscInt ids[1] = {label_value};
-  DMLabel  depth_label;
+  @param[in]   dm_field      Index of `DMPlex` field
+  @param[out]  basis         `CeedBasis` for `DMPlex`
+
+  @return An error code: 0 - success, otherwise - failure
+  **/
+PetscErrorCode DMPlexCeedBasisCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
+                                     CeedBasis *basis) {
+  MPI_Comm  comm = PetscObjectComm((PetscObject)dm);
+  char      container_name[1024];
+  CeedBasis container_basis;
 
   PetscFunctionBeginUser;
-  // Use depth label if no domain label present
-  if (!domain_label) {
-    PetscInt depth;
+  {
+    const char *label_name = NULL;
 
-    PetscCall(DMPlexGetDepth(dm, &depth));
-    PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
-    ids[0] = depth - height;
+    if (domain_label) PetscCall(PetscObjectGetName((PetscObject)domain_label, &label_name));
+    PetscCall(PetscSNPrintf(container_name, sizeof(container_name),
+                            "DM CeedBasis - label: %s label value: %" PetscInt_FMT " height: %" PetscInt_FMT " DM field: %" PetscInt_FMT,
+                            label_name ? label_name : "NONE", label_value, height, dm_field));
   }
+  PetscCall(PetscObjectContainerQuery((PetscObject)dm, container_name, (void **)&container_basis));
 
-  // Get cell interp, grad, and quadrature data
-  PetscCall(DMGetFirstLabeledPoint(dm, dm, domain_label ? domain_label : depth_label, 1, ids, height, &first_point, NULL));
-  if (first_point != -1) PetscCall(DMPlexGetCellType(dm, first_point, cell_type));
+  if (container_basis) {
+    // Copy existing basis
+    *basis = NULL;
+    PetscCallCeed(ceed, CeedBasisReferenceCopy(container_basis, basis));
+  } else {
+    PetscDS         ds;
+    PetscFE         fe;
+    PetscDualSpace  dual_space;
+    PetscQuadrature quadrature;
+    PetscBool       is_tensor = PETSC_TRUE;
+    PetscInt        ds_field  = -1;
 
-  {  // Form agreement about CellType
-    PetscInt cell_type_local = -1, cell_type_global = -1;
+    // Get element information
+    PetscCall(DMGetRegionDS(dm, domain_label, NULL, &ds, NULL));
+    PetscCall(DMFieldToDSField(dm, domain_label, dm_field, &ds_field));
+    PetscCall(PetscDSGetDiscretization(ds, ds_field, (PetscObject *)&fe));
+    PetscCall(PetscFEGetHeightSubspace(fe, height, &fe));
+    PetscCall(PetscFEGetQuadrature(fe, &quadrature));
+    PetscCall(PetscFEGetDualSpace(fe, &dual_space));
+    PetscCall(PetscDualSpaceLagrangeGetTensor(dual_space, &is_tensor));
 
-    if (first_point != -1) cell_type_local = (PetscInt)*cell_type;
-    PetscCallMPI(MPIU_Allreduce(&cell_type_local, &cell_type_global, 1, MPIU_INT, MPI_MAX, PetscObjectComm((PetscObject)dm)));
-    *cell_type = (DMPolytopeType)cell_type_global;
+    // Build libCEED basis
+    PetscBool use_nontensor = PETSC_FALSE;
+
+    PetscOptionsBegin(comm, NULL, "Tensor Basis as Nontensor Check", NULL);
+    PetscCall(PetscOptionsBool("-ceed_basis_as_nontensor", "", NULL, use_nontensor, &use_nontensor, NULL));
+    PetscOptionsEnd();
+
+    if (!is_tensor || use_nontensor) {
+      PetscTabulation  basis_tabulation;
+      PetscInt         num_derivatives = 1, face = 0;
+      CeedScalar      *q_points, *q_weights, *interp, *grad;
+      CeedElemTopology elem_topo;
+
+      {
+        DMPolytopeType cell_type;
+
+        PetscCall(GetGlobalDMPlexPolytopeType(dm, domain_label, label_value, height, &cell_type));
+        elem_topo = PolytopeTypePetscToCeed(cell_type);
+        PetscCheck(elem_topo, comm, PETSC_ERR_SUP, "DMPlex topology not supported: %s", DMPolytopeTypes[cell_type]);
+      }
+
+      // Compute basis tabulation
+      PetscCall(GetQuadratureDataP2C(fe, quadrature, NULL, NULL, NULL, &q_points, &q_weights));
+      PetscCall(PetscFEGetCellTabulation(fe, num_derivatives, &basis_tabulation));
+      PetscCall(ComputeFieldTabulationP2C(dm, dm_field, face, basis_tabulation, &interp, &grad));
+      {
+        PetscInt num_comp = basis_tabulation->Nc, P = basis_tabulation->Nb / num_comp, Q = basis_tabulation->Np;
+
+        PetscCallCeed(ceed, CeedBasisCreateH1(ceed, elem_topo, num_comp, P, Q, interp, grad, q_points, q_weights, basis));
+      }
+
+      PetscCall(PetscFree(q_points));
+      PetscCall(PetscFree(q_weights));
+      PetscCall(PetscFree(interp));
+      PetscCall(PetscFree(grad));
+    } else {
+      PetscInt        P_1d, Q_1d, num_comp, dim;
+      PetscTabulation basis_tabulation;
+      CeedScalar     *q_points_1d, *q_weights_1d, *interp_1d, *grad_1d;
+
+      PetscCall(PetscFEGetSpatialDimension(fe, &dim));
+      PetscCall(Create1DTabulation_Tensor(comm, fe, &basis_tabulation, &q_points_1d, &q_weights_1d));
+      num_comp = basis_tabulation->Nc;
+      P_1d     = basis_tabulation->Nb / num_comp;
+      Q_1d     = basis_tabulation->Np;
+      PetscCall(ComputeFieldTabulationP2C(dm, dm_field, 0, basis_tabulation, &interp_1d, &grad_1d));
+      PetscCallCeed(ceed, CeedBasisCreateTensorH1(ceed, dim, num_comp, P_1d, Q_1d, interp_1d, grad_1d, q_points_1d, q_weights_1d, basis));
+
+      // Cleanup
+      PetscCall(PetscFree(q_points_1d));
+      PetscCall(PetscFree(q_weights_1d));
+      PetscCall(PetscFree(interp_1d));
+      PetscCall(PetscFree(grad_1d));
+      PetscCall(PetscTabulationDestroy(&basis_tabulation));
+    }
+    // Set in container
+    PetscCallCeed(ceed, CeedBasisReferenceCopy(*basis, &container_basis));
+    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_basis, DMPlexCeedBasisDestroy));
   }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Create `CeedBasis` for coordinate space of `DMPlex`.
+
+ The `CeedBasis` is stored in the coordinate `DMPlex` object for reuse;
+ if the routine is called again with the same arguments, the same `CeedBasis` is returned.
+
+  Collective across MPI processes.
+
+  @param[in]   ceed          `Ceed` context
+  @param[in]   dm            `DMPlex` holding mesh
+  @param[in]   domain_label  `DMLabel` for `DMPlex` domain
+  @param[in]   label_value   Stratum value
+  @param[in]   height        Height of `DMPlex` topology
+  @param[out]  basis         `CeedBasis` for coordinate space of `DMPlex`
+**/
+PetscErrorCode DMPlexCeedBasisCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis) {
+  DM dm_coord = NULL;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetCellCoordinateDM(dm, &dm_coord));
+  if (!dm_coord) PetscCall(DMGetCoordinateDM(dm, &dm_coord));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, 0, basis));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -831,6 +1085,37 @@ PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords,
 }
 
 /**
+  @brief Get the points in a label stratum which have requested height
+
+  Example, from the "Face Sets" label (which contains face, edge, and vertex points), return points that correspond to face points (height = 1) and have a label value of 3:
+  ```
+  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", 3, 1, &is_face_points));
+  ```
+
+  @param[in]  dm     DM which has the label
+  @param[in]  name   Name fo the label
+  @param[in]  value  Label value of points to return
+  @param[in]  height Height of points to return
+  @param[out] points `IS` of points, or `NULL` is there are no points in that stratum at height
+**/
+static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt value, PetscInt height, IS *points) {
+  PetscInt depth;
+  DMLabel  depth_label;
+  IS       label_is, depth_is;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMPlexGetDepth(dm, &depth));
+  PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
+  PetscCall(DMLabelGetStratumIS(depth_label, depth - height, &depth_is));
+  PetscCall(DMGetStratumIS(dm, name, value, &label_is));
+  if (label_is == NULL || depth_is == NULL) *points = NULL;
+  else PetscCall(ISIntersect(depth_is, label_is, points));
+  PetscCall(ISDestroy(&depth_is));
+  PetscCall(ISDestroy(&label_is));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Create a label with separate values for the `FE` orientations for all cells with this material for the `DMPlex` face.
 
   Collective across MPI processes.
@@ -977,5 +1262,21 @@ PetscErrorCode DMGetCoordinateNumComps(DM dm, PetscInt *num_comp) {
   PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   PetscCall(DMGetLocalSection(dm_coord, &section_coord));
   PetscCall(PetscSectionGetFieldComponents(section_coord, field, num_comp));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get the number of components for `dm`'s field
+
+  @param[in]  dm       DM
+  @param[in]  field    The field ID to get the number of components for
+  @param[out] num_comp Number of components for the coordinate field
+**/
+PetscErrorCode DMGetFieldNumComps(DM dm, PetscInt field, PetscInt *num_comp) {
+  PetscSection section;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMGetLocalSection(dm, &section));
+  PetscCall(PetscSectionGetFieldComponents(section, field, num_comp));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

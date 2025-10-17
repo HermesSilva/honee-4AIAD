@@ -9,7 +9,7 @@
 
 #include <navierstokes.h>
 
-PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_proj, Honee honee, PetscInt degree) {
+static PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_proj, Honee honee, PetscInt degree) {
   PetscSection section;
 
   PetscFunctionBeginUser;
@@ -42,9 +42,8 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
   CeedBasis           basis_grad_velo;
   CeedElemRestriction elem_restr_grad_velo, elem_restr_qd;
   CeedVector          q_data;
-  PetscInt            dim, label_value = 0, height = 0, dm_field = 0;
-  CeedInt             num_comp_x, num_comp_input, q_data_size;
-  DMLabel             domain_label = NULL;
+  PetscInt            dim, height = 0, dm_field = 0, num_comp_x, num_comp_input;
+  CeedInt             q_data_size;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&grad_velo_proj));
@@ -52,12 +51,13 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
 
   // -- Get Pre-requisite things
   PetscCall(DMGetDimension(grad_velo_proj->dm, &dim));
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_x, &num_comp_x));
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_q, &num_comp_input));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grad_velo_proj->dm, domain_label, label_value, height, dm_field, &elem_restr_grad_velo));
-  PetscCall(CreateBasisFromPlex(ceed, grad_velo_proj->dm, domain_label, label_value, height, dm_field, &basis_grad_velo));
-  PetscCall(QDataGet(ceed, grad_velo_proj->dm, domain_label, label_value, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+  PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
+  PetscCall(DMGetFieldNumComps(honee->dm, 0, &num_comp_input));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+                                            &elem_restr_grad_velo));
+  PetscCall(DMPlexCeedBasisCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_grad_velo));
+  PetscCall(QDataGet(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
+                     &elem_restr_qd, &q_data, &q_data_size));
 
   {  // -- Build RHS operator
     CeedOperator  op_rhs_assemble;
