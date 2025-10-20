@@ -26,3 +26,9 @@ PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num
 
 PetscErrorCode DMGetCoordinateNumComps(DM dm, PetscInt *num_comp_x);
 PetscErrorCode DMGetFieldNumComps(DM dm, PetscInt field, PetscInt *num_comp);
+
+PetscErrorCode DMSetupByOrderBegin_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
+                                       PetscInt num_fields, const PetscInt *field_sizes, DM dm);
+PetscErrorCode DMSetupByOrderEnd_FEM(PetscBool setup_coords, DM dm);
+PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
+                                  PetscInt num_fields, const PetscInt *field_sizes, DM dm);

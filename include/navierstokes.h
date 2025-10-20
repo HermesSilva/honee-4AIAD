@@ -298,12 +298,6 @@ PetscErrorCode CreateDM(Honee honee, ProblemData problem, MatType, VecType, DM *
 PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, Physics phys);
 PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, Physics phys);
 
-PetscErrorCode DMSetupByOrderBegin_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
-                                       PetscInt num_fields, const PetscInt *field_sizes, DM dm);
-PetscErrorCode DMSetupByOrderEnd_FEM(PetscBool setup_coords, DM dm);
-PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
-                                  PetscInt num_fields, const PetscInt *field_sizes, DM dm);
-
 // -----------------------------------------------------------------------------
 // Process command line options
 // -----------------------------------------------------------------------------
