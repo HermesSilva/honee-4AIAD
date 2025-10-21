@@ -164,13 +164,14 @@ if __name__ == '__main__':
     if 'smartsim' in args.test:
         has_smartsim: bool = args.smartredis_dir and Path(args.smartredis_dir).is_dir()
         test_cases = []
+        test_directory = Path(__file__).parent / 'smartsim_test_dir'
 
         if args.mode is RunMode.TAP:
             print(f'1..1')
         if has_smartsim:
             from smartsim_regression_framework import SmartSimTest
 
-            test_framework = SmartSimTest(Path(__file__).parent / 'smartsim_test_dir')
+            test_framework = SmartSimTest(test_directory)
             test_framework.setup()
 
             is_new_subtest = True
@@ -196,6 +197,12 @@ if __name__ == '__main__':
         elif args.mode is RunMode.TAP:
             print(f'ok 1 - # SKIP SmartSim not installed')
         result: TestSuite = TestSuite('SmartSim Tests', test_cases)
+        if has_failures(result):
+            shutil.copytree(
+                test_directory,
+                HoneeSuiteSpec(
+                    args.has_torch).test_failure_artifacts_path,
+                dirs_exist_ok=True)
     else:
         result: TestSuite = run_tests(
             args.test,

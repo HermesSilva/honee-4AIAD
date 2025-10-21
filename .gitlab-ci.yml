@@ -146,6 +146,8 @@ noether-memcheck:
     paths:
       - coverage-$CI_JOB_ID.json
       - build/*.junit
+      - build/test_failure_artifacts
+    when: always
     reports:
       junit: build/*.junit
       performance: performance.json
@@ -205,6 +207,8 @@ noether-cpu:
     paths:
       - coverage-$CI_JOB_ID.json
       - build/*.junit
+      - build/test_failure_artifacts
+    when: always
     reports:
       junit: build/*.junit
       performance: performance.json
@@ -263,6 +267,8 @@ noether-cpu-int64:
     paths:
       - coverage-$CI_JOB_ID.json
       - build/*.junit
+      - build/test_failure_artifacts
+    when: always
     reports:
       junit: build/*.junit
       performance: performance.json
@@ -325,6 +331,8 @@ noether-cpu-int64:
 #     paths:
 #       - coverage-$CI_JOB_ID.json
 #       - build/*.junit
+#       - build/test_failure_artifacts
+#     when: always
 #     reports:
 #       junit: build/*.junit
 #       performance: performance.json
@@ -378,6 +386,8 @@ noether-cuda:
     paths:
       - coverage-$CI_JOB_ID.json
       - build/*.junit
+      - build/test_failure_artifacts
+    when: always
     reports:
       junit: build/*.junit
       performance: performance.json
