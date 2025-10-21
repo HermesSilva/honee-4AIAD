@@ -3,6 +3,7 @@
 
 #include <navierstokes.h>
 
+#include <dm-utils.h>
 #include <petscsection.h>
 #include "../qfunctions/setupgeo.h"
 #include "../qfunctions/setupgeo2d.h"
@@ -35,7 +36,7 @@ static PetscErrorCode QDataGetStored(CeedVector q_data_created, CeedElemRestrict
     CeedVector difference_cvec;
     CeedScalar max_difference;
 
-    PetscCallCeed(ceed, CeedVectorGetLength(q_data_vecs[0], &stored_length));
+    PetscCallCeed(ceed, CeedVectorGetLength(q_data_vecs[i], &stored_length));
     if (created_length != stored_length) continue;
     PetscCallCeed(ceed, CeedVectorCreate(ceed, stored_length, &difference_cvec));
     PetscCallCeed(ceed, CeedVectorCopy(q_data_vecs[i], difference_cvec));
@@ -124,25 +125,23 @@ PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size) {
  * @param[in]  dm            DM where quadrature data would be used
  * @param[in]  domain_label  DMLabel that quadrature data would be used one
  * @param[in]  label_value   Value of label
- * @param[in]  elem_restr_x  CeedElemRestriction of the coordinates (must match `domain_label` and `label_value` selections)
- * @param[in]  basis_x       CeedBasis of the coordinates
- * @param[in]  x_coord       CeedVector of the coordinates
  * @param[out] elem_restr_qd CeedElemRestriction of the quadrature data
  * @param[out] q_data        CeedVector of the quadrature data
  * @param[out] q_data_size   Number of components of quadrature data
  */
-PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
-                        CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
+PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction *elem_restr_qd, CeedVector *q_data,
+                        CeedInt *q_data_size) {
   CeedQFunction       qf_setup = NULL;
   CeedOperator        op_setup;
-  CeedVector          q_data_created;
-  CeedElemRestriction elem_restr_qd_created;
-  CeedInt             num_comp_x;
-  PetscInt            dim, height = 0;
+  CeedVector          q_data_created, x_coord;
+  CeedElemRestriction elem_restr_qd_created, elem_restr_x;
+  PetscInt            dim, height = 0, num_comp_x;
+  CeedBasis           basis_x;
 
   PetscFunctionBeginUser;
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, domain_label, label_value, height, &elem_restr_x, &basis_x, &x_coord));
   PetscCall(QDataGetNumComponents(dm, q_data_size));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_x, &num_comp_x));
+  PetscCall(DMGetCoordinateNumComps(dm, &num_comp_x));
   PetscCall(DMGetDimension(dm, &dim));
   switch (dim) {
     case 2:
@@ -181,6 +180,9 @@ PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_v
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data_created));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd_created));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_x));
+  PetscCallCeed(ceed, CeedVectorDestroy(&x_coord));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_setup));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_setup));
   PetscFunctionReturn(PETSC_SUCCESS);

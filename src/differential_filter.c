@@ -26,8 +26,7 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
   PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
   PetscCall(DMGetFieldNumComps(honee->dm, 0, &num_comp_q));
 
-  PetscCall(QDataGet(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 
   {  // -- Create RHS MatopApplyContext
     CeedQFunction       qf_rhs;

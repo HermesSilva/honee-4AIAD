@@ -305,8 +305,7 @@ static PetscErrorCode SpanwiseStatisticsSetupL2Projection(Honee honee, SpanStats
 
   PetscCall(OperatorApplyContextCreate(NULL, spanstats->dm, ceed, op_proj_rhs, NULL, NULL, NULL, NULL, &spanstats->op_proj_rhs_ctx));
   PetscCall(CeedOperatorCreateLocalVecs(op_proj_rhs, DMReturnVecType(spanstats->dm), PETSC_COMM_SELF, &spanstats->Parent_Stats_loc, NULL));
-  PetscCall(QDataGet(ceed, spanstats->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, stats_setup_data->elem_restr_parent_x, stats_setup_data->basis_x,
-                     stats_setup_data->x_coord, &elem_restr_qd, &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, spanstats->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 
   // Create Mass CeedOperator
   PetscCall(HoneeMassQFunctionCreate(ceed, num_comp_stats, q_data_size, &qf_mass));

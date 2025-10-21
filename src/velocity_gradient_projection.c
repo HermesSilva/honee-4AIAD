@@ -56,8 +56,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
                                             &elem_restr_grad_velo));
   PetscCall(DMPlexCeedBasisCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_grad_velo));
-  PetscCall(QDataGet(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
-                     &elem_restr_qd, &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 
   {  // -- Build RHS operator
     CeedOperator  op_rhs_assemble;

@@ -126,8 +126,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCall(DMPlexCeedCoordinateGetField(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, &honee->elem_restr_x, &honee->basis_x,
                                            &honee->x_coord));
 
-    PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
-                       &q_data_size_vol));
+    PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size_vol));
   }
 
   if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {

@@ -228,8 +228,7 @@ PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume) {
 
   PetscFunctionBeginUser;
   PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-  PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &qdata,
-                     &q_data_size));
+  PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &qdata, &q_data_size));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comps_x));
 
   PetscCall(HoneeMassQFunctionCreate(ceed, num_comps_x, q_data_size, &qf_mass));
