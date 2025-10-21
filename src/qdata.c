@@ -308,27 +308,25 @@ PetscErrorCode QDataBoundaryGradientGetNumComponents(DM dm, CeedInt *q_data_size
   @param[in]  dm            `DMPlex` grid
   @param[in]  domain_label  `DMLabel` for surface
   @param[in]  label_value   `DMPlex` label value for surface
-  @param[in]  x_coord       `CeedVector` for coordinates
   @param[out] elem_restr_qd `CeedElemRestriction` for QData
   @param[out] q_data        `CeedVector` holding QData
   @param[out] q_data_size   Number of QData components per quadrature point
 **/
-PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedVector x_coord,
-                                        CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
+PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction *elem_restr_qd,
+                                        CeedVector *q_data, CeedInt *q_data_size) {
   PetscInt            dim;
   const PetscInt      height_cell = 0, height_face = 1;
   CeedInt             num_comp_x;
   CeedElemRestriction elem_restr_x_cell, elem_restr_x_face, elem_restr_qd_created;
-  CeedVector          q_data_created;
+  CeedVector          q_data_created, x_coord;
   CeedBasis           basis_x_cell_to_face, basis_x_face;
   CeedQFunction       qf_setup_sur = NULL;
   CeedOperator        op_setup_sur;
 
   PetscFunctionBeginUser;
-  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, domain_label, label_value, height_face, &basis_x_face));
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, domain_label, label_value, height_face, &elem_restr_x_face, &basis_x_face, &x_coord));
   PetscCall(DMPlexCeedBasisCellToFaceCoordinateCreate(ceed, dm, domain_label, label_value, label_value, &basis_x_cell_to_face));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_cell, &elem_restr_x_cell));
-  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height_face, &elem_restr_x_face));
 
   PetscCall(QDataBoundaryGradientGetNumComponents(dm, q_data_size));
   PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height_face, *q_data_size, &elem_restr_qd_created));
@@ -364,6 +362,7 @@ PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, 
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_setup_sur));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_setup_sur));
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data_created));
+  PetscCallCeed(ceed, CeedVectorDestroy(&x_coord));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd_created));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x_face));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x_cell));

@@ -225,8 +225,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
         PetscCall(DMPlexCeedBasisCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
-        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, honee->x_coord, &elem_restr_qdata, &q_data,
-                                           &q_data_size));
+        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, &elem_restr_qdata, &q_data, &q_data_size));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
         PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_boundary, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
