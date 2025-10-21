@@ -219,25 +219,23 @@ PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size) {
  * @param[in]  dm            DM where quadrature data would be used
  * @param[in]  domain_label  DMLabel that quadrature data would be used one
  * @param[in]  label_value   Value of label
- * @param[in]  elem_restr_x  CeedElemRestriction of the coordinates (must match `domain_label` and `label_value` selections)
- * @param[in]  basis_x       CeedBasis of the coordinates
- * @param[in]  x_coord       CeedVector of the coordinates
  * @param[out] elem_restr_qd CeedElemRestriction of the quadrature data
  * @param[out] q_data        CeedVector of the quadrature data
  * @param[out] q_data_size   Number of components of quadrature data
  */
-PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
-                                CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size) {
+PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction *elem_restr_qd, CeedVector *q_data,
+                                CeedInt *q_data_size) {
   CeedQFunction       qf_setup_sur = NULL;
   CeedOperator        op_setup_sur;
-  CeedVector          q_data_created;
-  CeedElemRestriction elem_restr_qd_created;
-  CeedInt             num_comp_x;
-  PetscInt            dim, height = 1;
+  CeedVector          q_data_created, x_coord;
+  CeedElemRestriction elem_restr_qd_created, elem_restr_x;
+  CeedBasis           basis_x;
+  PetscInt            dim, height = 1, num_comp_x;
 
   PetscFunctionBeginUser;
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, domain_label, label_value, height, &elem_restr_x, &basis_x, &x_coord));
   PetscCall(QDataBoundaryGetNumComponents(dm, q_data_size));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_x, &num_comp_x));
+  PetscCall(DMGetCoordinateNumComps(dm, &num_comp_x));
   PetscCall(DMGetDimension(dm, &dim));
   switch (dim) {
     case 2:
@@ -269,6 +267,9 @@ PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt
 
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data_created));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd_created));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_x));
+  PetscCallCeed(ceed, CeedVectorDestroy(&x_coord));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_setup_sur));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_setup_sur));
   PetscFunctionReturn(PETSC_SUCCESS);

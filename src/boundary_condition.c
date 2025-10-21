@@ -252,12 +252,11 @@ PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, 
   PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &elem_restr_q));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &elem_restr_x));
+  PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, &elem_restr_qd, &q_data, &q_data_size));
   if (num_comps_jac_data > 0) {
     PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, domain_label, label_value, height, num_comps_jac_data, &elem_restr_jac));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jac, &jac_data, NULL));
   }
-
-  PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, elem_restr_x, basis_x, honee->x_coord, &elem_restr_qd, &q_data, &q_data_size));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ifunc, NULL, NULL, &sub_op_ifunc_));
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ifunc_, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -330,8 +329,9 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
   PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &basis_q));
   PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
+  PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, &elem_restr_qd, &q_data, &q_data_size));
 
-  {  // Get restriction and basis from the RHS function
+  {  // Get restriction and basis from the IFunction function
     CeedOperatorField op_field;
 
     PetscCallCeed(ceed, CeedOperatorGetFieldByName(sub_op_ifunc, "q", &op_field));
@@ -345,8 +345,6 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
       PetscCallCeed(ceed, CeedOperatorFieldGetData(op_field, NULL, &elem_restr_jac, NULL, &jac_data));
     }
   }
-
-  PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, elem_restr_x, basis_x, honee->x_coord, &elem_restr_qd, &q_data, &q_data_size));
 
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ijac, NULL, NULL, &sub_op_ijac));
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ijac, "dq", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
