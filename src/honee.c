@@ -59,16 +59,9 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
   PetscCall(DivDiffFluxProjectionDataDestroy(honee_->diff_flux_proj));
 
   // -- Vectors
-  PetscCallCeed(ceed, CeedVectorDestroy(&honee_->x_coord));
   PetscCallCeed(ceed, CeedVectorDestroy(&honee_->q_ceed));
   PetscCallCeed(ceed, CeedVectorDestroy(&honee_->q_dot_ceed));
   PetscCallCeed(ceed, CeedVectorDestroy(&honee_->g_ceed));
-
-  // -- Bases
-  PetscCallCeed(ceed, CeedBasisDestroy(&honee_->basis_x));
-
-  // -- Restrictions
-  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&honee_->elem_restr_x));
 
   // Destroy QFunction contexts after using
   {

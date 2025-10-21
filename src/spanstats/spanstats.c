@@ -133,9 +133,11 @@ static PetscErrorCode CreateElemRestrColloc_CompMajor(Ceed ceed, CeedInt num_com
 }
 
 // Get coordinates of quadrature points
-static PetscErrorCode GetQuadratureCoords(Ceed ceed, DM dm, CeedElemRestriction elem_restr_x, CeedBasis basis_x, CeedVector x_coords, Vec *Qx_coords,
+static PetscErrorCode GetQuadratureCoords(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, Vec *Qx_coords,
                                           PetscInt *total_nqpnts) {
-  CeedElemRestriction  elem_restr_qx;
+  CeedElemRestriction  elem_restr_qx, elem_restr_x;
+  CeedBasis            basis_x;
+  CeedVector           x_coords;
   CeedQFunction        qf_quad_coords;
   CeedOperator         op_quad_coords;
   CeedInt              num_comp_x;
@@ -143,6 +145,7 @@ static PetscErrorCode GetQuadratureCoords(Ceed ceed, DM dm, CeedElemRestriction 
   OperatorApplyContext op_quad_coords_ctx;
 
   PetscFunctionBeginUser;
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, domain_label, label_value, height, &elem_restr_x, &basis_x, &x_coords));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_x, &num_comp_x));
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_x, basis_x, elem_restr_x, &elem_restr_qx));
   PetscCallCeed(ceed, CeedElemRestrictionGetLVectorSize(elem_restr_qx, &l_vec_size));
@@ -163,6 +166,9 @@ static PetscErrorCode GetQuadratureCoords(Ceed ceed, DM dm, CeedElemRestriction 
 
   PetscCall(OperatorApplyContextDestroy(op_quad_coords_ctx));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qx));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_x));
+  PetscCallCeed(ceed, CeedVectorDestroy(&x_coords));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_quad_coords));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_quad_coords));
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -232,21 +238,19 @@ static PetscErrorCode SpanwiseStatisticsSetupDataDestroy(SpanStatsSetupData data
 static PetscErrorCode SpanwiseStatisticsCreateSF(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_setup_data, DM parentdm, DM childdm,
                                                  PetscSF *statssf) {
   Ceed     ceed = honee->ceed;
-  PetscInt child_num_qpnts, parent_num_qpnts;
-  CeedInt  num_comp_x;
+  PetscInt child_num_qpnts, parent_num_qpnts, num_comp_x;
   Vec      Child_qx_coords, Parent_qx_coords;
 
   PetscFunctionBeginUser;
   PetscCall(PetscSFCreate(PetscObjectComm((PetscObject)childdm), statssf));
 
   // Assume that child and parent have the same number of components
-  PetscCallCeed(ceed, CeedBasisGetNumComponents(honee->basis_x, &num_comp_x));
+  PetscCall(DMGetCoordinateNumComps(childdm, &num_comp_x));
   const PetscInt num_comp_sf = num_comp_x - 1;  // Number of coord components used in the creation of the SF
 
   // Get quad_coords for child and parent DM
-  PetscCall(GetQuadratureCoords(ceed, childdm, honee->elem_restr_x, honee->basis_x, honee->x_coord, &Child_qx_coords, &child_num_qpnts));
-  PetscCall(GetQuadratureCoords(ceed, parentdm, stats_setup_data->elem_restr_parent_x, stats_setup_data->basis_x, stats_setup_data->x_coord,
-                                &Parent_qx_coords, &parent_num_qpnts));
+  PetscCall(GetQuadratureCoords(ceed, childdm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &Child_qx_coords, &child_num_qpnts));
+  PetscCall(GetQuadratureCoords(ceed, parentdm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &Parent_qx_coords, &parent_num_qpnts));
 
   {  // Remove z component of coordinates for matching
     const PetscReal *child_quad_coords, *parent_quad_coords;
@@ -370,7 +374,7 @@ PetscErrorCode SpanwiseStatisticsSetupInitialize(Honee honee, PetscInt degree, P
   PetscCall(SpanwiseStatisticsSetupDataCreate(honee, spanstats_, stats_setup_data));
   //
   // Create SF for communicating child data back their respective parents
-  PetscCall(SpanwiseStatisticsCreateSF(honee, spanstats_, *stats_setup_data, honee->dm, spanstats_->dm, &spanstats_->sf));
+  PetscCall(SpanwiseStatisticsCreateSF(honee, spanstats_, *stats_setup_data, spanstats_->dm, honee->dm, &spanstats_->sf));
 
   *spanstats = spanstats_;
   PetscFunctionReturn(PETSC_SUCCESS);

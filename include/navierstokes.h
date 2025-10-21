@@ -170,10 +170,6 @@ struct Honee_private {
 
   ProblemData problem_data;
 
-  // old CeedData
-  CeedVector           x_coord;
-  CeedBasis            basis_x;
-  CeedElemRestriction  elem_restr_x;
   OperatorApplyContext op_ics_ctx;
 
   PetscBool set_poststep;

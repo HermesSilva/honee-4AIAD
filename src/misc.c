@@ -221,21 +221,24 @@ PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume) {
   CeedQFunction        qf_mass;
   CeedOperator         op_mass;
   OperatorApplyContext op_mass_ctx;
-  CeedElemRestriction  elem_restr_qd;
+  CeedElemRestriction  elem_restr_qd, elem_restr_x;
+  CeedBasis            basis_x;
   CeedVector           qdata;
-  CeedInt              q_data_size, num_comps_x;
+  CeedInt              q_data_size;
+  PetscInt             num_comps_x;
   Vec                  u, v;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &qdata, &q_data_size));
-  PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(honee->elem_restr_x, &num_comps_x));
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_x, &basis_x, NULL));
+  PetscCall(DMGetCoordinateNumComps(dm, &num_comps_x));
 
   PetscCall(HoneeMassQFunctionCreate(ceed, num_comps_x, q_data_size, &qf_mass));
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_mass, NULL, NULL, &op_mass));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", honee->elem_restr_x, honee->basis_x, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "u", elem_restr_x, basis_x, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "qdata", elem_restr_qd, CEED_BASIS_NONE, qdata));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", honee->elem_restr_x, honee->basis_x, CEED_VECTOR_ACTIVE));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_mass, "v", elem_restr_x, basis_x, CEED_VECTOR_ACTIVE));
 
   PetscCall(OperatorApplyContextCreate(NULL, dm_coord, ceed, op_mass, NULL, NULL, NULL, NULL, &op_mass_ctx));
   PetscCall(CeedOperatorCreateLocalVecs(op_mass, DMReturnVecType(dm), PETSC_COMM_SELF, &u, NULL));
@@ -249,6 +252,8 @@ PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume) {
   PetscCall(VecDestroy(&v));
   PetscCall(OperatorApplyContextDestroy(op_mass_ctx));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_x));
   PetscCallCeed(ceed, CeedVectorDestroy(&qdata));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_mass));
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_mass));
