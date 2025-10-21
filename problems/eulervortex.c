@@ -82,6 +82,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   // ------------------------------------------------------
   //             Create the libCEED context
   // ------------------------------------------------------
+  Units      units           = honee->units;
   CeedScalar vortex_strength = 5.;   // -
   CeedScalar c_tau           = 0.5;  // -
   // c_tau = 0.5 is reported as "optimal" in Hughes et al 2010
@@ -101,7 +102,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   PetscInt  n = dim;
   PetscBool user_velocity;
   PetscCall(PetscOptionsRealArray("-mean_velocity", "Background velocity vector", NULL, mean_velocity, &n, &user_velocity));
-  for (PetscInt i = 0; i < dim; i++) center[i] = .5 * domain_size[i];
+  for (PetscInt i = 0; i < dim; i++) center[i] = .5 * domain_size[i] / units->meter;  // Redimensionalize domain
   n = dim;
   PetscCall(PetscOptionsRealArray("-center", "Location of vortex center", NULL, center, &n, NULL));
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
@@ -124,10 +125,8 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   //           Set up the libCEED context
   // ------------------------------------------------------
   // -- Scale variables to desired units
-  Units units = honee->units;
   for (PetscInt i = 0; i < 3; i++) {
     center[i] *= units->meter;
-    domain_size[i] *= units->meter;
     mean_velocity[i] *= (units->meter / units->second);
   }
 

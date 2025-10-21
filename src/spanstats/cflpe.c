@@ -23,9 +23,9 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
   CeedQFunctionContext   collect_qfctx;
   CeedQFunction          qf_stats_collect = NULL;
   CeedOperator           op_stats_collect;
-  CeedVector             q_data;
-  CeedElemRestriction    elem_restr_qd, elem_restr_q;
-  CeedBasis              basis_q;
+  CeedVector             q_data, x_coord;
+  CeedElemRestriction    elem_restr_qd, elem_restr_q, elem_restr_x;
+  CeedBasis              basis_q, basis_x;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetDimension(honee->dm, &dim));
@@ -71,10 +71,10 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
              "Could not create CFL/Pe spanstats collection QFunction for dim %" PetscInt_FMT " and state variable %s", dim,
              StateVariables[honee->phys->state_var]);
 
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_x, &basis_x, &x_coord));
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
   PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
-  PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd,
-                     &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
   {  // Setup Collection Context
     PetscBool is_advection;
 
@@ -118,7 +118,7 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
   PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_stats_collect, NULL, NULL, &op_stats_collect));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "q_data", elem_restr_qd, CEED_BASIS_NONE, q_data));
-  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "x", honee->elem_restr_x, honee->basis_x, honee->x_coord));
+  PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "x", elem_restr_x, basis_x, x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(op_stats_collect, "v", stats_data->elem_restr_child_colloc, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
 
   PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_stats_collect, "solution time", &spanstats->solution_time_label));
@@ -137,6 +137,9 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_stats_collect));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x));
+  PetscCallCeed(ceed, CeedBasisDestroy(&basis_x));
+  PetscCallCeed(ceed, CeedVectorDestroy(&x_coord));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

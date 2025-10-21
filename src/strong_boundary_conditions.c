@@ -11,7 +11,7 @@
 
 PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData problem, Physics phys, CeedOperator op_strong_bc) {
   CeedInt             num_comp_x, num_comp_q = 5, stg_data_size = 1, dXdx_size;
-  CeedVector          multiplicity, x_stored, scale_stored, stg_data, dXdx;
+  CeedVector          multiplicity, x_stored, scale_stored, stg_data, dXdx, x_coord;
   CeedBasis           basis_x_to_q_face;
   CeedElemRestriction elem_restr_x_face, elem_restr_q_face, elem_restr_x_stored, elem_restr_scale, elem_restr_stgdata, elem_restr_dXdx;
   CeedQFunction       qf_setup, qf_strongbc, qf_stgdata;
@@ -103,7 +103,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
 
       PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &elem_restr_q_face));
       PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, face_orientation_label, orientation, height_face, &elem_restr_x_face));
-      PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, face_orientation_label, orientation, height_cell, &elem_restr_x_cell));
+      PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, face_orientation_label, orientation, height_cell, &elem_restr_x_cell, NULL, &x_coord));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q_face, &multiplicity, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(elem_restr_q_face, multiplicity));
 
@@ -129,7 +129,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
       PetscCallCeed(ceed, CeedOperatorSetField(op_setup, "dXdx", elem_restr_dXdx, CEED_BASIS_NONE, dXdx));
 
       // -- Compute geometric factors
-      PetscCallCeed(ceed, CeedOperatorApply(op_setup, honee->x_coord, CEED_VECTOR_NONE, CEED_REQUEST_IMMEDIATE));
+      PetscCallCeed(ceed, CeedOperatorApply(op_setup, x_coord, CEED_VECTOR_NONE, CEED_REQUEST_IMMEDIATE));
 
       // -- Compute STGData
       PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_stgdata, NULL, NULL, &op_stgdata));
@@ -157,6 +157,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
       PetscCallCeed(ceed, CeedVectorDestroy(&scale_stored));
       PetscCallCeed(ceed, CeedVectorDestroy(&stg_data));
       PetscCallCeed(ceed, CeedVectorDestroy(&dXdx));
+      PetscCallCeed(ceed, CeedVectorDestroy(&x_coord));
       PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_to_q_cell));
       PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x_face));
       PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_x_cell));

@@ -174,8 +174,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
     PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
     PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
     PetscCall(DivDiffFluxProjectionGetOperatorFieldData(diff_flux_proj, &elem_restr_diff_flux_volume, &basis_diff_flux, NULL, NULL));
-    PetscCall(QDataGet(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
-                       &elem_restr_qd, &q_data, &q_data_size));
+    PetscCall(QDataGet(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
     switch (dim) {
       case 2:
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DivDiffusiveFluxVolumeRHS_AdvDif_2D, DivDiffusiveFluxVolumeRHS_AdvDif_2D_loc,
@@ -261,8 +260,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0,
                                                   &elem_restr_diff_flux_boundary));
         PetscCall(DMPlexCeedBasisCreate(ceed, projection->dm, face_orientation_label, orientation, height_face, 0, &basis_diff_flux_boundary));
-        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, honee->x_coord, &elem_restr_qdata, &q_data,
-                                           &q_data_size));
+        PetscCall(QDataBoundaryGradientGet(ceed, honee->dm, face_orientation_label, orientation, &elem_restr_qdata, &q_data, &q_data_size));
 
         PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_rhs_boundary, NULL, NULL, &op_rhs_boundary));
         PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_boundary, "Grad_q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
@@ -325,8 +323,7 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(Honee honee
   PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_diff_flux));
   PetscCall(DMPlexCeedBasisCreate(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_diff_flux));
-  PetscCall(QDataGet(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord,
-                     &elem_restr_qd, &q_data, &q_data_size));
+  PetscCall(QDataGet(ceed, projection->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 
   switch (dim) {
     case 2:
@@ -500,7 +497,6 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   rc = fabs(rc) * units->meter;
   for (PetscInt i = 0; i < dim; i++) {
     wind[i] *= (units->meter / units->second);
-    domain_size[i] *= units->meter;
   }
 
   // -- Setup Context

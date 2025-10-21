@@ -64,13 +64,6 @@ typedef enum {
 static const char *const SGSModelDDImplementations[] = {"FUSED", "SEQUENTIAL_CEED", "SEQUENTIAL_TORCH", "SGSModelDDImplementation", "SGS_MODEL_DD_",
                                                         NULL};
 
-// Mesh transformation type
-typedef enum {
-  MESH_TRANSFORM_NONE      = 0,
-  MESH_TRANSFORM_PLATEMESH = 1,
-} MeshTransformType;
-static const char *const MeshTransformTypes[] = {"NONE", "PLATEMESH", "MeshTransformType", "MESH_TRANSFORM_", NULL};
-
 // -----------------------------------------------------------------------------
 // Structs
 // -----------------------------------------------------------------------------
@@ -118,7 +111,6 @@ struct AppCtx_private {
   SGSModelType sgs_model_type;
   PetscBool    sgs_train_enable;
 
-  MeshTransformType mesh_transform_type;
   // Divergence of Diffusive Flux Projection
   DivDiffFluxProjectionMethod divFdiffproj_method;
 
@@ -178,10 +170,6 @@ struct Honee_private {
 
   ProblemData problem_data;
 
-  // old CeedData
-  CeedVector           x_coord;
-  CeedBasis            basis_x;
-  CeedElemRestriction  elem_restr_x;
   OperatorApplyContext op_ics_ctx;
 
   PetscBool set_poststep;
@@ -283,15 +271,15 @@ PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, 
 // -----------------------------------------------------------------------------
 PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, ProblemData problem);
 
-PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
-                        CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
+PetscErrorCode QDataGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction *elem_restr_qd, CeedVector *q_data,
+                        CeedInt *q_data_size);
 PetscErrorCode QDataGetNumComponents(DM dm, CeedInt *q_data_size);
-PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction elem_restr_x, CeedBasis basis_x,
-                                CeedVector x_coord, CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
+PetscErrorCode QDataBoundaryGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction *elem_restr_qd, CeedVector *q_data,
+                                CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGetNumComponents(DM dm, CeedInt *q_data_size);
 PetscErrorCode QDataBoundaryGradientGetNumComponents(DM dm, CeedInt *q_data_size);
-PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedVector x_coord,
-                                        CeedElemRestriction *elem_restr_qd, CeedVector *q_data, CeedInt *q_data_size);
+PetscErrorCode QDataBoundaryGradientGet(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, CeedElemRestriction *elem_restr_qd,
+                                        CeedVector *q_data, CeedInt *q_data_size);
 PetscErrorCode QDataClearStoredData();
 // -----------------------------------------------------------------------------
 // Time-stepping functions
@@ -302,15 +290,9 @@ PetscErrorCode UpdateBoundaryValues(Honee honee, Vec Q_loc, PetscReal t);
 // -----------------------------------------------------------------------------
 // Setup DM
 // -----------------------------------------------------------------------------
-PetscErrorCode CreateDM(MPI_Comm comm, ProblemData problem, MatType, VecType, DM *dm);
+PetscErrorCode CreateDM(Honee honee, ProblemData problem, MatType, VecType, DM *dm);
 PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_extra, Physics phys);
 PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, Physics phys);
-
-PetscErrorCode DMSetupByOrderBegin_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
-                                       PetscInt num_fields, const PetscInt *field_sizes, DM dm);
-PetscErrorCode DMSetupByOrderEnd_FEM(PetscBool setup_coords, DM dm);
-PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
-                                  PetscInt num_fields, const PetscInt *field_sizes, DM dm);
 
 // -----------------------------------------------------------------------------
 // Process command line options

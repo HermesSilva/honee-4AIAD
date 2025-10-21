@@ -130,7 +130,7 @@ class SmartSimTest(object):
                 '-dm_plex_shape', 'zbox',
                 '-dm_plex_box_bd', 'none,none,periodic',
                 '-dm_plex_box_faces', '4,6,1',
-                '-mesh_transform', '-ts_monitor_smartsim_solution',
+                '-meshtransform_type', '-ts_monitor_smartsim_solution',
             ]
 
             run_settings = RunSettings(exe_path, exe_args=arguments)

@@ -83,11 +83,6 @@ PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx) {
   //           Set up the QFunction context
   // ------------------------------------------------------
   // -- Scale variables to desired units
-  Units units = honee->units;
-  for (PetscInt i = 0; i < 3; i++) {
-    domain_size[i] *= units->meter;
-    domain_min[i] *= units->meter;
-  }
   CeedScalar mid_point = 0.5 * (domain_size[0] + domain_min[0]);
 
   // -- Setup Context

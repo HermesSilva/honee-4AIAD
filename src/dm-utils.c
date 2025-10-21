@@ -879,9 +879,91 @@ PetscErrorCode DMPlexCeedBasisCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_
   DM dm_coord = NULL;
 
   PetscFunctionBeginUser;
-  PetscCall(DMGetCellCoordinateDM(dm, &dm_coord));
-  if (!dm_coord) PetscCall(DMGetCoordinateDM(dm, &dm_coord));
+  PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, 0, basis));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+typedef struct CeedVectorAndState_ *CeedVectorAndState;
+struct CeedVectorAndState_ {
+  CeedVector       vector;  // !< `CeedVector` containing copy of data from a `Vec`
+  PetscObjectState state;   // !< Object state of the `Vec` when the data was copied
+};
+
+/**
+  @brief Destroy `CeedVectorAndState` in a `PetscContainer`.
+
+  Not collective across MPI processes.
+
+  @param[in,out]  ctx  `CeedVectorAndState`
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode CeedVectorAndStateDestroy(void **ctx) {
+  CeedVectorAndState vec_and_state = *(CeedVectorAndState *)ctx;
+
+  PetscFunctionBegin;
+  PetscCallCeed(CeedVectorReturnCeed(vec_and_state->vector), CeedVectorDestroy(&vec_and_state->vector));
+  PetscCall(PetscFree(vec_and_state));
+  *ctx = NULL;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get Ceed objects for coordinate field of DM
+
+  @param[in]  ceed         `Ceed` context
+  @param[in]  dm           `DMPlex` holding mesh
+  @param[in]  domain_label `DMLabel` for `DMPlex` domain
+  @param[in]  label_value  Stratum value
+  @param[in]  height       Height of `DMPlex` topology
+  @param[out] elem_restr   `CeedElemRestriction` for coodinates of `DMPlex`, or `NULL`
+  @param[out] basis        `CeedBasis` for coordinate space of `DMPlex`, or `NULL`
+  @param[out] vector       `CeedVector` for coordinates of `DMPlex`, or `NULL`
+**/
+PetscErrorCode DMPlexCeedCoordinateCreateField(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
+                                               CeedElemRestriction *elem_restr, CeedBasis *basis, CeedVector *vector) {
+  CeedElemRestriction elem_restr_ = NULL;
+
+  PetscFunctionBeginUser;
+  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &elem_restr_));
+  if (elem_restr) {
+    *elem_restr = NULL;
+    PetscCallCeed(ceed, CeedElemRestrictionReferenceCopy(elem_restr_, elem_restr));
+  }
+  if (basis) PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, domain_label, label_value, height, basis));
+  if (vector) {
+    DM                 cdm;
+    char               container_name[] = "DM Coordinate CeedVectorAndState";
+    CeedVectorAndState vec_and_state;
+    Vec                X_loc;
+    PetscObjectState   X_loc_state;
+
+    PetscCall(DMGetCellCoordinateDM(dm, &cdm));
+    if (cdm) {
+      PetscCall(DMGetCellCoordinatesLocal(dm, &X_loc));
+    } else {
+      PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
+    }
+    PetscCall(VecGetState(X_loc, &X_loc_state));
+    PetscCall(PetscObjectContainerQuery((PetscObject)X_loc, container_name, (void **)&vec_and_state));
+
+    if (vec_and_state && vec_and_state->state == X_loc_state) {
+      // Copy existing vector
+      *vector = NULL;
+      PetscCallCeed(ceed, CeedVectorReferenceCopy(vec_and_state->vector, vector));
+    } else {
+      PetscCall(CeedElemRestrictionCreateVector(elem_restr_, vector, NULL));
+      PetscCall(VecCopyPetscToCeed(X_loc, *vector));
+
+      // Set in container
+      PetscCall(PetscNew(&vec_and_state));
+      PetscCallCeed(ceed, CeedVectorReferenceCopy(*vector, &vec_and_state->vector));
+      vec_and_state->state = X_loc_state;
+      PetscCall(PetscObjectContainerCompose((PetscObject)X_loc, container_name, vec_and_state, CeedVectorAndStateDestroy));
+    }
+  }
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

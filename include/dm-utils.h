@@ -17,6 +17,8 @@ PetscErrorCode DMPlexCeedElemRestrictionCollocatedCreate(Ceed ceed, DM dm, DMLab
 PetscErrorCode DMPlexCeedBasisCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
                                      CeedBasis *basis);
 PetscErrorCode DMPlexCeedBasisCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis);
+PetscErrorCode DMPlexCeedCoordinateCreateField(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
+                                               CeedElemRestriction *elem_restr, CeedBasis *basis, CeedVector *vector);
 PetscErrorCode DMPlexCeedBasisCellToFaceCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face,
                                                          CeedBasis *basis);
 PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face, PetscInt dm_field,
@@ -26,3 +28,9 @@ PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num
 
 PetscErrorCode DMGetCoordinateNumComps(DM dm, PetscInt *num_comp_x);
 PetscErrorCode DMGetFieldNumComps(DM dm, PetscInt field, PetscInt *num_comp);
+
+PetscErrorCode DMSetupByOrderBegin_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
+                                       PetscInt num_fields, const PetscInt *field_sizes, DM dm);
+PetscErrorCode DMSetupByOrderEnd_FEM(PetscBool setup_coords, DM dm);
+PetscErrorCode DMSetupByOrder_FEM(PetscBool setup_faces, PetscBool setup_coords, PetscInt degree, PetscInt coord_order, PetscInt q_extra,
+                                  PetscInt num_fields, const PetscInt *field_sizes, DM dm);

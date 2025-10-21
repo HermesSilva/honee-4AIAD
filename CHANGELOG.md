@@ -47,3 +47,5 @@ On this page we provide a summary of the main API changes, new features and exam
 - Update definition of `PetscOptionsItems` to reflect new status as pointer-to-struct rather than just struct. Requires latest PETSc.
 - Change `-ts_monitor_turbulence_spanstats_viewer` -> `-ts_monitor_turbulence_spanstats` and a few similar changes, see !108
 - Make `-dm_plex_csr_alg mat` the default. This allows for better partition cuts when using isoperiodicity, otherwise it has practically no impact.
+- Change `-mesh_transform` option to `-meshtransform_type`
+- Change `-platemesh_*` options to `-meshtransform_platemesh_*`
