@@ -220,7 +220,7 @@ PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, 
                                      CeedOperator *sub_op_ifunc) {
   Honee               honee;
   Ceed                ceed;
-  DM                  dm, dm_coord;
+  DM                  dm;
   HoneeBCStruct       honee_bc;
   PetscInt            dim, height = 1, num_comp_x, num_comp_q;
   CeedInt             q_data_size, num_comps_jac_data;
@@ -237,19 +237,11 @@ PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, 
   num_comps_jac_data = honee_bc->num_comps_jac_data;
 
   PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(QDataBoundaryGetNumComponents(dm, &q_data_size));
   PetscCall(DMGetCoordinateNumComps(dm, &num_comp_x));
+  PetscCall(DMGetFieldNumComps(dm, bc_def->dm_field, &num_comp_q));
 
-  {
-    PetscSection section;
-
-    PetscCall(DMGetLocalSection(dm, &section));
-    PetscCall(PetscSectionGetFieldComponents(section, bc_def->dm_field, &num_comp_q));
-  }
-
-  PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &basis_q));
-  PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
+  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, domain_label, label_value, height, &basis_x));
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &elem_restr_q));
   PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, domain_label, label_value, height, &elem_restr_x));
   PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, &elem_restr_qd, &q_data, &q_data_size));
@@ -299,7 +291,7 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
                                      CeedQFunction qf_ijac, CeedOperator op_ijac) {
   Honee               honee;
   Ceed                ceed;
-  DM                  dm, dm_coord;
+  DM                  dm;
   HoneeBCStruct       honee_bc;
   PetscInt            dim, height = 1, num_comp_x, num_comp_q;
   CeedInt             q_data_size;
@@ -316,19 +308,11 @@ PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_if
   ceed  = honee_bc->honee->ceed;
 
   PetscCall(DMGetDimension(dm, &dim));
-  PetscCall(QDataBoundaryGetNumComponents(dm, &q_data_size));
   PetscCall(DMGetCoordinateNumComps(dm, &num_comp_x));
+  PetscCall(DMGetFieldNumComps(dm, bc_def->dm_field, &num_comp_q));
 
-  {
-    PetscSection section;
-
-    PetscCall(DMGetLocalSection(dm, &section));
-    PetscCall(PetscSectionGetFieldComponents(section, bc_def->dm_field, &num_comp_q));
-  }
-
-  PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, bc_def->dm_field, &basis_q));
-  PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, domain_label, label_value, height, bc_def->dm_field, &basis_x));
+  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, domain_label, label_value, height, &basis_x));
   PetscCall(QDataBoundaryGet(ceed, dm, domain_label, label_value, &elem_restr_qd, &q_data, &q_data_size));
 
   {  // Get restriction and basis from the IFunction function
