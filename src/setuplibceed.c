@@ -112,10 +112,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
 
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
     PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_q));
-    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &honee->basis_x));
 
     PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, 0, &elem_restr_q));
-    PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, &honee->elem_restr_x));
     if (num_comps_jac_data) {
       PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, num_comps_jac_data, &elem_restr_jd_i));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jd_i, &jac_data, NULL));
@@ -124,21 +122,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &honee->q_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &honee->q_dot_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &honee->g_ceed, NULL));
-    PetscCallCeed(ceed, CeedElemRestrictionCreateVector(honee->elem_restr_x, &honee->x_coord, NULL));
 
-    {  // -- Copy PETSc coordinate vector into CEED vector
-      Vec X_loc;
-      DM  cdm;
-
-      PetscCall(DMGetCellCoordinateDM(dm, &cdm));
-      if (cdm) {
-        PetscCall(DMGetCellCoordinatesLocal(dm, &X_loc));
-      } else {
-        PetscCall(DMGetCoordinatesLocal(dm, &X_loc));
-      }
-      PetscCall(VecScale(X_loc, honee->units->meter));
-      PetscCall(VecCopyPetscToCeed(X_loc, honee->x_coord));
-    }
+    PetscCall(DMPlexCeedCoordinateGetField(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, &honee->elem_restr_x, &honee->basis_x,
+                                           &honee->x_coord));
 
     PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, honee->elem_restr_x, honee->basis_x, honee->x_coord, &elem_restr_qd, &q_data,
                        &q_data_size_vol));

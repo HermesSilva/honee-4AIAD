@@ -17,6 +17,8 @@ PetscErrorCode DMPlexCeedElemRestrictionCollocatedCreate(Ceed ceed, DM dm, DMLab
 PetscErrorCode DMPlexCeedBasisCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
                                      CeedBasis *basis);
 PetscErrorCode DMPlexCeedBasisCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, CeedBasis *basis);
+PetscErrorCode DMPlexCeedCoordinateCreateField(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,
+                                               CeedElemRestriction *elem_restr, CeedBasis *basis, CeedVector *vector);
 PetscErrorCode DMPlexCeedBasisCellToFaceCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face,
                                                          CeedBasis *basis);
 PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face, PetscInt dm_field,
