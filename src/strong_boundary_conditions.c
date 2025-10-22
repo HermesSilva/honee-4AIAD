@@ -129,8 +129,8 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
     PetscInt  label_value = 0;
     CeedBasis basis_x_face, basis_q_face;
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(CreateBasisFromPlex(ceed, dm, label, label_value, height_face, dm_field, &basis_q_face));
-    PetscCall(CreateBasisFromPlex(ceed, dm_coord, label, label_value, height_face, dm_field, &basis_x_face));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm, label, label_value, height_face, dm_field, &basis_q_face));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, label, label_value, height_face, dm_field, &basis_x_face));
     PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x_face, basis_q_face, &basis_x_to_q_face));
     PetscCallCeed(ceed, CeedBasisDestroy(&basis_q_face));
     PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_face));
@@ -170,7 +170,7 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         {
           CeedBasis basis_x_cell_to_face, basis_q_face;
           PetscCall(DMPlexCeedBasisCellToFaceCoordinateCreate(ceed, dm, face_orientation_label, orientation, orientation, &basis_x_cell_to_face));
-          PetscCall(CreateBasisFromPlex(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &basis_q_face));
+          PetscCall(DMPlexCeedBasisCreate(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &basis_q_face));
           PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x_cell_to_face, basis_q_face, &basis_x_to_q_cell));
           PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_cell_to_face));
           PetscCallCeed(ceed, CeedBasisDestroy(&basis_q_face));
@@ -178,7 +178,8 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
 
         PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &elem_restr_q_face));
         PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, face_orientation_label, orientation, height_face, &elem_restr_x_face));
-        PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, face_orientation_label, orientation, height_cell, &elem_restr_x_cell));
+        CeedVector x_coord;
+        PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, face_orientation_label, orientation, height_cell, &elem_restr_x_cell, NULL, &x_coord));
 
         PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q_face, &multiplicity, NULL));
         PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(elem_restr_q_face, multiplicity));
@@ -203,7 +204,7 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
                                                             num_comp_x * (dim - height_cell), &elem_restr_dXdx));
         PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_dXdx, &dXdx, NULL));
         PetscCallCeed(ceed, CeedOperatorSetField(op_setup, "dXdx", elem_restr_dXdx, CEED_BASIS_NONE, dXdx));
-        PetscCallCeed(ceed, CeedOperatorApply(op_setup, honee->x_coord, CEED_VECTOR_NONE, CEED_REQUEST_IMMEDIATE));
+        PetscCallCeed(ceed, CeedOperatorApply(op_setup, x_coord, CEED_VECTOR_NONE, CEED_REQUEST_IMMEDIATE));
 
         // Build QFunction for strong BC
         CeedQFunction        qf_strong;
@@ -283,6 +284,7 @@ static PetscErrorCode SetupStrong_Ceed(Ceed ceed, Honee honee, DM dm, ProblemDat
         PetscCallCeed(ceed, CeedVectorDestroy(&x_stored));
         PetscCallCeed(ceed, CeedVectorDestroy(&scale_stored));
         PetscCallCeed(ceed, CeedVectorDestroy(&dXdx));
+        PetscCallCeed(ceed, CeedVectorDestroy(&x_coord));
         PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_to_q_cell));
       }
       PetscCall(PetscFree(orient_values));
