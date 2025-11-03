@@ -250,6 +250,8 @@ static inline CeedInt GetCeedQuadratureSize(CeedEvalMode eval_mode, CeedInt dim,
 **/
 static inline CeedElemTopology PolytopeTypePetscToCeed(DMPolytopeType cell_type) {
   switch (cell_type) {
+    case DM_POLYTOPE_SEGMENT:
+      return CEED_TOPOLOGY_LINE;
     case DM_POLYTOPE_TRIANGLE:
       return CEED_TOPOLOGY_TRIANGLE;
     case DM_POLYTOPE_QUADRILATERAL:
