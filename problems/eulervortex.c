@@ -166,7 +166,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
       honee_bc->honee              = honee;
       honee_bc->num_comps_jac_data = 0;
-      PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
       PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
@@ -177,7 +177,7 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
       honee_bc->honee              = honee;
       honee_bc->num_comps_jac_data = 0;
-      PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
       PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));

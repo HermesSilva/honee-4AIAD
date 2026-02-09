@@ -162,7 +162,7 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
       .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
       .qfctx              = outflow_qfctx,
   };
-  PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+  PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
   PetscCall(BCDefinitionSetIFunction(bc_def, OutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
   PetscCall(BCDefinitionSetIJacobian(bc_def, OutflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));

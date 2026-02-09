@@ -236,7 +236,7 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
         PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &honee_bc->qfctx));
         honee_bc->honee              = honee;
         honee_bc->num_comps_jac_data = 0;
-        PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+        PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
         PetscCall(BCDefinitionSetIFunction(bc_def, BlasiusInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
         PetscCall(BCDefinitionSetIJacobian(bc_def, BlasiusInflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));

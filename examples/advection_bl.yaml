@@ -9,7 +9,7 @@ diffusion_coeff: 5e-4
 
 implicit:
 ts:
-  dt: 1e-2
+  time_step: 1e-2
   type: alpha
   alpha_radius: 1
   adapt_type: none

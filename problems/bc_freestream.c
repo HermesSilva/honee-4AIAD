@@ -160,7 +160,7 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
       .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
       .qfctx              = freestream_qfctx,
   };
-  PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+  PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
   PetscCall(BCDefinitionSetIFunction(bc_def, FreestreamBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
   PetscCall(BCDefinitionSetIJacobian(bc_def, FreestreamBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));

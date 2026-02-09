@@ -606,7 +606,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
       PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &honee_bc->qfctx));
       honee_bc->honee              = honee;
       honee_bc->num_comps_jac_data = 0;
-      PetscCall(BCDefinitionSetContext(bc_def, HoneeBCDestroy, honee_bc));
+      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
       PetscCall(BCDefinitionSetIFunction(bc_def, AdvectionInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
       PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
