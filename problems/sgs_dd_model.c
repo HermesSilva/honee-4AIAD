@@ -18,7 +18,7 @@ typedef struct {
   SgsDDNodalStressEval      sgs_nodal_eval;
   SgsDDNodalStressInference sgs_nodal_inference;
   void                     *sgs_nodal_inference_ctx;
-  PetscErrorCode (*sgs_nodal_inference_ctx_destroy)(void *ctx);
+  PetscCtxDestroyFn        *sgs_nodal_inference_ctx_destroy;
 } *SgsDDData;
 
 // @brief Destroy `SgsDDData` object
@@ -224,7 +224,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential_Ceed(Ceed ceed, SgsDD
 
   PetscCall(OperatorApplyContextCreate(sgs_dd_data->dm_dd_inputs, sgs_dd_data->dm_dd_outputs, ceed, op_sgs_dd_inference, NULL, NULL, NULL, NULL,
                                        op_context));
-  sgs_dd_data->sgs_nodal_inference_ctx_destroy = (PetscErrorCode(*)(void *))OperatorApplyContextDestroy;
+  sgs_dd_data->sgs_nodal_inference_ctx_destroy = (PetscCtxDestroyFn *)OperatorApplyContextDestroy;
 
   PetscCallCeed(ceed, CeedOperatorDestroy(&op_sgs_dd_inference));
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_sgs_dd_inference));

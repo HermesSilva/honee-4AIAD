@@ -111,7 +111,8 @@ PetscErrorCode DMPlexCeedElemRestrictionCreate(Ceed ceed, DM dm, DMLabel domain_
 
     // Set in container
     PetscCallCeed(ceed, CeedElemRestrictionReferenceCopy(*restriction, &container_restriction));
-    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_restriction, DMPlexCeedElemRestrictionDestroy));
+    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_restriction,
+                                          (PetscCtxDestroyFn *)DMPlexCeedElemRestrictionDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -855,7 +856,7 @@ PetscErrorCode DMPlexCeedBasisCreate(Ceed ceed, DM dm, DMLabel domain_label, Pet
     }
     // Set in container
     PetscCallCeed(ceed, CeedBasisReferenceCopy(*basis, &container_basis));
-    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_basis, DMPlexCeedBasisDestroy));
+    PetscCall(PetscObjectContainerCompose((PetscObject)dm, container_name, container_basis, (PetscCtxDestroyFn *)DMPlexCeedBasisDestroy));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -960,7 +961,7 @@ PetscErrorCode DMPlexCeedCoordinateCreateField(Ceed ceed, DM dm, DMLabel domain_
       PetscCall(PetscNew(&vec_and_state));
       PetscCallCeed(ceed, CeedVectorReferenceCopy(*vector, &vec_and_state->vector));
       vec_and_state->state = X_loc_state;
-      PetscCall(PetscObjectContainerCompose((PetscObject)X_loc, container_name, vec_and_state, CeedVectorAndStateDestroy));
+      PetscCall(PetscObjectContainerCompose((PetscObject)X_loc, container_name, vec_and_state, (PetscCtxDestroyFn *)CeedVectorAndStateDestroy));
     }
   }
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_));
