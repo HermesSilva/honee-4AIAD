@@ -32,7 +32,7 @@ Ctau_M: 0.5
 Ctau_E: 0.5
 
 ts:
-  dt: 2e-3
+  time_step: 2e-3
   type: rk
   rk_type: 4
   adapt_type: none

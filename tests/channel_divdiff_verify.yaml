@@ -4,14 +4,14 @@ problem: 'channel'
 # ts:
 #   type: 'beuler'
 #   adapt_type: 'none'
-#   dt: 1e-1
+#   time_step: 1e-1
 #   max_steps: 10
 
 implicit: false
 ts:
   type: 'rk'
   adapt_type: 'none'
-  dt: 1e-2
+  time_step: 1e-2
   max_steps: 20
 mass:
   ksp_type: gmres

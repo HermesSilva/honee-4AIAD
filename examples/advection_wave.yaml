@@ -13,7 +13,7 @@ advection_ic_wave:
 diffusion_coeff: 0
 
 ts:
-  dt: 1e-3
+  time_step: 1e-3
   type: rk
   adapt_type: none
   max_steps: 100
