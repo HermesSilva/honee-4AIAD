@@ -141,7 +141,7 @@ static PetscErrorCode MatCeedAssemblePointBlockDiagonalCOO(Mat mat_ceed, Mat mat
 
   Collective across MPI processes.
 
-  @param[in]   mat_ceed      `MATCEED` to invert
+  @param[in]   mat_ceed      `MATCEED` to assemble block diagonal of
   @param[in]   use_ceed_pbd  Boolean flag to use libCEED PBD assembly
   @param[out]  mat_inner     Inner `Mat` for diagonal operations
 
@@ -175,7 +175,7 @@ static PetscErrorCode MatCeedAssembleInnerBlockDiagonalMat(Mat mat_ceed, PetscBo
 
   Collective across MPI processes.
 
-  @param[in]   mat_ceed   `MATCEED` to invert
+  @param[in]   mat_ceed   `MATCEED` to get variable block diagonal of
   @param[out]  mat_vblock  The variable diagonal block matrix
 
   @return An error code: 0 - success, otherwise - failure
@@ -197,8 +197,8 @@ static PetscErrorCode MatGetVariableBlockDiagonal_Ceed(Mat mat_ceed, Mat *mat_vb
 
   Collective across MPI processes.
 
-  @param[in]   mat_ceed   `MATCEED` to invert
-  @param[out]  mat_block  The variable diagonal block matrix
+  @param[in]   mat_ceed   `MATCEED` to to get block diagonal of
+  @param[out]  mat_block  The diagonal block matrix
 
   @return An error code: 0 - success, otherwise - failure
 **/
@@ -215,14 +215,14 @@ static PetscErrorCode MatGetBlockDiagonal_Ceed(Mat mat_ceed, Mat *mat_block) {
 }
 
 /**
-  @brief Get on-process diagonal block of `MATCEED`
+  @brief Get on-process diagonal block of `MATCEED`.
 
   This is a block per-process of the diagonal of the global matrix.
   This is NOT the diagonal blocks associated with the block size of the matrix (i.e. `MatSetBlockSize()` has no effect on this function).
 
   Collective across MPI processes.
 
-  @param[in]   mat_ceed   `MATCEED` to invert
+  @param[in]   mat_ceed   `MATCEED` to get the block per-proces of
   @param[out]  mat_block  The diagonal block matrix
 
   @return An error code: 0 - success, otherwise - failure
@@ -277,6 +277,7 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
     PetscBool is_detailed     = format == PETSC_VIEWER_ASCII_INFO_DETAIL;
     char      rank_string[16] = {'\0'};
     PetscInt  num_tabs        = 0;
+    CeedInt   prev_num_tabs;
     FILE     *file;
 
     PetscCall(PetscViewerASCIIPrintf(viewer, "MatCEED:\n"));
@@ -299,10 +300,11 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
       PetscCall(PetscViewerASCIIPrintf(viewer, "CeedOperator ApplyTranspose %s:\n", is_detailed ? rank_string : "Summary"));
       PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
       PetscCall(PetscViewerASCIIGetTab(viewer, &num_tabs));
+      PetscCallCeed(ctx->ceed, CeedOperatorGetNumViewTabs(ctx->op_mult_transpose, &prev_num_tabs));
       PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult_transpose, num_tabs));
       if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult_transpose, file));
       else PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult_transpose, file));
-      PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult_transpose, 0));
+      PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult_transpose, prev_num_tabs));
       PetscCall(PetscViewerASCIIPopTab(viewer));  // CeedOperator
     }
     PetscCall(PetscViewerASCIIPopTab(viewer));  // MatCEED
@@ -311,7 +313,7 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
 }
 
 /**
-  @brief Set options for MatCeed from command-line iterface
+  @brief Set options for MatCeed from command-line interface
 
   @note This is a PETSc interface, thus the odd signature
   @note The name of the second parameter must be `PetscOptionsObject` due to abuse of PETSc macros
