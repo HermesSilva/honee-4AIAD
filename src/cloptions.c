@@ -83,11 +83,15 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
     PetscCall(PetscOptionsHasHelp(NULL, &help_set));
     if (help_set) {
       PetscCall(PetscOptionsSetValue(NULL, "-ts_max_steps", "0"));
+      PetscCall(PetscPrintf(comm, "\n########################################\n\n"));
+      PetscCall(PetscPrintf(comm, "HONEE documentation may be found at https://honee.phypid.org\n\n"));
+      PetscCall(PetscPrintf(comm, "########################################\n\n"));
     } else {
       PetscCall(PetscOptionsLeftGet(NULL, &num_options, NULL, NULL));
       PetscCheck(num_options > 0, comm, PETSC_ERR_USER_INPUT,
                  "Command line options required."
-                 " Please consult the documentation to see which options are required.");
+                 " Please consult the documentation to see which options are required."
+                 " HONEE documentation may be found at https://honee.phypid.org\n");
       PetscCall(PetscOptionsLeftRestore(NULL, &num_options, NULL, NULL));
     }
   }
