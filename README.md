@@ -74,6 +74,44 @@ To test the installation, use
 $ make test -j8
 ```
 
+### Demo Build
+
+Here we walk through a complete, step-by-step demonstration of building and installing HONEE and its dependencies.
+This will be aimed at the minimal-viable install; better performance may be gained from different configurations, compiler flags, etc.
+As such, it will only target a CPU installation of HONEE.
+
+Generally, we assume that the system you're installing on has a pre-existing installation of MPI loaded into the environment.
+If this is not true, you can add a `--download-mpich` flag to PETSc's configuration command to have PETSc build and install MPICH.
+
+```console
+$ export CC=mpicc CXX=mpicxx # PETSc and libCEED will use these environment variables to select compiler
+$ mkdir honee_build_dir
+$ cd honee_build_dir
+$ ## Build PETSc
+$ git clone https://gitlab.com/petsc/petsc
+$ cd petsc
+$ export PETSC_DIR=$PWD PETSC_ARCH=arch-linux-c-opt
+$ ./configure \
+  --with-fc=0 \
+  --download-f2cblaslapack \
+  --download-hdf5 \
+  --download-cgns \
+  --with-debugging=0 \
+  COPTFLAGS='-O3 -g -march=native' \
+  CXXOPTFLAGS='-O3 -g -march=native'
+$ make -j
+$ ## Build libCEED
+$ cd ..
+$ git clone https://github.com/CEED/libCEED
+$ cd libCEED
+$ make -j
+$ ## Build HONEE
+$ cd ..
+$ git clone https://gitlab.com/phypid/honee
+$ cd honee
+$ make -j
+```
+
 <!-- citing -->
 
 ## License
