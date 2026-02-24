@@ -367,3 +367,4 @@ PetscErrorCode HoneeWallDistanceSetup(Honee honee, PetscInt num_label_values, co
 PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_label, PetscInt label_value, PetscInt height,
                                                     CeedElemRestriction *elem_restr_walldist, CeedVector *vec_walldist);
 PetscErrorCode HoneeWallDistanceViewProjectedField(Honee honee, PetscBool error_if_not_setup);
+PetscErrorCode HoneeWallDistanceTest(Honee honee);

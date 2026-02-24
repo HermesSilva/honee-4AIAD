@@ -472,3 +472,43 @@ PetscErrorCode HoneeWallDistanceViewProjectedField(Honee honee, PetscBool error_
   PetscCall(VecViewFromOptions(walldist_ctx->Walldist, NULL, "-" WALLDIST_PREFIX "projection_view"));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
+
+/**
+  @brief Run regression test for wall distance calculation
+
+  @param[in] honee `Honee`
+**/
+PetscErrorCode HoneeWallDistanceTest(Honee honee) {
+  Ceed                ceed = honee->ceed;
+  CeedElemRestriction elem_restr_walldist;
+  CeedVector          vec_walldist;
+  Vec                 walldist_qpts;
+  CeedSize            vec_walldist_size;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeWallDistanceGetQuadratureValues(honee, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_walldist, &vec_walldist));
+
+  PetscCallCeed(ceed, CeedVectorGetLength(vec_walldist, &vec_walldist_size));
+  PetscCall(VecCreate(PETSC_COMM_SELF, &walldist_qpts));
+  PetscCall(VecSetType(walldist_qpts, VECSEQ));
+  PetscCall(VecSetSizes(walldist_qpts, vec_walldist_size, vec_walldist_size));
+  {
+    const CeedScalar *vec_walldist_ptr;
+    PetscScalar      *walldist_qpts_ptr;
+
+    PetscCallCeed(ceed, CeedVectorGetArrayRead(vec_walldist, CEED_MEM_HOST, &vec_walldist_ptr));
+    PetscCall(VecGetArray(walldist_qpts, &walldist_qpts_ptr));
+    for (CeedSize i = 0; i < vec_walldist_size; i++) walldist_qpts_ptr[i] = vec_walldist_ptr[i];
+    PetscCall(VecRestoreArray(walldist_qpts, &walldist_qpts_ptr));
+    PetscCallCeed(ceed, CeedVectorRestoreArrayRead(vec_walldist, &vec_walldist_ptr));
+  }
+  PetscCall(VecViewFromOptions(walldist_qpts, NULL, "-" WALLDIST_PREFIX "qpts_test_view"));
+
+  PetscCall(RegressionTest(honee->app_ctx, walldist_qpts));
+  honee->app_ctx->has_test_run = PETSC_TRUE;
+
+  PetscCall(VecDestroy(&walldist_qpts));
+  PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_walldist));
+  PetscCallCeed(ceed, CeedVectorDestroy(&vec_walldist));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
