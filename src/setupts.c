@@ -496,6 +496,7 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
 
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(PrintRunInfo(honee, honee->phys, problem, *ts));
   if (honee->mass_ksp) PetscCall(KSPViewFromOptions(honee->mass_ksp, NULL, "-ksp_view_pre_ts_solve"));
+  PetscCall(HoneeWallDistanceViewProjectedField(honee, PETSC_FALSE));
 
   // Solve
   PetscReal start_time;

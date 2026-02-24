@@ -20,5 +20,8 @@ extern PetscLogEvent HONEE_VelocityGradientProjection;
 extern PetscLogEvent HONEE_SgsModel;
 extern PetscLogEvent HONEE_SgsModelDDInference;
 extern PetscLogEvent HONEE_SgsModelDDData;
+extern PetscLogEvent HONEE_WallDistPLaplacian;
+extern PetscLogEvent HONEE_WallDistQuadraturePoints;
+extern PetscLogEvent HONEE_WallDistL2Projection;
 
 PetscErrorCode RegisterLogEvents();

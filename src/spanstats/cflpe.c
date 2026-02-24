@@ -235,6 +235,7 @@ PetscErrorCode TSMonitor_SpanwiseStatisticsCflPe(TS ts, PetscInt steps, PetscRea
         }
       } else if (honee->app_ctx->test_type == TESTTYPE_SPANSTATS && reason != TS_CONVERGED_ITERATING) {
         PetscCall(RegressionTest(honee->app_ctx, stats));
+        honee->app_ctx->has_test_run = PETSC_TRUE;
       }
 
       PetscCall(DMRestoreGlobalVector(spanstats->dm, &stats));

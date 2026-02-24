@@ -45,8 +45,10 @@ typedef enum {
   TESTTYPE_TURB_SPANSTATS = 2,
   TESTTYPE_DIFF_FILTER    = 3,
   TESTTYPE_SPANSTATS      = 4,
+  TESTTYPE_WALLDISTANCE   = 5,
 } TestType;
-static const char *const TestTypes[] = {"NONE", "SOLVER", "TURB_SPANSTATS", "DIFF_FILTER", "SPANSTATS", "TestType", "TESTTYPE_", NULL};
+static const char *const TestTypes[] = {"NONE",         "SOLVER",   "TURB_SPANSTATS", "DIFF_FILTER", "SPANSTATS",
+                                        "WALLDISTANCE", "TestType", "TESTTYPE_",      NULL};
 
 // Subgrid-Stress mode type
 typedef enum {
@@ -99,6 +101,7 @@ struct AppCtx_private {
   TestType    test_type;
   PetscScalar test_tol;
   char        test_file_path[PETSC_MAX_PATH_LEN];
+  PetscBool   has_test_run;
   // Wall forces
   struct {
     PetscInt          num_wall;
@@ -359,3 +362,8 @@ PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx);
 PetscErrorCode TSMonitor_Cfl(TS ts, PetscInt step, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
 
 PetscErrorCode KSPPostSolve_Honee(KSP ksp, Vec rhs, Vec x, void *ctx);
+
+PetscErrorCode HoneeWallDistanceSetup(Honee honee, PetscInt num_label_values, const PetscInt *label_values);
+PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_label, PetscInt label_value, PetscInt height,
+                                                    CeedElemRestriction *elem_restr_walldist, CeedVector *vec_walldist);
+PetscErrorCode HoneeWallDistanceViewProjectedField(Honee honee, PetscBool error_if_not_setup);

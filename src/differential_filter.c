@@ -350,7 +350,10 @@ PetscErrorCode TSMonitor_DifferentialFilter(TS ts, PetscInt steps, PetscReal sol
 
   PetscCall(DifferentialFilterApply(honee, diff_filter, solution_time, Q, Filtered_Field));
   PetscCall(VecViewFromOptions(Filtered_Field, NULL, "-diff_filter_view"));
-  if (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER) PetscCall(RegressionTest(honee->app_ctx, Filtered_Field));
+  if (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER) {
+    PetscCall(RegressionTest(honee->app_ctx, Filtered_Field));
+    honee->app_ctx->has_test_run = PETSC_TRUE;
+  }
 
   PetscCall(DMRestoreGlobalVector(diff_filter->dm_filter, &Filtered_Field));
   PetscFunctionReturn(PETSC_SUCCESS);
