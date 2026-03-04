@@ -257,6 +257,7 @@ PetscErrorCode TSMonitor_SpanwiseStatisticsTurbulence(TS ts, PetscInt steps, Pet
       }
       if (honee->app_ctx->test_type == TESTTYPE_TURB_SPANSTATS && reason != TS_CONVERGED_ITERATING) {
         PetscCall(RegressionTest(honee->app_ctx, stats));
+        honee->app_ctx->has_test_run = PETSC_TRUE;
       }
       if (spanstats->do_mms_test && reason != TS_CONVERGED_ITERATING) {
         Vec error;

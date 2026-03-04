@@ -39,6 +39,13 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
 
   PetscCall(PetscOptionsBCDefinition("-bc_wall", "Face IDs to apply wall BC", NULL, "wall", &bc_def, NULL));
   PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+
+  if (bc_def) {  // Setup wall distance based on wall bc
+    const PetscInt *label_values;
+    PetscInt        num_label_values;
+    PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_label_values, &label_values));
+    PetscCall(HoneeWallDistanceSetup(honee, num_label_values, label_values));
+  }
   if (bc_def) {
     PetscInt num_essential_comps = 16, essential_comps[16];
 

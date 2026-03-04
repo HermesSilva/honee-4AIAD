@@ -4,7 +4,7 @@
 #include <log_events.h>
 #include <petscsys.h>
 
-static PetscClassId libCEED_classid, onlineTrain_classid, sgs_model_classid, misc_classid;
+static PetscClassId libCEED_classid, onlineTrain_classid, sgs_model_classid, misc_classid, walldist_classid;
 
 PetscLogEvent HONEE_CeedOperatorApply;
 PetscLogEvent HONEE_CeedOperatorAssemble;
@@ -22,6 +22,9 @@ PetscLogEvent HONEE_VelocityGradientProjection;
 PetscLogEvent HONEE_SgsModel;
 PetscLogEvent HONEE_SgsModelDDInference;
 PetscLogEvent HONEE_SgsModelDDData;
+PetscLogEvent HONEE_WallDistPLaplacian;
+PetscLogEvent HONEE_WallDistQuadraturePoints;
+PetscLogEvent HONEE_WallDistL2Projection;
 
 PetscErrorCode RegisterLogEvents() {
   PetscFunctionBeginUser;
@@ -41,6 +44,11 @@ PetscErrorCode RegisterLogEvents() {
   PetscCall(PetscLogEventRegister("SgsModel", sgs_model_classid, &HONEE_SgsModel));
   PetscCall(PetscLogEventRegister("SgsModelDDInfer", sgs_model_classid, &HONEE_SgsModelDDInference));
   PetscCall(PetscLogEventRegister("SgsModelDDData", sgs_model_classid, &HONEE_SgsModelDDData));
+
+  PetscCall(PetscClassIdRegister("Wall Distance", &walldist_classid));
+  PetscCall(PetscLogEventRegister("WallDistPLaplace", walldist_classid, &HONEE_WallDistPLaplacian));
+  PetscCall(PetscLogEventRegister("WallDistQPoints", walldist_classid, &HONEE_WallDistQuadraturePoints));
+  PetscCall(PetscLogEventRegister("WallDistL2Proj", walldist_classid, &HONEE_WallDistL2Projection));
 
   PetscCall(PetscClassIdRegister("Miscellaneous", &misc_classid));
   PetscCall(PetscLogEventRegister("DiffFilter", misc_classid, &HONEE_DifferentialFilter));

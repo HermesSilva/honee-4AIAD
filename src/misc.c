@@ -171,6 +171,7 @@ PetscErrorCode PostProcess(TS ts, DM dm, ProblemData problem, Honee honee, Vec Q
   // Compare reference solution values with current test run for CI
   if (honee->app_ctx->test_type == TESTTYPE_SOLVER) {
     PetscCall(RegressionTest(honee->app_ctx, Q));
+    honee->app_ctx->has_test_run = PETSC_TRUE;
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

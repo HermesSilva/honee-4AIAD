@@ -34,6 +34,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `HoneeSetContainer()`, `HoneeGetContainer()`, and `HoneeHasContainer()` for adding misc structs to a `Honee` object
 - Add `-ts_monitor_spanstats_cflpe` to calculate the spanwise statistics of CFL and Peclet number
 - Add `-ts_monitor_smartsim_solution` for writing solution vector to SmartSim database
+- Add wall distance calculations, see documentation for details
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
