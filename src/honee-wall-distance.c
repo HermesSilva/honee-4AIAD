@@ -254,7 +254,6 @@ static PetscErrorCode HoneeWallDistance_ComputePLaplacian(Honee honee) {
   @param[in]  height              Topological element height to get quadrature points for
   @param[out] elem_restr_walldist Element restriction for the wall distance
   @param[out] vec_walldist        Vector of wall distance evaluated at quadrature points
-  @return 
 **/
 PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_label, PetscInt label_value, PetscInt height,
                                                     CeedElemRestriction *elem_restr_walldist, CeedVector *vec_walldist) {
@@ -346,6 +345,12 @@ static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, DMLabel do
   PetscCall(HoneeGetContainer(honee, WALLDIST_KEY, &walldist_ctx));
   if (walldist_ctx->Phi == NULL) PetscCall(HoneeWallDistance_ComputePLaplacian(honee));
   DM dm = walldist_ctx->dm_laplacian;
+  {  // Reset component name since we're reusing the p-Laplacian DM
+    PetscSection section;
+
+    PetscCall(DMGetLocalSection(dm, &section));
+    PetscCall(PetscSectionSetComponentName(section, 0, 0, "WallDistance"));
+  }
   PetscCall(DMGetDimension(dm, &dim));
 
   PetscCall(QDataGet(ceed, dm, domain_label, label_value, &elem_restr_qd, &q_data, &q_data_size));
@@ -429,11 +434,11 @@ static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, DMLabel do
   if (vec_walldist) {
     Vec Walldist_loc;
 
-    PetscCall(DMGetLocalVector(dm, &Walldist_loc));
+    PetscCall(DMCreateLocalVector(dm, &Walldist_loc));
     PetscCall(DMGlobalToLocal(dm, walldist_ctx->Walldist, INSERT_VALUES, Walldist_loc));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_laplacian, vec_walldist, NULL));
     PetscCall(VecCopyPetscToCeed(Walldist_loc, *vec_walldist));
-    PetscCall(DMRestoreLocalVector(dm, &Walldist_loc));
+    PetscCall(VecDestroy(&Walldist_loc));
   }
 
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
