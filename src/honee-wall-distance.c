@@ -254,7 +254,6 @@ static PetscErrorCode HoneeWallDistance_ComputePLaplacian(Honee honee) {
   @param[in]  height              Topological element height to get quadrature points for
   @param[out] elem_restr_walldist Element restriction for the wall distance
   @param[out] vec_walldist        Vector of wall distance evaluated at quadrature points
-  @return 
 **/
 PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_label, PetscInt label_value, PetscInt height,
                                                     CeedElemRestriction *elem_restr_walldist, CeedVector *vec_walldist) {
@@ -326,26 +325,41 @@ PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, DMLabel domain_label, PetscInt label_value, PetscInt height,
-                                                         CeedElemRestriction *elem_restr_walldist, CeedBasis *basis_walldist,
+/**
+  @brief Projects the wall distance field onto the finite element grid
+
+  @param[in]  honee               `Honee`
+  @param[out] elem_restr_walldist Element restriction for the wall distance
+  @param[out] basis_walldist      Basis for projected wall distance field
+  @param[out] vec_walldist        Vector of wall distance coefficients
+**/
+static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestriction *elem_restr_walldist, CeedBasis *basis_walldist,
                                                          CeedVector *vec_walldist) {
   MPI_Comm             comm = honee->comm;
   Ceed                 ceed = honee->ceed;
   HoneeWallDistance    walldist_ctx;
   NodalProjectionData  projection;
-  PetscInt             dm_field = 0, dim;
+  PetscInt             dim;
   CeedElemRestriction  elem_restr_qd;
   CeedVector           q_data;
   CeedInt              q_data_size;
   CeedElemRestriction  elem_restr_laplacian;
   CeedBasis            basis_laplacian;
   CeedQFunctionContext laplacian_qfctx;
+  const DMLabel        domain_label = DMLABEL_DEFAULT;
+  const PetscInt       label_value = DMLABEL_DEFAULT_VALUE, dm_field = 0, height = 0;
 
   PetscFunctionBeginUser;
   PetscCall(PetscLogEventBegin(HONEE_WallDistL2Projection, honee->dm, NULL, NULL, NULL));
   PetscCall(HoneeGetContainer(honee, WALLDIST_KEY, &walldist_ctx));
   if (walldist_ctx->Phi == NULL) PetscCall(HoneeWallDistance_ComputePLaplacian(honee));
   DM dm = walldist_ctx->dm_laplacian;
+  {  // Reset component name since we're reusing the p-Laplacian DM
+    PetscSection section;
+
+    PetscCall(DMGetLocalSection(dm, &section));
+    PetscCall(PetscSectionSetComponentName(section, 0, 0, "WallDistance"));
+  }
   PetscCall(DMGetDimension(dm, &dim));
 
   PetscCall(QDataGet(ceed, dm, domain_label, label_value, &elem_restr_qd, &q_data, &q_data_size));
@@ -429,11 +443,11 @@ static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, DMLabel do
   if (vec_walldist) {
     Vec Walldist_loc;
 
-    PetscCall(DMGetLocalVector(dm, &Walldist_loc));
+    PetscCall(DMCreateLocalVector(dm, &Walldist_loc));
     PetscCall(DMGlobalToLocal(dm, walldist_ctx->Walldist, INSERT_VALUES, Walldist_loc));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_laplacian, vec_walldist, NULL));
     PetscCall(VecCopyPetscToCeed(Walldist_loc, *vec_walldist));
-    PetscCall(DMRestoreLocalVector(dm, &Walldist_loc));
+    PetscCall(VecDestroy(&Walldist_loc));
   }
 
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
@@ -467,7 +481,7 @@ PetscErrorCode HoneeWallDistanceViewProjectedField(Honee honee, PetscBool error_
   PetscCall(PetscOptionsHasName(NULL, NULL, "-" WALLDIST_PREFIX "projection_view", &has_projection_view_option));
   if (!has_projection_view_option) PetscFunctionReturn(PETSC_SUCCESS);
 
-  PetscCall(HoneeWallDistanceGetProjectedField(honee, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, NULL, NULL, NULL));
+  PetscCall(HoneeWallDistanceGetProjectedField(honee, NULL, NULL, NULL));
   PetscCall(HoneeGetContainer(honee, WALLDIST_KEY, &walldist_ctx));
   PetscCall(VecViewFromOptions(walldist_ctx->Walldist, NULL, "-" WALLDIST_PREFIX "projection_view"));
   PetscFunctionReturn(PETSC_SUCCESS);
