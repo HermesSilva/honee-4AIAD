@@ -261,20 +261,36 @@ PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume) {
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+// Header
+PetscErrorCode PrintRunBanner(MPI_Comm comm, PetscViewer viewer) {
+  PetscFunctionBeginUser;
+  if (!viewer) PetscCall(PetscViewerASCIIGetStdout(comm, &viewer));
+  PetscCall(PetscViewerASCIIPrintf(viewer,
+                                   "          __  ______  _   ______________      \n"
+                                   "         / / / / __ \\/ | / / ____/ ____/      \n"
+                                   "        / /_/ / / / /  |/ / __/ / __/         \n"
+                                   "       / __  / /_/ / /|  / /___/ /___         \n"
+                                   "      /_/ /_/\\____/_/ |_/_____/_____/         \n"
+                                   "                                              \n"
+                                   "High-Order Navier-stokes Equation Evaluator  \n"
+                                   "                                              \n"));
+
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 // Print information about the given simulation run
 PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, TS ts) {
   Ceed     ceed = honee->ceed;
   MPI_Comm comm = PetscObjectComm((PetscObject)ts);
 
   PetscFunctionBeginUser;
-  // Header and rank
+  // rank info
   char        host_name[PETSC_MAX_PATH_LEN];
   PetscMPIInt rank, comm_size;
   PetscCall(PetscGetHostName(host_name, sizeof host_name));
   PetscCallMPI(MPI_Comm_rank(comm, &rank));
   PetscCallMPI(MPI_Comm_size(comm, &comm_size));
   PetscCall(PetscPrintf(comm,
-                        "\n-- HONEE - High-Order Navier-stokes Equation Evaluator --\n"
                         "  MPI:\n"
                         "    Host Name                          : %s\n"
                         "    Total ranks                        : %d\n",

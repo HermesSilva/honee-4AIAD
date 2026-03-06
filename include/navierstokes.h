@@ -268,6 +268,7 @@ extern PetscErrorCode NS_SHOCKTUBE(ProblemData problem, DM dm, void *ctx);
 extern PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx);
 
 PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, TS ts);
+PetscErrorCode PrintRunBanner(MPI_Comm comm, PetscViewer viewer);
 
 // -----------------------------------------------------------------------------
 // libCEED functions
