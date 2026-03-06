@@ -18,11 +18,14 @@ const char help[] = "HONEE - High-Order Navier-stokes Equation Evaluator\n";
 #include <petscts.h>
 
 int main(int argc, char **argv) {
-  Honee    honee;
-  MPI_Comm comm;
+  Honee     honee;
+  MPI_Comm  comm;
+  PetscEnum test_type = (PetscEnum)TESTTYPE_NONE;
 
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   comm = PETSC_COMM_WORLD;
+  PetscCall(PetscOptionsGetEnum(NULL, NULL, "-test_type", TestTypes, &test_type, NULL));
+  if (test_type == (PetscEnum)TESTTYPE_NONE) PetscCall(PrintRunBanner(comm, PETSC_VIEWER_STDOUT_WORLD));
 
   PetscCall(HoneeInit(comm, &honee));
   AppCtx      app_ctx  = honee->app_ctx;
