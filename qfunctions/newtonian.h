@@ -450,7 +450,6 @@ CEED_QFUNCTION_HELPER int IJacobian_Newtonian(void *ctx, CeedInt Q, const CeedSc
       CeedScalar sigma;
       StoredValuesUnpack(Q, i, 14, 1, jac_data, &sigma);
       InternalDampingLayer_IJacobian_Integrand(s, ds, gas, sigma, v_i);
-      for (int j = 0; j < 5; j++) v[j][i] += wdetJ * v_i[j];
     }
 
     for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJ * v_i[j];
