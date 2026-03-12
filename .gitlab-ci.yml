@@ -140,7 +140,7 @@ noether-memcheck:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
+        gcovr --gcov-executable "llvm-cov-15 gcov" --exclude-noncode-lines --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
       fi
   artifacts:
     paths:
@@ -201,7 +201,7 @@ noether-cpu:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
+        gcovr --gcov-executable "llvm-cov-15 gcov" --exclude-noncode-lines --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
       fi
   artifacts:
     paths:
@@ -261,7 +261,7 @@ noether-cpu-int64:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
+        gcovr --gcov-executable "llvm-cov-15 gcov" --exclude-noncode-lines --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
       fi
   artifacts:
     paths:
@@ -320,12 +320,12 @@ noether-cpu-int64:
 #   after_script:
 #     - |
 #       if [ -f .SUCCESS ]; then
-#         gcovr --xml-pretty --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
+#         gcovr --xml-pretty --exclude-noncode-lines --exclude-lines-by-pattern '^\s*SETERR.*' --exclude-unreachable-branches --print-summary -o coverage.xml;
 #       fi
 #   after_script:
 #     - |
 #       if [ -f .SUCCESS ]; then
-#         gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
+#         gcovr --gcov-executable "llvm-cov-15 gcov" --exclude-noncode-lines --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
 #       fi
 #   artifacts:
 #     paths:
@@ -380,7 +380,7 @@ noether-cuda:
   after_script:
     - |
       if [ -f .SUCCESS ]; then
-        gcovr --gcov-executable "llvm-cov-15 gcov" --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
+        gcovr --gcov-executable "llvm-cov-15 gcov" --exclude-noncode-lines --json-pretty --print-summary -o coverage-$CI_JOB_ID.json;
       fi
   artifacts:
     paths:
@@ -405,7 +405,7 @@ test-coverage:
   script:
     - ls coverage-*
     - mkdir coverage
-    - gcovr --json-add-tracefile "coverage-*.json" --xml-pretty -o coverage.xml --print-summary --html-nested coverage/index.html --html-theme github.dark-blue
+    - gcovr --json-add-tracefile "coverage-*.json" --exclude-noncode-lines --xml-pretty -o coverage.xml --print-summary --html-nested coverage/index.html --html-theme github.dark-blue
   coverage: '/^lines:\s+(\d+.\d\%)/'
   artifacts:
     paths:
