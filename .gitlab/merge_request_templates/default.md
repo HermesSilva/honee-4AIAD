@@ -1,12 +1,17 @@
 Summary
----
+-------
 
 Please add a brief description here.
 
 
+LLM Usage
+---------
+
+Please describe any LLM and GenAI usage here.
+
 
 Checklist
----
+---------
 
 Closes #my_issue_number
 
