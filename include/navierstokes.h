@@ -72,7 +72,6 @@ static const char *const SGSModelDDImplementations[] = {"FUSED", "SEQUENTIAL_CEE
 // Structs declarations
 typedef struct AppCtx_private      *AppCtx;
 typedef struct Units_private       *Units;
-typedef struct SimpleBC_private    *SimpleBC;
 typedef struct Physics_private     *Physics;
 typedef struct ProblemData_private *ProblemData;
 
