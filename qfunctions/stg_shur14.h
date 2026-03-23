@@ -402,9 +402,9 @@ CEED_QFUNCTION(StgShur14Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
     // -- Total Energy Density
     v[4][i] += wdetJb * u_normal * (E + P);
     if (is_implicit) {
-      const CeedScalar U[] = {rho, u[0], u[1], u[2], E}, kmstress[6] = {0.};
+      const CeedScalar U[] = {rho, u[0], u[1], u[2], E}, strain_rate[6] = {0.};
       StoredValuesPack(Q, i, 0, 5, U, jac_data_sur);
-      StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+      StoredValuesPack(Q, i, 5, 6, strain_rate, jac_data_sur);
     } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
     }

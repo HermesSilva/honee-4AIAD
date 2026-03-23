@@ -278,8 +278,8 @@ CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *co
 CEED_QFUNCTION_HELPER void IFunction_Newtonian_Integrand(const State s, const State grad_s[3], const State s_dot, const CeedScalar divFdiff_i[5],
                                                          const CeedScalar x_i[3], const NewtonianIGProperties gas,
                                                          const NewtonianIdealGasContext context, const CeedScalar dXdx[3][3], CeedScalar v_i[5],
-                                                         CeedScalar grad_v_i[5][3], CeedScalar kmstress[6], CeedScalar Tau_d[3]) {
-  CeedScalar        strain_rate[6], stress[3][3], F_visc_energy[3], F_total[5][3];
+                                                         CeedScalar grad_v_i[5][3], CeedScalar strain_rate[6], CeedScalar Tau_d[3]) {
+  CeedScalar        kmstress[6], stress[3][3], F_visc_energy[3], F_total[5][3];
   StateConservative F_inviscid[3];
   const CeedScalar *g = context->g, dt = context->dt;
 
@@ -338,8 +338,8 @@ CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedSc
       for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
     }
 
-    CeedScalar v_i[5] = {0.}, grad_v_i[5][3] = {{0.}}, kmstress[6], Tau_d[3], sigma = 0;
-    IFunction_Newtonian_Integrand(s, grad_s, s_dot, divFdiff_i, x_i, gas, context, dXdx, v_i, grad_v_i, kmstress, Tau_d);
+    CeedScalar v_i[5] = {0.}, grad_v_i[5][3] = {{0.}}, strain_rate[6], Tau_d[3], sigma = 0;
+    IFunction_Newtonian_Integrand(s, grad_s, s_dot, divFdiff_i, x_i, gas, context, dXdx, v_i, grad_v_i, strain_rate, Tau_d);
     if (context->idl_enable) {
       InternalDampingLayer_IFunction_Integrand(s, gas, context->idl_amplitude, context->idl_length, context->idl_start, x_i[0], context->idl_pressure,
                                                v_i, &sigma);
@@ -353,7 +353,7 @@ CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedSc
     }
 
     StoredValuesPack(Q, i, 0, 5, q_i, jac_data);
-    StoredValuesPack(Q, i, 5, 6, kmstress, jac_data);
+    StoredValuesPack(Q, i, 5, 6, strain_rate, jac_data);
     StoredValuesPack(Q, i, 11, 3, Tau_d, jac_data);
     if (context->idl_enable) StoredValuesPack(Q, i, 14, 1, &sigma, jac_data);
   }
@@ -390,15 +390,16 @@ CEED_QFUNCTION(IFunction_Newtonian_Entropy)(void *ctx, CeedInt Q, const CeedScal
   @param[inout] grad_v_i   Output to be multiplied by gradient of weight function, summed into
 **/
 CEED_QFUNCTION_HELPER void IJacobian_Newtonian_Integrand(const State s, const State ds, const State grad_ds[3], const NewtonianIGProperties gas,
-                                                         const NewtonianIdealGasContext context, const CeedScalar kmstress[6],
+                                                         const NewtonianIdealGasContext context, const CeedScalar strain_rate[6],
                                                          const CeedScalar Tau_d[3], CeedScalar v_i[5], CeedScalar grad_v_i[5][3]) {
   const CeedScalar *g = context->g;
-  CeedScalar        dstrain_rate[6], dkmstress[6], stress[3][3], dstress[3][3], dF_visc_energy[3], dF_total[5][3];
+  CeedScalar        dstrain_rate[6], dkmstress[6], kmstress[6], stress[3][3], dstress[3][3], dF_visc_energy[3], dF_total[5][3];
   StateConservative dF_inviscid[3];
 
   // Advective and viscous fluxes
   KMStrainRate_State(grad_ds, dstrain_rate);
   NewtonianStress(gas, dstrain_rate, dkmstress);
+  NewtonianStress(gas, strain_rate, kmstress);
   KMUnpack(dkmstress, dstress);
   KMUnpack(kmstress, stress);
   ViscousEnergyFlux_fwd(gas, s.Y, ds.Y, grad_ds, stress, dstress, dF_visc_energy);
@@ -436,9 +437,9 @@ CEED_QFUNCTION_HELPER int IJacobian_Newtonian(void *ctx, CeedInt Q, const CeedSc
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar dq_i[5] = {dq[0][i], dq[1][i], dq[2][i], dq[3][i], dq[4][i]};
-    CeedScalar       qi[5], kmstress[6], Tau_d[3];
+    CeedScalar       qi[5], strain_rate[6], Tau_d[3];
     StoredValuesUnpack(Q, i, 0, 5, jac_data, qi);
-    StoredValuesUnpack(Q, i, 5, 6, jac_data, kmstress);
+    StoredValuesUnpack(Q, i, 5, 6, jac_data, strain_rate);
     StoredValuesUnpack(Q, i, 11, 3, jac_data, Tau_d);
     const State s  = StateFromQ(gas, qi, state_var);
     const State ds = StateFromQ_fwd(gas, s, dq_i, state_var);
@@ -449,7 +450,7 @@ CEED_QFUNCTION_HELPER int IJacobian_Newtonian(void *ctx, CeedInt Q, const CeedSc
     StatePhysicalGradientFromReference(Q, i, gas, s, state_var, grad_dq, dXdx, grad_ds);
 
     CeedScalar v_i[5] = {0.}, grad_v_i[5][3] = {{0.}};
-    IJacobian_Newtonian_Integrand(s, ds, grad_ds, gas, context, kmstress, Tau_d, v_i, grad_v_i);
+    IJacobian_Newtonian_Integrand(s, ds, grad_ds, gas, context, strain_rate, Tau_d, v_i, grad_v_i);
     if (context->idl_enable) {
       CeedScalar sigma;
       StoredValuesUnpack(Q, i, 14, 1, jac_data, &sigma);
@@ -516,7 +517,7 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral(void *ctx, CeedInt Q, const CeedScala
 
     if (is_implicit) {
       StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
-      StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+      StoredValuesPack(Q, i, 5, 6, strain_rate, jac_data_sur);
     } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
     }
@@ -554,9 +555,9 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral_Jacobian(void *ctx, CeedInt Q, const 
     CeedScalar wdetJb, dXdx[2][3], normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
 
-    CeedScalar qi[5], kmstress[6], dqi[5];
+    CeedScalar qi[5], strain_rate[6], kmstress[6], dqi[5];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
-    StoredValuesUnpack(Q, i, 5, 6, jac_data_sur, kmstress);
+    StoredValuesUnpack(Q, i, 5, 6, jac_data_sur, strain_rate);
     for (int j = 0; j < 5; j++) dqi[j] = dq[j][i];
 
     State s  = StateFromQ(gas, qi, state_var);
@@ -568,6 +569,7 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral_Jacobian(void *ctx, CeedInt Q, const 
     CeedScalar dstrain_rate[6], dkmstress[6], stress[3][3], dstress[3][3], dFe[3];
     KMStrainRate_State(grad_ds, dstrain_rate);
     NewtonianStress(gas, dstrain_rate, dkmstress);
+    NewtonianStress(gas, strain_rate, kmstress);
     KMUnpack(dkmstress, dstress);
     KMUnpack(kmstress, stress);
     ViscousEnergyFlux_fwd(gas, s.Y, ds.Y, grad_ds, stress, dstress, dFe);
