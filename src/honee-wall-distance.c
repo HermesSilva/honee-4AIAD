@@ -61,10 +61,10 @@ PetscErrorCode HoneeWallDistanceSetup(Honee honee, PetscInt num_label_values, co
   } else {
     for (PetscInt p = 0; p < walldist_ctx->num_p_values; p++) {
       PetscCheck(walldist_ctx->p_values[p] >= 2, PetscObjectComm((PetscObject)honee), PETSC_ERR_USER_INPUT,
-                 "p-Laplacian value should be greater or equal to two, recieved %g", walldist_ctx->p_values[p]);
+                 "p-Laplacian value should be greater or equal to two, received %g", walldist_ctx->p_values[p]);
       if (p != 0)
         PetscCheck(walldist_ctx->p_values[p] > walldist_ctx->p_values[p - 1], PetscObjectComm((PetscObject)honee), PETSC_ERR_USER_INPUT,
-                   "Sequence of p-Laplacian values should be strictly increasing, recieved %g followed by %g", walldist_ctx->p_values[p - 1],
+                   "Sequence of p-Laplacian values should be strictly increasing, received %g followed by %g", walldist_ctx->p_values[p - 1],
                    walldist_ctx->p_values[p]);
     }
   }
@@ -231,7 +231,7 @@ static PetscErrorCode HoneeWallDistance_ComputePLaplacian(Honee honee) {
     size_t        num_values;
     const double *values;
     PetscCallCeed(ceed, CeedOperatorGetContextDoubleRead(plaplacian_ctx->laplacian_residual->op, p_label, &num_values, &values));
-    PetscCheck(num_values == 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "Recieved more than 1 value for the p-Laplacian, which shouldn't happen");
+    PetscCheck(num_values == 1, PETSC_COMM_SELF, PETSC_ERR_SUP, "Received more than 1 value for the p-Laplacian, which shouldn't happen");
     walldist_ctx->p_value_final = *values;
     PetscCallCeed(ceed, CeedOperatorRestoreContextDoubleRead(plaplacian_ctx->laplacian_residual->op, p_label, &values));
   }
@@ -285,7 +285,7 @@ PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_
   PetscCall(DMGetDimension(walldist_ctx->dm_laplacian, &dim));
   switch (dim) {
     case 2:
-      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, WallDistanceFromPLaplacian_2D, WallDistanceFromPLaplacian_3D_loc, &qf_walldist));
+      PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, WallDistanceFromPLaplacian_2D, WallDistanceFromPLaplacian_2D_loc, &qf_walldist));
       break;
     case 3:
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, WallDistanceFromPLaplacian_3D, WallDistanceFromPLaplacian_3D_loc, &qf_walldist));
@@ -335,19 +335,18 @@ PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_
 **/
 static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestriction *elem_restr_walldist, CeedBasis *basis_walldist,
                                                          CeedVector *vec_walldist) {
-  MPI_Comm             comm = honee->comm;
-  Ceed                 ceed = honee->ceed;
-  HoneeWallDistance    walldist_ctx;
-  NodalProjectionData  projection;
-  PetscInt             dim;
-  CeedElemRestriction  elem_restr_qd;
-  CeedVector           q_data;
-  CeedInt              q_data_size;
-  CeedElemRestriction  elem_restr_laplacian;
-  CeedBasis            basis_laplacian;
-  CeedQFunctionContext laplacian_qfctx;
-  const DMLabel        domain_label = DMLABEL_DEFAULT;
-  const PetscInt       label_value = DMLABEL_DEFAULT_VALUE, dm_field = 0, height = 0;
+  MPI_Comm            comm = honee->comm;
+  Ceed                ceed = honee->ceed;
+  HoneeWallDistance   walldist_ctx;
+  NodalProjectionData projection;
+  PetscInt            dim;
+  CeedElemRestriction elem_restr_qd;
+  CeedVector          q_data;
+  CeedInt             q_data_size;
+  CeedElemRestriction elem_restr_laplacian;
+  CeedBasis           basis_laplacian;
+  const DMLabel       domain_label = DMLABEL_DEFAULT;
+  const PetscInt      label_value = DMLABEL_DEFAULT_VALUE, dm_field = 0, height = 0;
 
   PetscFunctionBeginUser;
   PetscCall(PetscLogEventBegin(HONEE_WallDistL2Projection, honee->dm, NULL, NULL, NULL));
@@ -452,7 +451,6 @@ static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRe
 
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_qd));
   PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
-  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&laplacian_qfctx));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_laplacian));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_laplacian));
   PetscCall(NodalProjectionDataDestroy(&projection));
