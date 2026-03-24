@@ -49,22 +49,22 @@ CEED_QFUNCTION_HELPER int WallDistanceFromPLaplacian_ND(void *ctx, CeedInt Q, co
   const CeedScalar *u       = in[0];
   const CeedScalar *gradu   = in[1];
   const CeedScalar(*q_data) = in[2];
-  CeedScalar(*d2wall)       = out[0];
+  CeedScalar(*walldist)     = out[0];
   PLaplacianContext context = (PLaplacianContext)ctx;
 
   const CeedInt    num_comps = 1;
   const CeedScalar p         = context->p;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    CeedScalar       gradu_ref_i[3], gradu_i[3] = {0.}, wdetJ, dXdx[9];
+    CeedScalar       gradu_ref_i[3], gradu_i[3] = {0.}, dXdx[9];
     const CeedScalar u_i = u[i];
 
-    QdataUnpack_ND(dim, Q, i, q_data, &wdetJ, dXdx);
+    QdataUnpack_ND(dim, Q, i, q_data, NULL, dXdx);
     GradUnpackND(Q, i, num_comps, dim, gradu, gradu_ref_i);
     MatVecNM(dXdx, gradu_ref_i, dim, dim, CEED_TRANSPOSE, gradu_i);
 
     CeedScalar grad_magnitude2 = DotN(gradu_i, gradu_i, dim);
-    d2wall[i]                  = -pow(grad_magnitude2, (p - 1) / 2) + pow(pow(grad_magnitude2, p / 2) + (p / (p - 1)) * u_i, (p - 1) / p);
+    walldist[i]                = -pow(grad_magnitude2, (p - 1) / 2) + pow(pow(grad_magnitude2, p / 2) + (p / (p - 1)) * u_i, (p - 1) / p);
   }
   return 0;
 }
