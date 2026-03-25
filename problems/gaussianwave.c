@@ -46,9 +46,11 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
     BCDefinition  bc_def = problem->bc_defs[b];
     HoneeBCStruct honee_bc;
     const char   *name;
+    PetscBool     is_freestream;
 
     PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    if (!strcmp(name, "freestream")) {
+    PetscCall(PetscStrcmp(name, "freestream", &is_freestream));
+    if (is_freestream) {
       FreestreamContext freestream_ctx;
       PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
       PetscCallCeed(ceed, CeedQFunctionContextGetData(honee_bc->qfctx, CEED_MEM_HOST, &freestream_ctx));
