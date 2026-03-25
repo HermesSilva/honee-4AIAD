@@ -597,9 +597,11 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];
     const char  *name;
+    PetscBool    is_inflow;
 
     PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    if (!strcmp(name, "inflow")) {
+    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
+    if (is_inflow) {
       HoneeBCStruct honee_bc;
 
       PetscCall(PetscNew(&honee_bc));

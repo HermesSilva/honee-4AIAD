@@ -31,9 +31,14 @@ PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &setup_ctx));
 
   PetscOptionsBegin(comm, NULL, "Options for TAYLOR-GREEN problem", NULL);
-  PetscInt u_size = PETSC_STATIC_ARRAY_LENGTH(taylorgreen_ctx->u);
+  PetscInt  u_size = PETSC_STATIC_ARRAY_LENGTH(taylorgreen_ctx->u);
+  PetscBool background_velocity_set;
   PetscCall(PetscOptionsScalarArray("-taylorgreen_background_velocity", "Background velocity to add to Taylor-Green initial condition", NULL,
-                                    taylorgreen_ctx->u, &u_size, NULL));
+                                    taylorgreen_ctx->u, &u_size, &background_velocity_set));
+  if (background_velocity_set) {
+    PetscCheck(u_size == PETSC_STATIC_ARRAY_LENGTH(taylorgreen_ctx->u), comm, PETSC_ERR_ARG_SIZ,
+               "-taylorgreen_background_velocity should receive array of size 3, instead received size %" PetscInt_FMT ".", u_size);
+  }
   PetscOptionsEnd();
 
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &taylorgreen_qfctx));

@@ -14,7 +14,7 @@
 
 static const char *const RiemannSolverTypes[] = {"HLL", "HLLC", "RiemannSolverTypes", "RIEMANN_", NULL};
 
-static PetscErrorCode RiemannSolverUnitTests(NewtonianIGProperties gas, CeedScalar rtol);
+static PetscErrorCode RiemannSolverUnitTests(MPI_Comm comm, NewtonianIGProperties gas, CeedScalar rtol);
 
 typedef struct {
   RiemannFluxType flux_type;
@@ -129,8 +129,14 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
   PetscCall(PetscOptionsEnum("-freestream_riemann", "Riemann solver to use in freestream boundary condition", NULL, RiemannSolverTypes,
                              (PetscEnum)flux_type, (PetscEnum *)&flux_type, NULL));
   PetscCall(PetscOptionsScalar("-freestream_pressure", "Pressure at freestream condition", NULL, Y_inf.pressure, &Y_inf.pressure, NULL));
-  PetscInt narray = 3;
-  PetscCall(PetscOptionsScalarArray("-freestream_velocity", "Velocity at freestream condition", NULL, Y_inf.velocity, &narray, NULL));
+  PetscInt  narray = 3;
+  PetscBool freestream_velocity_set;
+  PetscCall(PetscOptionsScalarArray("-freestream_velocity", "Velocity at freestream condition", NULL, Y_inf.velocity, &narray,
+                                    &freestream_velocity_set));
+  if (freestream_velocity_set) {
+    PetscCheck(narray == 3, comm, PETSC_ERR_ARG_SIZ, "-freestream_velocity should receive array of size 3, instead received size %" PetscInt_FMT ".",
+               narray);
+  }
   PetscCall(PetscOptionsScalar("-freestream_temperature", "Temperature at freestream condition", NULL, Y_inf.temperature, &Y_inf.temperature, NULL));
   PetscOptionsEnd();
 
@@ -169,7 +175,7 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
     PetscBool run_unit_tests = PETSC_FALSE;
 
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-riemann_solver_unit_tests", &run_unit_tests, NULL));
-    if (run_unit_tests) PetscCall(RiemannSolverUnitTests(newtonian_ig_ctx->gas, 5e-7));
+    if (run_unit_tests) PetscCall(RiemannSolverUnitTests(comm, newtonian_ig_ctx->gas, 5e-7));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -185,7 +191,7 @@ static inline CeedScalar RelativeError(CeedScalar S, CeedScalar A, CeedScalar B,
 }
 
 // @brief Check errors of a State vector and print if above tolerance
-static PetscErrorCode CheckQWithTolerance(const CeedScalar Q_s[5], const CeedScalar Q_a[5], const CeedScalar Q_b[5], const char *name,
+static PetscErrorCode CheckQWithTolerance(MPI_Comm comm, const CeedScalar Q_s[5], const CeedScalar Q_a[5], const CeedScalar Q_b[5], const char *name,
                                           PetscReal rtol_0, PetscReal rtol_u, PetscReal rtol_4) {
   CeedScalar relative_error[5];  // relative error
   CeedScalar divisor_threshold = 10 * CEED_EPSILON;
@@ -200,21 +206,21 @@ static PetscErrorCode CheckQWithTolerance(const CeedScalar Q_s[5], const CeedSca
   }
 
   if (fabs(relative_error[0]) >= rtol_0) {
-    printf("%s[0] error %g (expected %.10e, got %.10e)\n", name, relative_error[0], Q_s[0], Q_a[0]);
+    PetscCall(PetscPrintf(comm, "%s[0] error %g (expected %.10e, got %.10e)\n", name, relative_error[0], Q_s[0], Q_a[0]));
   }
   for (int i = 1; i < 4; i++) {
     if (fabs(relative_error[i]) >= rtol_u) {
-      printf("%s[%d] error %g (expected %.10e, got %.10e)\n", name, i, relative_error[i], Q_s[i], Q_a[i]);
+      PetscCall(PetscPrintf(comm, "%s[%d] error %g (expected %.10e, got %.10e)\n", name, i, relative_error[i], Q_s[i], Q_a[i]));
     }
   }
   if (fabs(relative_error[4]) >= rtol_4) {
-    printf("%s[4] error %g (expected %.10e, got %.10e)\n", name, relative_error[4], Q_s[4], Q_a[4]);
+    PetscCall(PetscPrintf(comm, "%s[4] error %g (expected %.10e, got %.10e)\n", name, relative_error[4], Q_s[4], Q_a[4]));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Verify RiemannFlux_HLL_fwd function against finite-difference approximation
-static PetscErrorCode TestRiemannHLL_fwd(NewtonianIGProperties gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
+static PetscErrorCode TestRiemannHLL_fwd(MPI_Comm comm, NewtonianIGProperties gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T           = 200;
@@ -269,14 +275,14 @@ static PetscErrorCode TestRiemannHLL_fwd(NewtonianIGProperties gas, CeedScalar r
       for (int j = 0; j < 5; j++) dFlux_fd[j] = (Flux1[j] - Flux0[j]) / eps;
     }
 
-    snprintf(buf, sizeof buf, "RiemannFlux_HLL i=%d: Flux", i);
-    PetscCall(CheckQWithTolerance(dFlux_fd, dFlux, dFlux_fd, buf, rtol_0, rtol_u, rtol_4));
+    PetscCall(PetscSNPrintf(buf, sizeof buf, "RiemannFlux_HLL i=%d: Flux", i));
+    PetscCall(CheckQWithTolerance(comm, dFlux_fd, dFlux, dFlux_fd, buf, rtol_0, rtol_u, rtol_4));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Verify RiemannFlux_HLLC_fwd function against finite-difference approximation
-static PetscErrorCode TestRiemannHLLC_fwd(NewtonianIGProperties gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
+static PetscErrorCode TestRiemannHLLC_fwd(MPI_Comm comm, NewtonianIGProperties gas, CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T           = 200;
@@ -331,14 +337,14 @@ static PetscErrorCode TestRiemannHLLC_fwd(NewtonianIGProperties gas, CeedScalar 
       for (int j = 0; j < 5; j++) dFlux_fd[j] = (Flux1[j] - Flux0[j]) / eps;
     }
 
-    snprintf(buf, sizeof buf, "RiemannFlux_HLLC i=%d: Flux", i);
-    PetscCall(CheckQWithTolerance(dFlux_fd, dFlux, dFlux_fd, buf, rtol_0, rtol_u, rtol_4));
+    PetscCall(PetscSNPrintf(buf, sizeof buf, "RiemannFlux_HLLC i=%d: Flux", i));
+    PetscCall(CheckQWithTolerance(comm, dFlux_fd, dFlux, dFlux_fd, buf, rtol_0, rtol_u, rtol_4));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Verify ComputeHLLSpeeds_Roe_fwd function against finite-difference approximation
-static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(NewtonianIGProperties gas, CeedScalar rtol) {
+static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(MPI_Comm comm, NewtonianIGProperties gas, CeedScalar rtol) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T           = 200;
@@ -398,22 +404,24 @@ static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(NewtonianIGProperties gas, Ce
       ds_right_fd = (s_right1 - s_right0) / eps;
     }
 
-    snprintf(buf, sizeof buf, "ComputeHLLSpeeds_Roe i=%d:", i);
+    PetscCall(PetscSNPrintf(buf, sizeof buf, "ComputeHLLSpeeds_Roe i=%d:", i));
     {
       CeedScalar divisor_threshold = 10 * CEED_EPSILON;
       CeedScalar ds_left_err, ds_right_err;
 
       ds_left_err  = RelativeError(ds_left_fd, ds_left, ds_left_fd, divisor_threshold);
       ds_right_err = RelativeError(ds_right_fd, ds_right, ds_right_fd, divisor_threshold);
-      if (fabs(ds_left_err) >= rtol) printf("%s ds_left error %g (expected %.10e, got %.10e)\n", buf, ds_left_err, ds_left_fd, ds_left);
-      if (fabs(ds_right_err) >= rtol) printf("%s ds_right error %g (expected %.10e, got %.10e)\n", buf, ds_right_err, ds_right_fd, ds_right);
+      if (fabs(ds_left_err) >= rtol)
+        PetscCall(PetscPrintf(comm, "%s ds_left error %g (expected %.10e, got %.10e)\n", buf, ds_left_err, ds_left_fd, ds_left));
+      if (fabs(ds_right_err) >= rtol)
+        PetscCall(PetscPrintf(comm, "%s ds_right error %g (expected %.10e, got %.10e)\n", buf, ds_right_err, ds_right_fd, ds_right));
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Verify TotalSpecificEnthalpy_fwd function against finite-difference approximation
-static PetscErrorCode TestTotalSpecificEnthalpy_fwd(NewtonianIGProperties gas, CeedScalar rtol) {
+static PetscErrorCode TestTotalSpecificEnthalpy_fwd(MPI_Comm comm, NewtonianIGProperties gas, CeedScalar rtol) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar T      = 200;
@@ -447,20 +455,20 @@ static PetscErrorCode TestTotalSpecificEnthalpy_fwd(NewtonianIGProperties gas, C
       dH_fd = (H1 - H0) / eps;
     }
 
-    snprintf(buf, sizeof buf, "TotalSpecificEnthalpy i=%d:", i);
+    PetscCall(PetscSNPrintf(buf, sizeof buf, "TotalSpecificEnthalpy i=%d:", i));
     {
       CeedScalar divisor_threshold = 10 * CEED_EPSILON;
       CeedScalar dH_err;
 
       dH_err = RelativeError(dH_fd, dH, dH_fd, divisor_threshold);
-      if (fabs(dH_err) >= rtol) printf("%s dH error %g (expected %.10e, got %.10e)\n", buf, dH_err, dH_fd, dH);
+      if (fabs(dH_err) >= rtol) PetscCall(PetscPrintf(comm, "%s dH error %g (expected %.10e, got %.10e)\n", buf, dH_err, dH_fd, dH));
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Verify RoeSetup_fwd function against finite-difference approximation
-static PetscErrorCode TestRowSetup_fwd(NewtonianIGProperties gas, CeedScalar rtol) {
+static PetscErrorCode TestRowSetup_fwd(MPI_Comm comm, NewtonianIGProperties gas, CeedScalar rtol) {
   CeedScalar       eps = 4e-7;  // Finite difference step
   char             buf[128];
   const CeedScalar rho0[2] = {1.2, 1.4};
@@ -486,27 +494,29 @@ static PetscErrorCode TestRowSetup_fwd(NewtonianIGProperties gas, CeedScalar rto
       dR_fd.right = (R1.right - R0.right) / eps;
     }
 
-    snprintf(buf, sizeof buf, "RoeSetup i=%d:", i);
+    PetscCall(PetscSNPrintf(buf, sizeof buf, "RoeSetup i=%d:", i));
     {
       CeedScalar divisor_threshold = 10 * CEED_EPSILON;
       RoeWeights dR_err;
 
       dR_err.left  = RelativeError(dR_fd.left, dR.left, dR_fd.left, divisor_threshold);
       dR_err.right = RelativeError(dR_fd.right, dR.right, dR_fd.right, divisor_threshold);
-      if (fabs(dR_err.left) >= rtol) printf("%s dR.left error %g (expected %.10e, got %.10e)\n", buf, dR_err.left, dR_fd.left, dR.left);
-      if (fabs(dR_err.right) >= rtol) printf("%s dR.right error %g (expected %.10e, got %.10e)\n", buf, dR_err.right, dR_fd.right, dR.right);
+      if (fabs(dR_err.left) >= rtol)
+        PetscCall(PetscPrintf(comm, "%s dR.left error %g (expected %.10e, got %.10e)\n", buf, dR_err.left, dR_fd.left, dR.left));
+      if (fabs(dR_err.right) >= rtol)
+        PetscCall(PetscPrintf(comm, "%s dR.right error %g (expected %.10e, got %.10e)\n", buf, dR_err.right, dR_fd.right, dR.right));
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Test Riemann solver related `*_fwd` functions via finite-difference approximation
-static PetscErrorCode RiemannSolverUnitTests(NewtonianIGProperties gas, CeedScalar rtol) {
+static PetscErrorCode RiemannSolverUnitTests(MPI_Comm comm, NewtonianIGProperties gas, CeedScalar rtol) {
   PetscFunctionBeginUser;
-  PetscCall(TestRiemannHLL_fwd(gas, rtol, rtol, rtol));
-  PetscCall(TestRiemannHLLC_fwd(gas, rtol, rtol, rtol));
-  PetscCall(TestComputeHLLSpeeds_Roe_fwd(gas, rtol));
-  PetscCall(TestTotalSpecificEnthalpy_fwd(gas, rtol));
-  PetscCall(TestRowSetup_fwd(gas, rtol));
+  PetscCall(TestRiemannHLL_fwd(comm, gas, rtol, rtol, rtol));
+  PetscCall(TestRiemannHLLC_fwd(comm, gas, rtol, rtol, rtol));
+  PetscCall(TestComputeHLLSpeeds_Roe_fwd(comm, gas, rtol));
+  PetscCall(TestTotalSpecificEnthalpy_fwd(comm, gas, rtol));
+  PetscCall(TestRowSetup_fwd(comm, gas, rtol));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

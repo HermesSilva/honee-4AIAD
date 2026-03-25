@@ -310,9 +310,11 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
     for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
       BCDefinition bc_def = problem->bc_defs[b];
       const char  *name;
+      PetscBool    is_inflow;
 
       PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-      if (!strcmp(name, "inflow")) {
+      PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
+      if (is_inflow) {
         HoneeBCStruct honee_bc;
 
         PetscCall(PetscNew(&honee_bc));
@@ -357,9 +359,11 @@ PetscErrorCode SetupStrongStg(DM dm, ProblemData problem, Physics phys) {
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];
     const char  *name;
+    PetscBool    is_inflow;
 
     PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    if (!strcmp(name, "inflow")) PetscCall(BCDefinitionSetEssential(bc_def, num_comps, comps));
+    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
+    if (is_inflow) PetscCall(BCDefinitionSetEssential(bc_def, num_comps, comps));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

@@ -112,9 +112,12 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];
     const char  *name;
+    PetscBool    is_outflow, is_inflow;
 
     PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    if (honee->phys->state_var == STATEVAR_CONSERVATIVE && !strcmp(name, "outflow")) {
+    PetscCall(PetscStrcmp(name, "outflow", &is_outflow));
+    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
+    if (honee->phys->state_var == STATEVAR_CONSERVATIVE && is_outflow) {
       HoneeBCStruct honee_bc;
 
       PetscCall(PetscPrintf(comm, "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
@@ -126,7 +129,7 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
 
       PetscCall(BCDefinitionSetIFunction(bc_def, ChannelOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
       PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
-    } else if (honee->phys->state_var == STATEVAR_CONSERVATIVE && !strcmp(name, "inflow")) {
+    } else if (honee->phys->state_var == STATEVAR_CONSERVATIVE && is_inflow) {
       HoneeBCStruct honee_bc;
 
       PetscCall(PetscPrintf(comm, "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));

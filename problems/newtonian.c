@@ -410,6 +410,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   };
 
   PetscOptionsBegin(comm, NULL, "Options for Newtonian Ideal Gas based problem", NULL);
+  PetscBool given_option;
   PetscCall(PetscOptionsEnum("-state_var", "State variables used", NULL, StateVariables, (PetscEnum)(state_var = STATEVAR_CONSERVATIVE),
                              (PetscEnum *)&state_var, NULL));
 
@@ -421,8 +422,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscOptionsScalar("-mu", "Shear dynamic viscosity coefficient", NULL, newtonian_ig_ctx->gas.mu, &newtonian_ig_ctx->gas.mu, NULL));
   PetscCall(PetscOptionsScalar("-k", "Thermal conductivity", NULL, newtonian_ig_ctx->gas.k, &newtonian_ig_ctx->gas.k, NULL));
 
-  PetscInt  dim          = 3;
-  PetscBool given_option = PETSC_FALSE;
+  PetscInt dim = 3;
   PetscCall(PetscOptionsDeprecated("-g", "-gravity", "libCEED 0.11.1", NULL));
   PetscCall(PetscOptionsRealArray("-gravity", "Gravitational acceleration vector", NULL, newtonian_ig_ctx->g, &dim, &given_option));
   if (given_option) PetscCheck(dim == 3, comm, PETSC_ERR_ARG_SIZ, "Gravity vector must be size 3, %" PetscInt_FMT " values given", dim);
@@ -442,13 +442,17 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
   dim = 3;
   PetscCall(PetscOptionsScalar("-reference_pressure", "Reference/initial pressure", NULL, reference.pressure, &reference.pressure, NULL));
-  PetscCall(PetscOptionsScalarArray("-reference_velocity", "Reference/initial velocity", NULL, reference.velocity, &dim, NULL));
+  PetscCall(PetscOptionsScalarArray("-reference_velocity", "Reference/initial velocity", NULL, reference.velocity, &dim, &given_option));
+  if (given_option) {
+    PetscCheck(dim == 3, comm, PETSC_ERR_ARG_SIZ, "-reference_velocity should receive array of size 3, instead received size %" PetscInt_FMT ".",
+               dim);
+  }
   PetscCall(PetscOptionsScalar("-reference_temperature", "Reference/initial temperature", NULL, reference.temperature, &reference.temperature, NULL));
 
   PetscCall(PetscOptionsBool("-implicit", "Use implicit (IFunction) formulation", NULL, implicit = PETSC_FALSE, &implicit, NULL));
   PetscCall(PetscOptionsBool("-newtonian_unit_tests", "Run Newtonian unit tests", NULL, unit_tests = PETSC_FALSE, &unit_tests, NULL));
-  PetscCheck(!(state_var == STATEVAR_PRIMITIVE && !implicit), comm, PETSC_ERR_SUP,
-             "RHSFunction is not provided for primitive variables (use -state_var primitive only with -implicit)\n");
+  PetscCheck(implicit || state_var == STATEVAR_CONSERVATIVE, comm, PETSC_ERR_SUP,
+             "RHSFunction is only provided for conservative variables in explicit mode. Use -implicit for -state_var %s.", StateVariables[state_var]);
 
   // IDL Settings
   {
@@ -611,15 +615,20 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
     BCDefinition bc_def = problem->bc_defs[b];
     const char  *name;
+    PetscBool    is_slip, is_freestream, is_outflow, is_inflow;
 
     PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    if (!strcmp(name, "slip")) {
+    PetscCall(PetscStrcmp(name, "slip", &is_slip));
+    PetscCall(PetscStrcmp(name, "freestream", &is_freestream));
+    PetscCall(PetscStrcmp(name, "outflow", &is_outflow));
+    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
+    if (is_slip) {
       PetscCall(SlipBCSetup(bc_def, problem, dm, ctx, newtonian_ig_qfctx));
-    } else if (!strcmp(name, "freestream")) {
+    } else if (is_freestream) {
       PetscCall(FreestreamBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
-    } else if (!strcmp(name, "outflow")) {
+    } else if (is_outflow) {
       PetscCall(OutflowBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
-    } else if (!strcmp(name, "inflow")) {
+    } else if (is_inflow) {
       HoneeBCStruct honee_bc;
 
       PetscCall(PetscNew(&honee_bc));
@@ -641,7 +650,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 // Unit test functions
 //------------------------------------
 
-static PetscErrorCode CheckQWithTolerance(const CeedScalar Q_s[5], const CeedScalar Q_a[5], const CeedScalar Q_b[5], const char *name,
+static PetscErrorCode CheckQWithTolerance(MPI_Comm comm, const CeedScalar Q_s[5], const CeedScalar Q_a[5], const CeedScalar Q_b[5], const char *name,
                                           PetscReal rtol_0, PetscReal rtol_u, PetscReal rtol_4) {
   CeedScalar relative_error[5];  // relative error
   CeedScalar divisor_threshold = 10 * CEED_EPSILON;
@@ -657,22 +666,22 @@ static PetscErrorCode CheckQWithTolerance(const CeedScalar Q_s[5], const CeedSca
   }
 
   if (fabs(relative_error[0]) >= rtol_0) {
-    printf("%s[0] error %g (expected %.10e, got %.10e)\n", name, relative_error[0], Q_s[0], Q_a[0]);
+    PetscCall(PetscPrintf(comm, "%s[0] error %g (expected %.10e, got %.10e)\n", name, relative_error[0], Q_s[0], Q_a[0]));
   }
   for (int i = 1; i < 4; i++) {
     if (fabs(relative_error[i]) >= rtol_u) {
-      printf("%s[%d] error %g (expected %.10e, got %.10e)\n", name, i, relative_error[i], Q_s[i], Q_a[i]);
+      PetscCall(PetscPrintf(comm, "%s[%d] error %g (expected %.10e, got %.10e)\n", name, i, relative_error[i], Q_s[i], Q_a[i]));
     }
   }
   if (fabs(relative_error[4]) >= rtol_4) {
-    printf("%s[4] error %g (expected %.10e, got %.10e)\n", name, relative_error[4], Q_s[4], Q_a[4]);
+    PetscCall(PetscPrintf(comm, "%s[4] error %g (expected %.10e, got %.10e)\n", name, relative_error[4], Q_s[4], Q_a[4]));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Verify `StateFromQ` by converting A0 -> B0 -> A0_test, where A0 should equal A0_test
-static PetscErrorCode TestState(StateVariable state_var_A, StateVariable state_var_B, NewtonianIGProperties gas, const CeedScalar A0[5],
-                                CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
+static PetscErrorCode TestState(MPI_Comm comm, StateVariable state_var_A, StateVariable state_var_B, NewtonianIGProperties gas,
+                                const CeedScalar A0[5], CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar        B0[5], A0_test[5];
   char              buf[128];
   const char *const StateVariables_Initial[] = {"U", "Y", "V"};
@@ -686,14 +695,14 @@ static PetscErrorCode TestState(StateVariable state_var_A, StateVariable state_v
   State state_B0 = StateFromQ(gas, B0, state_var_B);
   StateToQ(gas, state_B0, A0_test, state_var_A);
 
-  snprintf(buf, sizeof buf, "%s->%s->%s: %s", A_initial, B_initial, A_initial, A_initial);
-  PetscCall(CheckQWithTolerance(A0, A0_test, A0, buf, rtol_0, rtol_u, rtol_4));
+  PetscCall(PetscSNPrintf(buf, sizeof buf, "%s->%s->%s: %s", A_initial, B_initial, A_initial, A_initial));
+  PetscCall(CheckQWithTolerance(comm, A0, A0_test, A0, buf, rtol_0, rtol_u, rtol_4));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Verify `StateFromQ_fwd` via a finite difference approximation
-static PetscErrorCode TestState_fwd(StateVariable state_var_A, StateVariable state_var_B, NewtonianIGProperties gas, const CeedScalar A0[5],
-                                    CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
+static PetscErrorCode TestState_fwd(MPI_Comm comm, StateVariable state_var_A, StateVariable state_var_B, NewtonianIGProperties gas,
+                                    const CeedScalar A0[5], CeedScalar rtol_0, CeedScalar rtol_u, CeedScalar rtol_4) {
   CeedScalar        eps = 4e-7;  // Finite difference step
   char              buf[128];
   const char *const StateVariables_Initial[] = {"U", "Y", "V"};
@@ -723,14 +732,15 @@ static PetscErrorCode TestState_fwd(StateVariable state_var_A, StateVariable sta
       for (int j = 0; j < 5; j++) dB_fd[j] = (B1[j] - B0[j]) / eps;
     }
 
-    snprintf(buf, sizeof buf, "d%s->d%s: StateFrom%s_fwd i=%d: d%s", A_initial, B_initial, A_initial, i, B_initial);
-    PetscCall(CheckQWithTolerance(dB_fd, dB, dB_fd, buf, rtol_0, rtol_u, rtol_4));
+    PetscCall(PetscSNPrintf(buf, sizeof buf, "d%s->d%s: StateFrom%s_fwd i=%d: d%s", A_initial, B_initial, A_initial, i, B_initial));
+    PetscCall(CheckQWithTolerance(comm, dB_fd, dB, dB_fd, buf, rtol_0, rtol_u, rtol_4));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
 // @brief Test the Newtonian State transformation functions, `StateFrom*`
 static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIGProperties gas) {
+  MPI_Comm         comm  = honee->comm;
   Units            units = honee->units;
   const CeedScalar kg = units->kilogram, m = units->meter, sec = units->second, K = units->Kelvin;
   CeedScalar       rtol;
@@ -753,19 +763,19 @@ static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIGProperties gas
                                  -rho_div_p};
 
   rtol = 20 * CEED_EPSILON;
-  PetscCall(TestState(STATEVAR_PRIMITIVE, STATEVAR_CONSERVATIVE, gas, Y0, rtol, rtol, rtol));
-  PetscCall(TestState(STATEVAR_PRIMITIVE, STATEVAR_ENTROPY, gas, Y0, rtol, rtol, rtol));
-  PetscCall(TestState(STATEVAR_CONSERVATIVE, STATEVAR_PRIMITIVE, gas, U0, rtol, rtol, rtol));
-  PetscCall(TestState(STATEVAR_CONSERVATIVE, STATEVAR_ENTROPY, gas, U0, rtol, rtol, rtol));
-  PetscCall(TestState(STATEVAR_ENTROPY, STATEVAR_CONSERVATIVE, gas, V0, rtol, rtol, rtol));
-  PetscCall(TestState(STATEVAR_ENTROPY, STATEVAR_PRIMITIVE, gas, V0, rtol, rtol, rtol));
+  PetscCall(TestState(comm, STATEVAR_PRIMITIVE, STATEVAR_CONSERVATIVE, gas, Y0, rtol, rtol, rtol));
+  PetscCall(TestState(comm, STATEVAR_PRIMITIVE, STATEVAR_ENTROPY, gas, Y0, rtol, rtol, rtol));
+  PetscCall(TestState(comm, STATEVAR_CONSERVATIVE, STATEVAR_PRIMITIVE, gas, U0, rtol, rtol, rtol));
+  PetscCall(TestState(comm, STATEVAR_CONSERVATIVE, STATEVAR_ENTROPY, gas, U0, rtol, rtol, rtol));
+  PetscCall(TestState(comm, STATEVAR_ENTROPY, STATEVAR_CONSERVATIVE, gas, V0, rtol, rtol, rtol));
+  PetscCall(TestState(comm, STATEVAR_ENTROPY, STATEVAR_PRIMITIVE, gas, V0, rtol, rtol, rtol));
 
   rtol = 5e-6;
-  PetscCall(TestState_fwd(STATEVAR_PRIMITIVE, STATEVAR_CONSERVATIVE, gas, Y0, rtol, rtol, rtol));
-  PetscCall(TestState_fwd(STATEVAR_PRIMITIVE, STATEVAR_ENTROPY, gas, Y0, rtol, rtol, rtol));
-  PetscCall(TestState_fwd(STATEVAR_CONSERVATIVE, STATEVAR_PRIMITIVE, gas, U0, rtol, rtol, rtol));
-  PetscCall(TestState_fwd(STATEVAR_CONSERVATIVE, STATEVAR_ENTROPY, gas, U0, 10 * rtol, rtol, rtol));
-  PetscCall(TestState_fwd(STATEVAR_ENTROPY, STATEVAR_CONSERVATIVE, gas, V0, 5 * rtol, rtol, rtol));
-  PetscCall(TestState_fwd(STATEVAR_ENTROPY, STATEVAR_PRIMITIVE, gas, V0, 5 * rtol, 5 * rtol, 5 * rtol));
+  PetscCall(TestState_fwd(comm, STATEVAR_PRIMITIVE, STATEVAR_CONSERVATIVE, gas, Y0, rtol, rtol, rtol));
+  PetscCall(TestState_fwd(comm, STATEVAR_PRIMITIVE, STATEVAR_ENTROPY, gas, Y0, rtol, rtol, rtol));
+  PetscCall(TestState_fwd(comm, STATEVAR_CONSERVATIVE, STATEVAR_PRIMITIVE, gas, U0, rtol, rtol, rtol));
+  PetscCall(TestState_fwd(comm, STATEVAR_CONSERVATIVE, STATEVAR_ENTROPY, gas, U0, 10 * rtol, rtol, rtol));
+  PetscCall(TestState_fwd(comm, STATEVAR_ENTROPY, STATEVAR_CONSERVATIVE, gas, V0, 5 * rtol, rtol, rtol));
+  PetscCall(TestState_fwd(comm, STATEVAR_ENTROPY, STATEVAR_PRIMITIVE, gas, V0, 5 * rtol, 5 * rtol, 5 * rtol));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
