@@ -268,7 +268,6 @@ The Navier-Stokes code in this example uses the following formulation for $\tau_
 
 $$
 \begin{aligned}
-
 \tau_c &= \frac{C_c \mathcal{F}}{8\rho \trace(\bm g)} \\
 \tau_m &= \frac{C_m}{\mathcal{F}} \\
 \tau_E &= \frac{C_E}{\mathcal{F} c_v} \\
@@ -502,6 +501,143 @@ The sequential mode is available using a libCEED based inference evaluation via 
 
 ## Boundary Conditions
 
+Boundary conditions for compressible viscous flows are notoriously tricky.
+Here we offer some recommendations.
+
+### Inflow
+
+Inflow treatment is problem dependent.
+
+1. `bc_freestream` for far-field boundaries with known exterior state. This uses a Riemann solve at the boundary and can handle local inflow and outflow dynamically.
+2. Generic Newtonian `bc_inflow` for `problem: newtonian`. This uses the weak boundary integral operator as a inflow treatment unless overridden by a problem-specific inflow model.
+
+Use `bc_freestream` in regions away from viscous walls where the full exterior state is known and to have the least reflective boundary condition for acoustics.
+
+For freestream boundaries, the exterior primitive state $Y_\infty = (P_\infty, \bm{u}_\infty, T_\infty)$ is set by`-freestream_pressure`, `-freestream_velocity`, and `-freestream_temperature`.
+
+
+:::{list-table} Freestream Boundary Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+  - Unit
+
+* - `-freestream_riemann`
+  - Riemann solver used for freestream boundary flux (`hll`, `hllc`)
+  - `hllc`
+  -
+
+* - `-freestream_pressure`
+  - Pressure at freestream condition
+  - `-reference_pressure`
+  - `Pa`
+
+* - `-freestream_velocity`
+  - Velocity at freestream condition, array of size 3
+  - `-reference_velocity`
+  - `m/s`
+
+* - `-freestream_temperature`
+  - Temperature at freestream condition
+  - `-reference_temperature`
+  - `K`
+:::
+
+### Outflow
+
+Outflow treatment is also problem dependent.
+
+If you know the complete exterior state, `bc_freestream` is the least reflective boundary condition, but is disruptive to viscous flow structures.
+If thermal anomalies must exit the domain, the Riemann solver must resolve the contact wave to avoid reflections.
+The default Riemann solver, HLLC, is sufficient in this regard while the simpler HLL converts thermal structures exiting the domain into grid-scale reflecting acoustics.
+
+If acoustic reflections are not a concern and/or the flow is impacted by walls or interior structures that you wish to resolve to near the boundary, choose `bc_outflow`.
+This condition (with default `outflow_type: riemann`) is stable for both inflow and outflow, so can be used in areas that have recirculation and lateral boundaries in which the flow fluctuates.
+
+The simpler `bc_outflow` variant, `outflow_type: pressure`, requires that the flow have no recirculation at the boundary (or the problem becomes ill-posed and the solver will diverge).
+In our experience, `riemann` is significantly less reflective and is stable in the presence of recirculation at the boundary.
+The `pressure` variant is retained to facilitate comparison with other codes, such as PHASTA-C, but we recommend `riemann` for general use.
+
+For `outflow_type: riemann`, the boundary flux is evaluated pointwise by a local Riemann problem between the interior state and a constructed exterior state.
+This gives an inviscid interface flux in the face normal direction, $F_{\hat{n}}^{\mathrm{Riemann}}(Y^{\mathrm{int}}, \tilde{Y}^{\mathrm{ext}})$, using an approximate Riemann solver (HLLC in `bc_outflow`; HLL or HLLC in `bc_freestream`).
+The key advantage is that characteristic waves can leave and enter the domain in a numerically stable way.
+
+For viscous flow, the total boundary contribution is the inviscid Riemann flux plus a diffusive term from interior gradients:
+$h = F_{\hat{n}}^{\mathrm{Riemann}}(Y^{\mathrm{int}}, \tilde{Y}^{\mathrm{ext}}) + F_i^{\mathrm{diff}}(Y^{\mathrm{int}})\hat{n}_i$.
+
+For Riemann outflow, the normal velocity correction added to the exterior state is $\Delta u_n = (1-r)\,\mathrm{Softplus}(-u_n, u_s)$, where $r$ is set by `-outflow_recirc`, and $u_s$ is set by `-outflow_softplus_velocity`.
+The pressure and temperature used in the exterior state are set by `-outflow_pressure` and `-outflow_temperature`.
+
+:::{list-table} Newtonian Outflow Boundary Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+  - Unit
+
+* - `-outflow_type`
+  - Outflow model selection (`riemann`, `pressure`)
+  - `riemann`
+  -
+
+* - `-outflow_pressure`
+  - Pressure at outflow condition
+  - `-reference_pressure`
+  - `Pa`
+
+* - `-outflow_temperature`
+  - Temperature at outflow condition (Riemann outflow only)
+  - `-reference_temperature`
+  - `K`
+
+* - `-outflow_recirc`
+  - Fraction of recirculation allowed in exterior velocity state, $r \in [0,1]$ (Riemann outflow only)
+  - `1.0`
+  -
+
+* - `-outflow_softplus_velocity`
+  - Characteristic velocity scale (Riemann outflow only)
+  - `1e-2`
+  - `m/s`
+:::
+
+Implementation notes:
+
+1. Riemann outflow has the option of modifying the velocity normal to the boundary, $u_n$, in the exterior state. The intention is to penalize recirculation, but it generally has not shown much benefit and is not recommended for most runs.
+2. In our testing, the outflow recirculation parameter $r$ (`-outflow_recirc`) has been unstable for any value $r \ne 1$.
+
+### Periodicity
+
+PETSc provides two ways to specify periodicity:
+
+1. Isoperiodicity, in which the donor and receiver dofs are distinct in local vectors.
+To use isoperiodicity with a PETSc-built box mesh, use the `zbox` shape, as in:
+
+```yaml
+dm_plex:
+  shape: zbox
+  box_faces: 10,12,4
+  box_bd: none,none,periodic
+```
+
+Isoperiodicity enables standard boundary integrals, and is fully supported periodicity method.
+The `zbox` method uses [Z-ordering](https://en.wikipedia.org/wiki/Z-order_curve) to construct the mesh in parallel and provide an adequate initial partition, which makes it higher performance and avoids needing a partitioning package.
+
+2. Topological periodicity, in which the donor and receiver dofs are the same, obtained using:
+
+```yaml
+dm_plex:
+  shape: box
+  box_faces: 10,12,4
+  box_bd: none,none,periodic
+```
+
+The coordinates for such cases are stored as a new field with special cell-based indexing to enable wrapping through the boundary.
+This choice of coordinates prevents evaluating boundary integrals that cross the periodicity, such as for the outflow Riemann problem in the presence of spanwise periodicity.
+
 
 (bc-stg)=
 ### Synthetic Turbulence Generation (STG)
@@ -644,7 +780,7 @@ The following table is presented to help clarify the dimensionality of the numer
 
 #### Runtime Options
 
-To use the STG boundary condition, the `-bc_inflow` option should be set to the boundary faces that need the inflow (see {ref}`bc-flags`).
+To use the STG boundary condition, the `-bc_inflow` option should be set to the boundary faces that need the inflow (see {{ref}`bc-flags` and above).
 The `-stg_use` flag is then used to enable/disable applying STG to those faces.
 
 :::{list-table} STG Runtime Options
@@ -751,6 +887,3 @@ $P_\mathrm{ref}$ has a default value equal to `-reference_pressure` flag, with a
   -  `-reference_pressure`
   - `Pa`
 :::
-
-
-<!-- TODO:  Move the Riemann/freestream description here-->

@@ -337,6 +337,11 @@ The top of the domain is treated as an outflow and is tilted at a downward angle
   - `4.2e-3`
   - `m`
 
+* - `-weakT`
+  - Blasius weak inflow switch (weak temperature vs weak density form)
+  - `false`
+  - -
+
 * - `-n_chebyshev`
   - Number of Chebyshev terms
   - `20`
