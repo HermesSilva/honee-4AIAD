@@ -54,6 +54,9 @@ noether-format:
     - rm -f .SUCCESS
     - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-15 && $CLANG_FORMAT --version
     - make -j$NPROC_CPU format && git diff --color=always --exit-code
+    - echo "-------------- PETSc ---------------"
+    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_ARCH=arch-serial-cpu-clang && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - echo "-------------- make checkbadSource ---------"
     - make -j$NPROC_CPU checkbadSource
     - touch .SUCCESS

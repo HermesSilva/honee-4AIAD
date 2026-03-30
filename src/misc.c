@@ -274,7 +274,6 @@ PetscErrorCode PrintRunBanner(MPI_Comm comm, PetscViewer viewer) {
                                    "                                              \n"
                                    "High-Order Navier-stokes Equation Evaluator  \n"
                                    "                                              \n"));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

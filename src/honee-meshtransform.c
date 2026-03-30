@@ -195,6 +195,5 @@ PetscErrorCode HoneeMeshTransformFromOptions(DM dm) {
     PetscCall(VecScale(coords, meter));
     PetscCall(DMSetCoordinatesLocal(dm, coords));
   }
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }

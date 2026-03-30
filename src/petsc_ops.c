@@ -100,14 +100,14 @@ PetscErrorCode OperatorApplyContextCreate(DM dm_x, DM dm_y, Ceed ceed, CeedOpera
   PetscCall(PetscNew(ctx));
 
   // Copy PETSc Objects
-  if (dm_x) PetscCall(PetscObjectReference((PetscObject)dm_x));
+  PetscCall(PetscObjectReference((PetscObject)dm_x));
   (*ctx)->dm_x = dm_x;
-  if (dm_y) PetscCall(PetscObjectReference((PetscObject)dm_y));
+  PetscCall(PetscObjectReference((PetscObject)dm_y));
   (*ctx)->dm_y = dm_y;
 
-  if (X_loc) PetscCall(PetscObjectReference((PetscObject)X_loc));
+  PetscCall(PetscObjectReference((PetscObject)X_loc));
   (*ctx)->X_loc = X_loc;
-  if (Y_loc) PetscCall(PetscObjectReference((PetscObject)Y_loc));
+  PetscCall(PetscObjectReference((PetscObject)Y_loc));
   (*ctx)->Y_loc = Y_loc;
 
   // Copy libCEED objects
