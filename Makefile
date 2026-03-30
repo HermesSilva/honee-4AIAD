@@ -386,7 +386,6 @@ configure :
 
 GITSRC = '*.[chF]' '*.hpp' '*.cpp' '*.cxx'
 checkbadSource:
-	@git --no-pager grep -n -P 'self\.gitcommit' -- config/BuildSystem/config/packages | grep 'origin/' ; if [[ "$$?" == "0" ]]; then echo "Error: Do not use a branch name in a configure package file"; false; fi
 	-@${RM} -f checkbadSource.out
 	-@touch checkbadSource.out
 	-@${PYTHON} ${PETSC_DIR}/lib/petsc/bin/maint/check_header_guard.py --action=check --kind=pragma_once -- ./src ./include >> checkbadSource.out
@@ -442,6 +441,10 @@ checkbadSource:
 	-@git --no-pager grep -n -E -B 1 '  PetscFunctionBegin(User|Hot){0,1};' -- ${GITSRC} ':!src/sys/tests/*' ':!src/sys/tutorials/*' | grep -E '\-[0-9]+-.*;' | grep -v '^--$$' | grep -v '\\' >> checkbadSource.out;true
 	-@echo "----- Unneeded parentheses [!&~*](foo[->|.]bar) --------------------" >> checkbadSource.out
 	-@git --no-pager grep -n -P -E '([\!\&\~\*\(]|\)\)|\([^,\*\(]+\**\))\(([a-zA-Z0-9_]+((\.|->)[a-zA-Z0-9_]+|\[[a-zA-Z0-9_ \%\+\*\-]+\])+)\)' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Useless check before Petsc(Free|Dereference|Reference)() -----" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'if \(([^=;, ]+)\) PetscCall(CUDA|HIP)?\((Petsc|hip|cuda)(Free\(|Object(Der|R)eference\(\(PetscObject\))\1\)\);' -- ${GITSRC} >> checkbadSource.out;true
+	-@echo "----- Useless check before Destroy() -------------------------------" >> checkbadSource.out
+	-@git --no-pager grep -n -P 'if \(([^=;, ]+)\) PetscCall\([a-zA-Z_]+Destroy\(\&\1\)\);' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Use PetscSafePointerPlusOffset(ptr, n) instead of ptr ? ptr + n : NULL" >> checkbadSource.out
 	-@git --no-pager grep -n -Po ' ([^()\ ]+) \? (?1) \+ (.)* : NULL' -- ${GITSRC} >> checkbadSource.out;true
 	-@echo "----- Wrong PETSc capitalization -----------------------------------" >> checkbadSource.out

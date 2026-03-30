@@ -722,7 +722,6 @@ static inline PetscErrorCode Create1DTabulation_Tensor(MPI_Comm comm, PetscFE fe
 
   // Cleanup
   PetscCall(PetscFEDestroy(&fe_1d));
-
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -1326,7 +1325,7 @@ PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num
   *num_values = (PetscInt)seg_size;
   PetscCall(PetscSegBufferExtractAlloc(seg, value_array));
   PetscCall(PetscSegBufferDestroy(&seg));
-  if (values_local) PetscCall(PetscFree(values_local));
+  PetscCall(PetscFree(values_local));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

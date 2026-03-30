@@ -62,10 +62,10 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
   PetscFunctionBeginUser;
   if (!bc_def_) PetscFunctionReturn(PETSC_SUCCESS);
   PetscValidHeaderSpecific(bc_def_, BC_DEFINITION_CLASSID, 1);
-  if (bc_def_->name) PetscCall(PetscFree(bc_def_->name));
-  if (bc_def_->label_values) PetscCall(PetscFree(bc_def_->label_values));
-  if (bc_def_->essential_comps) PetscCall(PetscFree(bc_def_->essential_comps));
-  if (bc_def_->dm) PetscCall(DMDestroy(&bc_def_->dm));
+  PetscCall(PetscFree(bc_def_->name));
+  PetscCall(PetscFree(bc_def_->label_values));
+  PetscCall(PetscFree(bc_def_->essential_comps));
+  PetscCall(DMDestroy(&bc_def_->dm));
   if (bc_def_->DestroyCtx) PetscCall((*bc_def_->DestroyCtx)(&bc_def_->ctx));
   PetscCall(PetscHeaderDestroy(&bc_def_));
   *bc_def = NULL;
@@ -231,7 +231,7 @@ PetscErrorCode PetscOptionsBCDefinition_Private(PetscOptionItems PetscOptionsObj
 PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
-  if (bc_def->dm) PetscCall(DMDestroy(&bc_def->dm));
+  PetscCall(DMDestroy(&bc_def->dm));
   if (dm) {
     PetscValidHeaderSpecific(dm, DM_CLASSID, 2);
     PetscCall(PetscObjectReference((PetscObject)dm));
