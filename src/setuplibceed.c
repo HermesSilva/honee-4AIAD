@@ -135,9 +135,11 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
   }
 
   {  // -- Create QFunction for ICs
-    CeedBasis     basis_xc;
-    CeedQFunction qf_ics;
-    CeedOperator  op_ics;
+    CeedElemRestriction elem_restr_walldist = NULL;
+    CeedVector          vec_walldist        = NULL;
+    CeedBasis           basis_xc;
+    CeedQFunction       qf_ics;
+    CeedOperator        op_ics;
 
     PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x, basis_q, &basis_xc));
     PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, problem->ics.qf_func_ptr, problem->ics.qf_loc, &qf_ics));
@@ -145,11 +147,18 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedQFunctionSetUserFlopsEstimate(qf_ics, 0));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ics, "x", num_comp_x, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ics, "dx", num_comp_x * dim, CEED_EVAL_GRAD));
+    if (problem->ics_use_wall_distance) {
+      PetscCall(HoneeWallDistanceGetProjectedField(honee, &elem_restr_walldist, NULL, &vec_walldist));
+      PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ics, "walldist", 1, CEED_EVAL_NONE));
+    }
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ics, "q0", num_comp_q, CEED_EVAL_NONE));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ics, NULL, NULL, &op_ics));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "x", elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "dx", elem_restr_x, basis_xc, CEED_VECTOR_ACTIVE));
+    if (problem->ics_use_wall_distance) {
+      PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "walldist", elem_restr_walldist, CEED_BASIS_NONE, vec_walldist));
+    }
     PetscCallCeed(ceed, CeedOperatorSetField(op_ics, "q0", elem_restr_q, CEED_BASIS_NONE, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_ics, "evaluation time", &honee->phys->ics_time_label));
     PetscCall(OperatorApplyContextCreate(NULL, dm, honee->ceed, op_ics, x_coord, NULL, NULL, honee->Q_loc, &honee->op_ics_ctx));
@@ -157,6 +166,8 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedBasisDestroy(&basis_xc));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ics));
     PetscCallCeed(ceed, CeedOperatorDestroy(&op_ics));
+    PetscCallCeed(ceed, CeedVectorDestroy(&vec_walldist));
+    PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_walldist));
   }
 
   if (problem->apply_vol_rhs.qf_func_ptr) {

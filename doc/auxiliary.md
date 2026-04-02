@@ -78,6 +78,68 @@ Please let us know if this is desired; it should be a quick add-on.
 
 :::
 
+(aux-ics)=
+## Initial Conditions (ICs)
+
+Initial conditions are created by either an analytical function or by loading from file.
+Many of the example problems have their own analytical ICs, discussed in their respective documentation  sections.
+More generic options are available as well, as detailed below.
+This section focuses on options for the Navier-Stokes solver.
+
+(aux-ics-default)=
+### Default
+The default initial condition for Navier-Stokes problems applies the reference state uniformly across the full domain, using
+`-reference_pressure`, `-reference_velocity`, and `-reference_temperature`.
+
+(aux-ics-boundary-layer)=
+### IC Boundary Layer
+For Newtonian initial conditions, HONEE can apply a wall-distance-based IC boundary layer profile using `-ic_boundary_layer_use true`.
+
+The profile is formed by linearly interpolating between the primitive components of a user-defined wall state and the reference state.
+Here, $d$ is the wall distance (currently defined using `-bc_wall`), $h$ is the boundary-layer thickness (`-ic_boundary_layer_height`),
+$\bm{Y}_\mathrm{wall}$ is the wall state from `-ic_boundary_layer_wall_pressure`, `-ic_boundary_layer_wall_velocity`, and
+`-ic_boundary_layer_wall_temperature`, and $\bm{Y}_\mathrm{ref}$ is the reference state from
+`-reference_pressure`, `-reference_velocity`, and `-reference_temperature`.
+
+$$
+\bm{Y} = \begin{cases}
+\bm{Y}_{\mathrm{wall}} + \frac{d}{h}\left(\bm{Y}_{\mathrm{ref}} - \bm{Y}_{\mathrm{wall}}\right) & d < h \\
+\bm{Y}_{\mathrm{ref}} & d \ge h
+\end{cases}
+$$
+
+The created primitive state is then converted to whichever state variable form is used by the solver.
+
+IC boundary layer requires wall distance field, which is currently defined using `-bc_wall`.
+
+:::{list-table} Newtonian IC Boundary Layer Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+
+* - `-ic_boundary_layer_use`
+  - Enable wall-distance-based IC boundary layer profile for Newtonian problems
+  - `false`
+
+* - `-ic_boundary_layer_height`
+  - Boundary-layer thickness (required when `-ic_boundary_layer_use true`, must be positive)
+  -
+
+* - `-ic_boundary_layer_wall_pressure`
+  - Wall-state pressure used for the IC boundary layer profile
+  - `-reference_pressure`
+
+* - `-ic_boundary_layer_wall_velocity`
+  - Wall-state velocity vector used for the IC boundary layer profile (must provide 3 values if set)
+  - `-reference_velocity`
+
+* - `-ic_boundary_layer_wall_temperature`
+  - Wall-state temperature used for the IC boundary layer profile
+  - `-reference_temperature`
+:::
+
 (aux-statistics)=
 ## Statistics Collection
 For scale-resolving simulations (such as LES and DNS), statistics for a simulation are more often useful than time-instantaneous snapshots of the simulation itself.

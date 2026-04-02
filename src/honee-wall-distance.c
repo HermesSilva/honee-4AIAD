@@ -333,8 +333,8 @@ PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_
   @param[out] basis_walldist      Basis for projected wall distance field
   @param[out] vec_walldist        Vector of wall distance coefficients
 **/
-static PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestriction *elem_restr_walldist, CeedBasis *basis_walldist,
-                                                         CeedVector *vec_walldist) {
+PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestriction *elem_restr_walldist, CeedBasis *basis_walldist,
+                                                  CeedVector *vec_walldist) {
   MPI_Comm            comm = honee->comm;
   Ceed                ceed = honee->ceed;
   HoneeWallDistance   walldist_ctx;

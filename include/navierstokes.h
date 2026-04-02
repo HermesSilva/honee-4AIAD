@@ -240,7 +240,7 @@ struct ProblemData_private {
   CeedInt     num_comps_jac_data;
   HoneeQFSpec ics, apply_vol_rhs, apply_vol_ifunction, apply_vol_ijacobian;
   bool        compute_exact_solution_error;
-  PetscBool   set_bc_from_ics, use_strong_bc_ceed;
+  PetscBool   set_bc_from_ics, use_strong_bc_ceed, ics_use_wall_distance;
 
   // BC Definitions
   PetscCount    num_bc_defs;
@@ -366,5 +366,7 @@ PetscErrorCode KSPPostSolve_Honee(KSP ksp, Vec rhs, Vec x, void *ctx);
 PetscErrorCode HoneeWallDistanceSetup(Honee honee, PetscInt num_label_values, const PetscInt *label_values);
 PetscErrorCode HoneeWallDistanceGetQuadratureValues(Honee honee, DMLabel domain_label, PetscInt label_value, PetscInt height,
                                                     CeedElemRestriction *elem_restr_walldist, CeedVector *vec_walldist);
+PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestriction *elem_restr_walldist, CeedBasis *basis_walldist,
+                                                  CeedVector *vec_walldist);
 PetscErrorCode HoneeWallDistanceViewProjectedField(Honee honee, PetscBool error_if_not_setup);
 PetscErrorCode HoneeWallDistanceTest(Honee honee);

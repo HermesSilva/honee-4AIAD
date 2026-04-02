@@ -5,6 +5,7 @@
 /// Utility functions for setting up problems using the Newtonian Qfunction
 
 #include "../qfunctions/newtonian.h"
+#include "../qfunctions/ic_boundary_layer.h"
 
 #include <ceed.h>
 #include <petscdm.h>
@@ -29,6 +30,59 @@ static PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx a
                         "    Stabilization                      : %s\n",
                         app_ctx->problem_name, StabilizationTypes[newt_ctx->stabilization]));
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->apply_vol_rhs.qfctx, &newt_ctx));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode SetupNewtonianICBoundaryLayerFromOptions(Honee honee, ProblemData problem, StatePrimitive reference,
+                                                               ICBoundaryLayer *ic_boundary_layer) {
+  PetscBool use_icbl = PETSC_FALSE;
+  PetscBool height_set, wall_pressure_set, wall_velocity_set, wall_temperature_set, has_walldist;
+  PetscInt  dim   = 3;
+  Units     units = honee->units;
+
+  PetscFunctionBeginUser;
+  problem->ics_use_wall_distance = PETSC_FALSE;
+  *ic_boundary_layer             = (ICBoundaryLayer){
+                  .wall   = reference,
+                  .height = 0,
+  };
+
+  PetscOptionsBegin(honee->comm, NULL, "Options for Newtonian initial-condition boundary layer", NULL);
+  PetscCall(PetscOptionsBool("-ic_boundary_layer_use", "Use wall-distance-based initial-condition boundary-layer profile", NULL, use_icbl, &use_icbl,
+                             NULL));
+  if (use_icbl) {
+    PetscCall(PetscOptionsScalar("-ic_boundary_layer_height", "Boundary-layer thickness for initial-condition profile", NULL,
+                                 ic_boundary_layer->height, &ic_boundary_layer->height, &height_set));
+    PetscCall(PetscOptionsScalar("-ic_boundary_layer_wall_pressure", "Wall-state pressure for initial-condition profile", NULL,
+                                 ic_boundary_layer->wall.pressure, &ic_boundary_layer->wall.pressure, &wall_pressure_set));
+    PetscCall(PetscOptionsScalarArray("-ic_boundary_layer_wall_velocity", "Wall-state velocity for initial-condition profile", NULL,
+                                      ic_boundary_layer->wall.velocity, &dim, &wall_velocity_set));
+    PetscCheck(dim == 3 || !wall_velocity_set, honee->comm, PETSC_ERR_ARG_SIZ,
+               "-ic_boundary_layer_wall_velocity must have 3 values, %" PetscInt_FMT " given", dim);
+    PetscCall(PetscOptionsScalar("-ic_boundary_layer_wall_temperature", "Wall-state temperature for initial-condition profile", NULL,
+                                 ic_boundary_layer->wall.temperature, &ic_boundary_layer->wall.temperature, &wall_temperature_set));
+  }
+  PetscOptionsEnd();
+
+  if (!use_icbl) PetscFunctionReturn(PETSC_SUCCESS);
+
+  PetscCheck(height_set, honee->comm, PETSC_ERR_USER_INPUT, "-ic_boundary_layer_height is required when -ic_boundary_layer_use is true");
+  PetscCheck(ic_boundary_layer->height > 0, honee->comm, PETSC_ERR_USER_INPUT,
+             "-ic_boundary_layer_height must be positive when -ic_boundary_layer_use is true");
+  if (!(wall_pressure_set || wall_velocity_set || wall_temperature_set)) {
+    PetscCall(PetscPrintf(honee->comm,
+                          "WARNING: -ic_boundary_layer_use is true, but no wall-state override was provided; "
+                          "ICBL will equal the reference state.\n"));
+  }
+
+  PetscCall(HoneeHasContainer(honee, "Wall Distance Context", &has_walldist));
+  PetscCheck(has_walldist, honee->comm, PETSC_ERR_USER_INPUT, "-ic_boundary_layer_use requires wall-distance to be setup (typically via -bc_wall)");
+
+  problem->ics_use_wall_distance = PETSC_TRUE;
+  ic_boundary_layer->height *= units->meter;
+  ic_boundary_layer->wall.pressure *= units->Pascal;
+  for (PetscInt i = 0; i < 3; i++) ic_boundary_layer->wall.velocity[i] *= units->meter / units->second;
+  ic_boundary_layer->wall.temperature *= units->Kelvin;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -378,6 +432,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscBool                implicit;
   PetscBool                unit_tests;
   NewtonianIdealGasContext newtonian_ig_ctx;
+  ICBoundaryLayer          ic_boundary_layer;
 
   PetscFunctionBeginUser;
   // Option Defaults
@@ -472,6 +527,21 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
                                  newtonian_ig_ctx->idl_pressure, &newtonian_ig_ctx->idl_pressure, NULL));
   }
   PetscOptionsEnd();
+  PetscCall(SetupNewtonianICBoundaryLayerFromOptions(honee, problem, reference, &ic_boundary_layer));
+  {
+    static const HoneeQFSpec newtonian_ig_ic_specs[] = {
+        {.qf_func_ptr = ICsNewtonianIG_Conserv, .qf_loc = ICsNewtonianIG_Conserv_loc},
+        {.qf_func_ptr = ICsNewtonianIG_Prim,    .qf_loc = ICsNewtonianIG_Prim_loc   },
+        {.qf_func_ptr = ICsNewtonianIG_Entropy, .qf_loc = ICsNewtonianIG_Entropy_loc},
+    };
+    static const HoneeQFSpec newtonian_bl_ic_specs[] = {
+        {.qf_func_ptr = ICsBoundaryLayerNewtonian_Conserv, .qf_loc = ICsBoundaryLayerNewtonian_Conserv_loc},
+        {.qf_func_ptr = ICsBoundaryLayerNewtonian_Prim,    .qf_loc = ICsBoundaryLayerNewtonian_Prim_loc   },
+        {.qf_func_ptr = ICsBoundaryLayerNewtonian_Entropy, .qf_loc = ICsBoundaryLayerNewtonian_Entropy_loc},
+    };
+
+    problem->ics = problem->ics_use_wall_distance ? newtonian_bl_ic_specs[state_var] : newtonian_ig_ic_specs[state_var];
+  }
 
   // ------------------------------------------------------
   //           Set up the QFunction context
@@ -505,12 +575,13 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   // -- Setup Context
   PetscCall(PetscNew(&setup_context));
   *setup_context = (struct SetupContext_){
-      .reference = reference,
-      .newt_ctx  = *newtonian_ig_ctx,
-      .lx        = domain_size[0],
-      .ly        = domain_size[1],
-      .lz        = domain_size[2],
-      .time      = 0,
+      .reference         = reference,
+      .ic_boundary_layer = ic_boundary_layer,
+      .newt_ctx          = *newtonian_ig_ctx,
+      .lx                = domain_size[0],
+      .ly                = domain_size[1],
+      .lz                = domain_size[2],
+      .time              = 0,
   };
 
   CeedQFunctionContext ics_qfctx, newtonian_ig_qfctx;
@@ -546,20 +617,17 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
 
   switch (state_var) {
     case STATEVAR_CONSERVATIVE:
-      problem->ics                 = (HoneeQFSpec){.qf_func_ptr = ICsNewtonianIG_Conserv, .qf_loc = ICsNewtonianIG_Conserv_loc};
       problem->apply_vol_rhs       = (HoneeQFSpec){.qf_func_ptr = RHSFunction_Newtonian, .qf_loc = RHSFunction_Newtonian_loc};
       problem->apply_vol_ifunction = (HoneeQFSpec){.qf_func_ptr = IFunction_Newtonian_Conserv, .qf_loc = IFunction_Newtonian_Conserv_loc};
       problem->apply_vol_ijacobian = (HoneeQFSpec){.qf_func_ptr = IJacobian_Newtonian_Conserv, .qf_loc = IJacobian_Newtonian_Conserv_loc};
       for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(conserv_component_names[i], &problem->component_names[i]));
       break;
     case STATEVAR_PRIMITIVE:
-      problem->ics                 = (HoneeQFSpec){.qf_func_ptr = ICsNewtonianIG_Prim, .qf_loc = ICsNewtonianIG_Prim_loc};
       problem->apply_vol_ifunction = (HoneeQFSpec){.qf_func_ptr = IFunction_Newtonian_Prim, .qf_loc = IFunction_Newtonian_Prim_loc};
       problem->apply_vol_ijacobian = (HoneeQFSpec){.qf_func_ptr = IJacobian_Newtonian_Prim, .qf_loc = IJacobian_Newtonian_Prim_loc};
       for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(prim_component_names[i], &problem->component_names[i]));
       break;
     case STATEVAR_ENTROPY:
-      problem->ics                 = (HoneeQFSpec){.qf_func_ptr = ICsNewtonianIG_Entropy, .qf_loc = ICsNewtonianIG_Entropy_loc};
       problem->apply_vol_ifunction = (HoneeQFSpec){.qf_func_ptr = IFunction_Newtonian_Entropy, .qf_loc = IFunction_Newtonian_Entropy_loc};
       problem->apply_vol_ijacobian = (HoneeQFSpec){.qf_func_ptr = IJacobian_Newtonian_Entropy, .qf_loc = IJacobian_Newtonian_Entropy_loc};
       for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(entropy_component_names[i], &problem->component_names[i]));
