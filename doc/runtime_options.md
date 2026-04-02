@@ -395,6 +395,29 @@ The `zbox` method uses [Z-ordering](https://en.wikipedia.org/wiki/Z-order_curve)
 
 ## Newtonian viscosity, Ideal Gas
 
+### Newtonian Reference State Options
+These options set the Newtonian reference state.
+
+:::{list-table} Newtonian Reference State Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+
+* - `-reference_pressure`
+  - Reference/initial pressure. Also used as the default for `-ic_boundary_layer_wall_pressure`.
+  - `1.01e5`
+
+* - `-reference_velocity`
+  - Reference/initial velocity (3 values). Also used as the default for `-ic_boundary_layer_wall_velocity`.
+  - `0,0,0`
+
+* - `-reference_temperature`
+  - Reference/initial temperature. Also used as the default for `-ic_boundary_layer_wall_temperature`.
+  - `288.15`
+:::
+
 For the Density Current, Channel, and Blasius problems, the following common command-line options are available:
 
 :::{list-table} Newtonian Ideal Gas problems Runtime Options

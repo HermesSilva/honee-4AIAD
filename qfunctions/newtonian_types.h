@@ -58,9 +58,15 @@ typedef struct {
   CeedScalar S_energy;
 } StateEntropy;
 
+typedef struct {
+  StatePrimitive wall;
+  CeedScalar     height;
+} ICBoundaryLayer;
+
 typedef struct SetupContext_ *SetupContext;
 struct SetupContext_ {
   StatePrimitive                   reference;
+  ICBoundaryLayer                  ic_boundary_layer;
   struct NewtonianIdealGasContext_ newt_ctx;
   CeedScalar                       lx;
   CeedScalar                       ly;
