@@ -55,18 +55,16 @@ static PetscErrorCode SlipBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFu
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx) {
-  Honee         honee = *(Honee *)ctx;
-  Ceed          ceed  = honee->ceed;
-  HoneeBCStruct honee_bc;
+PetscErrorCode BCDefinitionNaturalSetup_Slip(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext newtonian_ig_qfctx;
 
   PetscFunctionBeginUser;
-  PetscCall(PetscNew(&honee_bc));
-  honee_bc->honee              = honee;
   honee_bc->num_comps_jac_data = 5;
+  PetscCall(HoneeGetContainer(honee, "Newtonian IG QFunction Ctx", &newtonian_ig_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
-
-  PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
   PetscCall(BCDefinitionSetIFunction(bc_def, SlipBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
   PetscCall(BCDefinitionSetIJacobian(bc_def, SlipBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));

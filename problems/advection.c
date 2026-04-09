@@ -7,6 +7,7 @@
 #include "../qfunctions/advection.h"
 
 #include <ceed.h>
+#include <ceed/backend.h>
 #include <petscdm.h>
 
 #include <navierstokes.h>
@@ -376,6 +377,23 @@ static PetscErrorCode AdvectionInflowBCSetup_CreateIFunctionQF(BCDefinition bc_d
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+#define ADVECTION_QFCTX_KEY "Advection QFunction Ctx"
+
+static PetscErrorCode BCDefinitionNaturalSetup_Advection(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext advection_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, ADVECTION_QFCTX_KEY, &advection_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &honee_bc->qfctx));
+  honee_bc->num_comps_jac_data = 0;
+  PetscCall(BCDefinitionSetIFunction(bc_def, AdvectionInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static const char *const component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
 
 PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
@@ -594,25 +612,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
     }
   }
 
-  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-    BCDefinition bc_def = problem->bc_defs[b];
-    const char  *name;
-    PetscBool    is_inflow;
-
-    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
-    if (is_inflow) {
-      HoneeBCStruct honee_bc;
-
-      PetscCall(PetscNew(&honee_bc));
-      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(advection_qfctx, &honee_bc->qfctx));
-      honee_bc->honee              = honee;
-      honee_bc->num_comps_jac_data = 0;
-      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-      PetscCall(BCDefinitionSetIFunction(bc_def, AdvectionInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-      PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
-    }
-  }
+  PetscCallCeed(ceed, CeedQFunctionContextReference(advection_qfctx));
+  PetscCall(HoneeSetContainer(honee, ADVECTION_QFCTX_KEY, advection_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Advection));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

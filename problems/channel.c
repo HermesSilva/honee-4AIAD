@@ -7,6 +7,7 @@
 #include "../qfunctions/channel.h"
 
 #include <ceed.h>
+#include <ceed/backend.h>
 #include <petscdm.h>
 
 #include <navierstokes.h>
@@ -32,6 +33,40 @@ static PetscErrorCode ChannelInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def
   PetscCheck(honee_bc->honee->phys->state_var == STATEVAR_CONSERVATIVE, PETSC_COMM_WORLD, PETSC_ERR_SUP,
              "Channel inflow only valid for Conservative variables, recieved %s", StateVariables[honee_bc->honee->phys->state_var]);
   PetscCall(HoneeBCCreateIFunctionQF(bc_def, Channel_Inflow, Channel_Inflow_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+#define CHANNEL_QFCTX_KEY "Channel QFunction Ctx"
+
+static PetscErrorCode BCDefinitionNaturalSetup_ChannelInflow(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext channel_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscPrintf(PetscObjectComm((PetscObject)bc_def), "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
+  PetscCall(HoneeGetContainer(honee, CHANNEL_QFCTX_KEY, &channel_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &honee_bc->qfctx));
+  honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
+  PetscCall(BCDefinitionSetIFunction(bc_def, ChannelInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode BCDefinitionNaturalSetup_ChannelOutflow(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext channel_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscPrintf(PetscObjectComm((PetscObject)bc_def), "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
+  PetscCall(HoneeGetContainer(honee, CHANNEL_QFCTX_KEY, &channel_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &honee_bc->qfctx));
+  honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
+  PetscCall(BCDefinitionSetIFunction(bc_def, ChannelOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -109,40 +144,10 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
   problem->ics = (HoneeQFSpec){.qf_func_ptr = ICsChannel, .qf_loc = ICsChannel_loc, .qfctx = channel_qfctx};
 
-  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-    BCDefinition bc_def = problem->bc_defs[b];
-    const char  *name;
-    PetscBool    is_outflow, is_inflow;
-
-    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    PetscCall(PetscStrcmp(name, "outflow", &is_outflow));
-    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
-    if (honee->phys->state_var == STATEVAR_CONSERVATIVE && is_outflow) {
-      HoneeBCStruct honee_bc;
-
-      PetscCall(PetscPrintf(comm, "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
-      PetscCall(PetscNew(&honee_bc));
-      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &honee_bc->qfctx));
-      honee_bc->honee              = honee;
-      honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
-      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-      PetscCall(BCDefinitionSetIFunction(bc_def, ChannelOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-      PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
-    } else if (honee->phys->state_var == STATEVAR_CONSERVATIVE && is_inflow) {
-      HoneeBCStruct honee_bc;
-
-      PetscCall(PetscPrintf(comm, "WARNING! Channel flow with Inflow and Outflow is currently broken.\n"));
-      PetscCall(PetscNew(&honee_bc));
-      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(channel_qfctx, &honee_bc->qfctx));
-      honee_bc->honee              = honee;
-      honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
-      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-      PetscCall(BCDefinitionSetIFunction(bc_def, ChannelInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-      PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
-    }
-  }
+  PetscCallCeed(ceed, CeedQFunctionContextReference(channel_qfctx));
+  PetscCall(HoneeSetContainer(honee, CHANNEL_QFCTX_KEY, channel_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_ChannelInflow));
+  PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_ChannelOutflow));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

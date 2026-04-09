@@ -10,7 +10,6 @@
 #include <petscdm.h>
 
 #include <navierstokes.h>
-#include "../qfunctions/bc_freestream_type.h"
 
 PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
   Honee                    honee = *(Honee *)ctx;
@@ -19,6 +18,7 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
   GaussianWaveContext      gausswave_ctx;
   NewtonianIdealGasContext newtonian_ig_ctx;
   CeedQFunctionContext     gausswave_qfctx;
+  const StatePrimitive    *reference;
 
   PetscFunctionBeginUser;
   PetscCall(NS_NEWTONIAN_IG(problem, dm, ctx));
@@ -41,25 +41,9 @@ PetscErrorCode NS_GAUSSIAN_WAVE(ProblemData problem, DM dm, void *ctx) {
 
   // -- Set gausswave_ctx struct values
   PetscCall(PetscNew(&gausswave_ctx));
+  PetscCall(HoneeGetContainer(honee, "Reference State", &reference));
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
-  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-    BCDefinition  bc_def = problem->bc_defs[b];
-    HoneeBCStruct honee_bc;
-    const char   *name;
-    PetscBool     is_freestream;
-
-    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    PetscCall(PetscStrcmp(name, "freestream", &is_freestream));
-    if (is_freestream) {
-      FreestreamContext freestream_ctx;
-      PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
-      PetscCallCeed(ceed, CeedQFunctionContextGetData(honee_bc->qfctx, CEED_MEM_HOST, &freestream_ctx));
-      gausswave_ctx->S_infty = freestream_ctx->S_infty;
-      PetscCallCeed(ceed, CeedQFunctionContextRestoreData(honee_bc->qfctx, &freestream_ctx));
-      break;
-    }
-  }
-
+  gausswave_ctx->S_infty   = StateFromPrimitive(newtonian_ig_ctx->gas, *reference);
   gausswave_ctx->amplitude = amplitude;
   gausswave_ctx->width     = width;
   gausswave_ctx->newt_ctx  = *newtonian_ig_ctx;

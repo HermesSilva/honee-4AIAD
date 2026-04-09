@@ -7,6 +7,7 @@
 #include "../qfunctions/blasius.h"
 
 #include <ceed.h>
+#include <ceed/backend.h>
 #include <petscdm.h>
 #include <petscdt.h>
 
@@ -129,6 +130,23 @@ static PetscErrorCode BlasiusInflowBCSetup_CreateIJacobianQF(BCDefinition bc_def
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+#define BLASIUS_QFCTX_KEY "Blasius QFunction Ctx"
+
+static PetscErrorCode BCDefinitionNaturalSetup_Blasius(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext blasius_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, BLASIUS_QFCTX_KEY, &blasius_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &honee_bc->qfctx));
+  honee_bc->num_comps_jac_data = 0;
+  PetscCall(BCDefinitionSetIFunction(bc_def, BlasiusInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, BlasiusInflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   Honee                    honee   = *(Honee *)ctx;
   MPI_Comm                 comm    = honee->comm;
@@ -224,26 +242,10 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   } else {
     PetscCheck((honee->phys->state_var == STATEVAR_CONSERVATIVE) || (honee->app_ctx->test_type == TESTTYPE_DIFF_FILTER), honee->comm,
                PETSC_ERR_ARG_INCOMP, "Can only use conservative variables with Blasius and weak inflow");
-    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-      BCDefinition bc_def = problem->bc_defs[b];
-      const char  *name;
-      PetscBool    is_inflow;
 
-      PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-      PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
-      if (is_inflow) {
-        HoneeBCStruct honee_bc;
-
-        PetscCall(PetscNew(&honee_bc));
-        PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(blasius_qfctx, &honee_bc->qfctx));
-        honee_bc->honee              = honee;
-        honee_bc->num_comps_jac_data = 0;
-        PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-        PetscCall(BCDefinitionSetIFunction(bc_def, BlasiusInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-        PetscCall(BCDefinitionSetIJacobian(bc_def, BlasiusInflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
-      }
-    }
+    PetscCallCeed(ceed, CeedQFunctionContextReference(blasius_qfctx));
+    PetscCall(HoneeSetContainer(honee, BLASIUS_QFCTX_KEY, blasius_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
+    PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Blasius));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

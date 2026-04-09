@@ -110,18 +110,24 @@ static PetscErrorCode OutflowBCSetup_CreateIJacobianQF(BCDefinition bc_def, Ceed
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
-                              const StatePrimitive *reference) {
-  Honee                honee = *(Honee *)ctx;
-  Ceed                 ceed  = honee->ceed;
-  OutflowContext       outflow_ctx;
-  OutflowType          outflow_type = OUTFLOW_RIEMANN;
-  CeedQFunctionContext outflow_qfctx;
-  Units                units = honee->units;
-  HoneeBCStruct        honee_bc;
-  OutflowHoneeBCCtx    outflow_honee_bc;
+PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct                           honee_bc = (HoneeBCStruct)ctx;
+  Honee                                   honee    = honee_bc->honee;
+  Ceed                                    ceed     = honee->ceed;
+  OutflowContext                          outflow_ctx;
+  OutflowType                             outflow_type = OUTFLOW_RIEMANN;
+  CeedQFunctionContext                    outflow_qfctx;
+  Units                                   units = honee->units;
+  OutflowHoneeBCCtx                       outflow_honee_bc;
+  CeedQFunctionContext                    newtonian_ig_qfctx;
+  const struct NewtonianIdealGasContext_ *newtonian_ig_ctx;
+  const StatePrimitive                   *reference;
 
   PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, "Newtonian IG QFunction Ctx", &newtonian_ig_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(newtonian_ig_qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
+  PetscCall(HoneeGetContainer(honee, "Reference State", &reference));
+
   CeedScalar pressure    = reference->pressure / units->Pascal;
   CeedScalar temperature = reference->temperature / units->Kelvin;
   CeedScalar recirc = 1, softplus_velocity = 1e-2;
@@ -154,17 +160,16 @@ PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, v
 
   PetscCall(PetscNew(&outflow_honee_bc));
   outflow_honee_bc->outflow_type = outflow_type;
-  PetscCall(PetscNew(&honee_bc));
-  *honee_bc = (struct HoneeBCStruct_){
-      .ctx                = outflow_honee_bc,
-      .DestroyCtx         = PetscCtxDestroyDefault,
-      .honee              = honee,
-      .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
-      .qfctx              = outflow_qfctx,
+  *honee_bc                      = (struct HoneeBCStruct_){
+                           .ctx                = outflow_honee_bc,
+                           .DestroyCtx         = PetscCtxDestroyDefault,
+                           .honee              = honee,
+                           .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
+                           .qfctx              = outflow_qfctx,
   };
-  PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
   PetscCall(BCDefinitionSetIFunction(bc_def, OutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
   PetscCall(BCDefinitionSetIJacobian(bc_def, OutflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(newtonian_ig_qfctx, &newtonian_ig_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

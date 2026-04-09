@@ -8,6 +8,7 @@
 #include "../qfunctions/ic_boundary_layer.h"
 
 #include <ceed.h>
+#include <ceed/backend.h>
 #include <petscdm.h>
 
 #include <navierstokes.h>
@@ -421,6 +422,24 @@ static PetscErrorCode BoundaryIntegralBCSetup_CreateIJacobianQF(BCDefinition bc_
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode BCDefinitionNaturalSetup_BoundaryIntegral(BCDefinition bc_def, void *ctx) {
+  Honee                honee = *(Honee *)ctx;
+  Ceed                 ceed  = honee->ceed;
+  HoneeBCStruct        honee_bc;
+  CeedQFunctionContext newtonian_ig_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, "Newtonian IG QFunction Ctx", &newtonian_ig_qfctx));
+  PetscCall(PetscNew(&honee_bc));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
+  honee_bc->honee              = honee;
+  honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
+  PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
+  PetscCall(BCDefinitionSetIFunction(bc_def, BoundaryIntegralBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, BoundaryIntegralBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   SetupContext             setup_context;
   Honee                    honee  = *(Honee *)ctx;
@@ -680,35 +699,18 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
     }
   }
 
-  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-    BCDefinition bc_def = problem->bc_defs[b];
-    const char  *name;
-    PetscBool    is_slip, is_freestream, is_outflow, is_inflow;
-
-    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    PetscCall(PetscStrcmp(name, "slip", &is_slip));
-    PetscCall(PetscStrcmp(name, "freestream", &is_freestream));
-    PetscCall(PetscStrcmp(name, "outflow", &is_outflow));
-    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
-    if (is_slip) {
-      PetscCall(SlipBCSetup(bc_def, problem, dm, ctx, newtonian_ig_qfctx));
-    } else if (is_freestream) {
-      PetscCall(FreestreamBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
-    } else if (is_outflow) {
-      PetscCall(OutflowBCSetup(bc_def, problem, dm, ctx, newtonian_ig_ctx, &reference));
-    } else if (is_inflow) {
-      HoneeBCStruct honee_bc;
-
-      PetscCall(PetscNew(&honee_bc));
-      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
-      honee_bc->honee              = honee;
-      honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
-      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-      PetscCall(BCDefinitionSetIFunction(bc_def, BoundaryIntegralBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-      PetscCall(BCDefinitionSetIJacobian(bc_def, BoundaryIntegralBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
-    }
+  PetscCallCeed(ceed, CeedQFunctionContextReference(newtonian_ig_qfctx));
+  PetscCall(HoneeSetContainer(honee, "Newtonian IG QFunction Ctx", newtonian_ig_qfctx, HoneeCeedQFunctionContextDestroy));
+  {
+    StatePrimitive *reference_pointer;
+    PetscCall(PetscNew(&reference_pointer));
+    *reference_pointer = reference;  // Copies the values
+    PetscCall(HoneeSetContainer(honee, "Reference State", reference_pointer, PetscCtxDestroyDefault));
   }
+  PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_Outflow));
+  PetscCall(BCDefinitionRegisterNaturalSetup("freestream", BCDefinitionNaturalSetup_Freestream));
+  PetscCall(BCDefinitionRegisterNaturalSetup("slip", BCDefinitionNaturalSetup_Slip));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_BoundaryIntegral));
 
   if (unit_tests) PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx->gas));
   PetscFunctionReturn(PETSC_SUCCESS);

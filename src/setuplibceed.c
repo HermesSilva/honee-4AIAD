@@ -262,7 +262,10 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
 
     PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &op_rhs));
     PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_rhs, op_rhs_vol));
-    for (PetscCount b = 0; b < problem->num_bc_defs; b++) PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], op_rhs, NULL));
+    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+      PetscCall(BCDefinitionSetup(problem->bc_defs[b]));
+      PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], op_rhs, NULL));
+    }
 
     PetscCall(OperatorApplyContextCreate(dm, dm, ceed, op_rhs, honee->q_ceed, honee->g_ceed, honee->Q_loc, NULL, &honee->op_rhs_ctx));
 
@@ -283,7 +286,10 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
       PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &op_ijacobian));
       PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_ijacobian, op_ijacobian_vol));
     }
-    for (PetscCount b = 0; b < problem->num_bc_defs; b++) PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], honee->op_ifunction, op_ijacobian));
+    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+      PetscCall(BCDefinitionSetup(problem->bc_defs[b]));
+      PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], honee->op_ifunction, op_ijacobian));
+    }
 
     // ----- Get Context Labels for Operator
     PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(honee->op_ifunction, "solution time", &honee->phys->solution_time_label));

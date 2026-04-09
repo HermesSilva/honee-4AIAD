@@ -183,6 +183,22 @@ int FreeContextPetsc(void *data) {
 }
 
 /**
+  @brief Destroy `CeedQFunctionContext` but with PETSc error checking
+
+  So this can be passed as a `PetscCtxDestroyFn` function pointer.
+
+  @param[in,out] qfctx `CeedQFunctionContext` to be destroyed
+**/
+PetscErrorCode HoneeCeedQFunctionContextDestroy(void *qfctx) {
+  CeedQFunctionContext qfctx_ = *(CeedQFunctionContext *)qfctx;
+  Ceed                 ceed   = CeedObjectReturnCeed((CeedObject)qfctx_);
+
+  PetscFunctionBeginUser;
+  PetscCallCeed(ceed, CeedQFunctionContextDestroy(&qfctx_));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Destroy `NodalProjectionData` object
 
   @param[in] context `NodalProjectionData` object to destroy
