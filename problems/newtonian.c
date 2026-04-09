@@ -434,7 +434,7 @@ static PetscErrorCode BCDefinitionNaturalSetup_BoundaryIntegral(BCDefinition bc_
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(newtonian_ig_qfctx, &honee_bc->qfctx));
   honee_bc->honee              = honee;
   honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
-  PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
+  PetscCall(BCDefinitionSetContext(bc_def, honee_bc, (PetscCtxDestroyFn *)HoneeBCDestroy));
   PetscCall(BCDefinitionSetIFunction(bc_def, BoundaryIntegralBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
   PetscCall(BCDefinitionSetIJacobian(bc_def, BoundaryIntegralBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
   PetscFunctionReturn(PETSC_SUCCESS);

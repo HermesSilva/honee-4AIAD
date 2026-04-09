@@ -101,7 +101,7 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     BCDefinition  bc_def = problem->bc_defs[i];
     PetscCall(PetscNew(&honee_bc));
     honee_bc->honee = honee;
-    PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
+    PetscCall(BCDefinitionSetContext(bc_def, honee_bc, (PetscCtxDestroyFn *)HoneeBCDestroy));
   }
 
   // TEMPORARY before major BC refactoring.

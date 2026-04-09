@@ -285,10 +285,10 @@ PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
   @brief Set custom context struct for use in BCDefinition
 
   @param[in,out] bc_def      `BCDefinition` to add `ctx` to
-  @param[in]     destroy_ctx Optional function pointer that destroys the user context on `BCDefinitionDestroy()`
   @param[in]     ctx         Pointer to context struct
+  @param[in]     destroy_ctx Optional function pointer that destroys the user context on `BCDefinitionDestroy()`
 **/
-PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx) {
+PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, void *ctx, PetscCtxDestroyFn *destroy_ctx) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   if (bc_def->DestroyCtx) PetscCall((*bc_def->DestroyCtx)(&bc_def->ctx));

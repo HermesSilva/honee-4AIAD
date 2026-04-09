@@ -66,7 +66,7 @@ PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essen
 PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm);
 PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm);
 
-PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx);
+PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, void *ctx, PetscCtxDestroyFn *destroy_ctx);
 PetscErrorCode BCDefinitionGetContext(BCDefinition bc_def, void *ctx);
 
 PetscErrorCode BCDefinitionSetIFunction(BCDefinition bc_def, BCDefinitionCreateQFunction create_qf, BCDefinitionAddIFunctionOperator add_op);
