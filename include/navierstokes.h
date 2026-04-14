@@ -224,6 +224,7 @@ PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, 
                                      CeedOperator *sub_op_ifunc);
 PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_ifunc, DMLabel domain_label, PetscInt label_value,
                                      CeedQFunction qf_ijac, CeedOperator op_ijac);
+PetscErrorCode HoneeCeedQFunctionContextDestroy(void *qfctx);
 
 typedef struct {
   CeedQFunctionUser    qf_func_ptr;  // !< QFunction function pointer
@@ -338,11 +339,9 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
 // Boundary Condition Related Functions
 // -----------------------------------------------------------------------------
 PetscErrorCode SetupStrongBC_Ceed(Ceed ceed, DM dm, Honee honee, ProblemData problem);
-PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
-                                 const StatePrimitive *reference);
-PetscErrorCode OutflowBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
-                              const StatePrimitive *reference);
-PetscErrorCode SlipBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, CeedQFunctionContext newtonian_ig_qfctx);
+PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ctx);
+PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx);
+PetscErrorCode BCDefinitionNaturalSetup_Slip(BCDefinition bc_def, void *ctx);
 
 // -----------------------------------------------------------------------------
 // Divergence of Diffusive Flux Projection

@@ -8,6 +8,7 @@
 #include "stg_shur14.h"
 
 #include <ceed.h>
+#include <ceed/backend.h>
 #include <math.h>
 #include <petscdm.h>
 #include <stdlib.h>
@@ -216,7 +217,7 @@ PetscErrorCode GetStgContextData(const MPI_Comm comm, const DM dm, char stg_infl
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode STGWeakInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
+static PetscErrorCode StgWeakInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
   HoneeBCStruct honee_bc;
 
   PetscFunctionBeginUser;
@@ -225,12 +226,29 @@ static PetscErrorCode STGWeakInflowBCSetup_CreateIFunctionQF(BCDefinition bc_def
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-static PetscErrorCode STGWeakInflowBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
+static PetscErrorCode StgWeakInflowBCSetup_CreateIJacobianQF(BCDefinition bc_def, CeedQFunction *qf) {
   HoneeBCStruct honee_bc;
 
   PetscFunctionBeginUser;
   PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
   PetscCall(HoneeBCCreateIJacobianQF(bc_def, StgShur14Inflow_Jacobian, StgShur14Inflow_Jacobian_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+#define STG_QFCTX_KEY "Stg QFunction Ctx"
+
+static PetscErrorCode BCDefinitionNaturalSetup_Stg(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext stg_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, STG_QFCTX_KEY, &stg_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &honee_bc->qfctx));
+  honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
+  PetscCall(BCDefinitionSetIFunction(bc_def, StgWeakInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, StgWeakInflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -307,26 +325,9 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
     problem->use_strong_bc_ceed = PETSC_TRUE;
     problem->set_bc_from_ics    = PETSC_FALSE;
   } else {
-    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-      BCDefinition bc_def = problem->bc_defs[b];
-      const char  *name;
-      PetscBool    is_inflow;
-
-      PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-      PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
-      if (is_inflow) {
-        HoneeBCStruct honee_bc;
-
-        PetscCall(PetscNew(&honee_bc));
-        PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(stg_qfctx, &honee_bc->qfctx));
-        honee_bc->honee              = honee;
-        honee_bc->num_comps_jac_data = honee->phys->implicit ? 11 : 0;
-        PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-        PetscCall(BCDefinitionSetIFunction(bc_def, STGWeakInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-        PetscCall(BCDefinitionSetIJacobian(bc_def, STGWeakInflowBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
-      }
-    }
+    PetscCallCeed(ceed, CeedQFunctionContextReference(stg_qfctx));
+    PetscCall(HoneeSetContainer(honee, STG_QFCTX_KEY, stg_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
+    PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Stg));
     problem->set_bc_from_ics = PETSC_TRUE;
   }
   PetscFunctionReturn(PETSC_SUCCESS);

@@ -7,6 +7,7 @@
 #include "../qfunctions/eulervortex.h"
 
 #include <ceed.h>
+#include <ceed/backend.h>
 #include <petscdm.h>
 
 #include <navierstokes.h>
@@ -46,6 +47,38 @@ static PetscErrorCode EulerVortexInflowBCSetup_CreateIFunctionQF(BCDefinition bc
   PetscFunctionBeginUser;
   PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
   PetscCall(HoneeBCCreateIFunctionQF(bc_def, TravelingVortex_Inflow, TravelingVortex_Inflow_loc, honee_bc->qfctx, qf));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+#define EULER_QFCTX_KEY "Euler QFunction Ctx"
+
+static PetscErrorCode BCDefinitionNaturalSetup_EulerInflow(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext euler_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, EULER_QFCTX_KEY, &euler_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
+  honee_bc->num_comps_jac_data = 0;
+  PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode BCDefinitionNaturalSetup_EulerOutflow(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct        honee_bc = (HoneeBCStruct)ctx;
+  Honee                honee    = honee_bc->honee;
+  Ceed                 ceed     = honee->ceed;
+  CeedQFunctionContext euler_qfctx;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, EULER_QFCTX_KEY, &euler_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
+  honee_bc->num_comps_jac_data = 0;
+  PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
+  PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -154,38 +187,11 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &problem->apply_vol_rhs.qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &problem->apply_vol_ifunction.qfctx));
 
-  for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-    BCDefinition bc_def = problem->bc_defs[b];
-    const char  *name;
-    PetscBool    is_outflow, is_inflow;
+  PetscCallCeed(ceed, CeedQFunctionContextReference(euler_qfctx));
+  PetscCall(HoneeSetContainer(honee, EULER_QFCTX_KEY, euler_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_EulerInflow));
+  PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_EulerOutflow));
 
-    PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
-    PetscCall(PetscStrcmp(name, "outflow", &is_outflow));
-    PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
-    if (is_outflow) {
-      HoneeBCStruct honee_bc;
-
-      PetscCall(PetscNew(&honee_bc));
-      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
-      honee_bc->honee              = honee;
-      honee_bc->num_comps_jac_data = 0;
-      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-      PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexOutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-      PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
-    } else if (is_inflow) {
-      HoneeBCStruct honee_bc;
-
-      PetscCall(PetscNew(&honee_bc));
-      PetscCallCeed(ceed, CeedQFunctionContextReferenceCopy(euler_qfctx, &honee_bc->qfctx));
-      honee_bc->honee              = honee;
-      honee_bc->num_comps_jac_data = 0;
-      PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
-
-      PetscCall(BCDefinitionSetIFunction(bc_def, EulerVortexInflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
-      PetscCall(BCDefinitionSetIJacobian(bc_def, NULL, NULL));
-    }
-  }
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&euler_qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

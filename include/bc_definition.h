@@ -33,6 +33,8 @@ struct _p_BCDefinition {
   BCDefinitionCreateQFunction      CreateIFunctionQF, CreateIJacobianQF;
   BCDefinitionAddIFunctionOperator AddIFunctionOperator;
   BCDefinitionAddIJacobianOperator AddIJacobianOperator;
+
+  char *natural_bc_type;
 };
 
 /**
@@ -64,9 +66,15 @@ PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essen
 PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm);
 PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm);
 
-PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx);
+PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, void *ctx, PetscCtxDestroyFn *destroy_ctx);
 PetscErrorCode BCDefinitionGetContext(BCDefinition bc_def, void *ctx);
 
 PetscErrorCode BCDefinitionSetIFunction(BCDefinition bc_def, BCDefinitionCreateQFunction create_qf, BCDefinitionAddIFunctionOperator add_op);
 PetscErrorCode BCDefinitionSetIJacobian(BCDefinition bc_def, BCDefinitionCreateQFunction create_qf, BCDefinitionAddIJacobianOperator add_op);
 PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifunction, CeedOperator op_ijacobian);
+
+typedef PetscErrorCode (*BCDefinitionSetupFn)(BCDefinition bc_def, void *ctx);
+PetscErrorCode BCDefinitionRegisterNaturalSetup(const char name[], BCDefinitionSetupFn setup_fn);
+PetscErrorCode BCDefinitionSetNaturalType(BCDefinition bc_def, const char natural_type[]);
+PetscErrorCode BCDefinitionGetNaturalType(BCDefinition bc_def, const char *natural_type[]);
+PetscErrorCode BCDefinitionSetup(BCDefinition bc_def);

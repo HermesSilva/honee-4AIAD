@@ -8,6 +8,26 @@
 
 PetscClassId BC_DEFINITION_CLASSID;
 
+static PetscFunctionList BCDefinitionNautralSetupList;
+
+/**
+  @brief Finalize `BCDefinition` class.
+
+  Not collective across MPI processes.
+
+  @return An error code: 0 - success, otherwise - failure
+**/
+static PetscErrorCode BCDefinitionFinalize() {
+  PetscFunctionBeginUser;
+  PetscCall(PetscFunctionListDestroy(&BCDefinitionNautralSetupList));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode BCDefinitionNaturalSetup_None(BCDefinition bc_def, void *ctx) {
+  PetscFunctionBeginUser;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /**
   @brief Initalize `BCDefinition` class.
 
@@ -21,6 +41,8 @@ static PetscErrorCode BCDefinitionInitalize() {
   PetscFunctionBeginUser;
   if (registered) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(PetscClassIdRegister("BCDefinition", &BC_DEFINITION_CLASSID));
+  PetscCall(BCDefinitionRegisterNaturalSetup("none", BCDefinitionNaturalSetup_None));
+  PetscCall(PetscRegisterFinalize(BCDefinitionFinalize));
   registered = PETSC_TRUE;
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -41,6 +63,7 @@ PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char *name, PetscInt num_
   PetscCall(BCDefinitionInitalize());
   PetscCall(PetscHeaderCreate(bc_def_, BC_DEFINITION_CLASSID, "BCDefinition", "BCDefinition", "BCDefinition", comm, BCDefinitionDestroy,
                               BCDefinitionView));
+  PetscCall(PetscStrallocpy("none", &bc_def_->natural_bc_type));
 
   PetscCall(PetscStrallocpy(name, &bc_def_->name));
   PetscCall(PetscObjectSetName((PetscObject)bc_def_, name));
@@ -65,6 +88,7 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
   PetscCall(PetscFree(bc_def_->name));
   PetscCall(PetscFree(bc_def_->label_values));
   PetscCall(PetscFree(bc_def_->essential_comps));
+  PetscCall(PetscFree(bc_def_->natural_bc_type));
   PetscCall(DMDestroy(&bc_def_->dm));
   if (bc_def_->DestroyCtx) PetscCall((*bc_def_->DestroyCtx)(&bc_def_->ctx));
   PetscCall(PetscHeaderDestroy(&bc_def_));
@@ -128,6 +152,8 @@ PetscErrorCode BCDefinitionView(BCDefinition bc_def, PetscViewer viewer) {
       PetscCall(PetscViewerASCIIPrintf(viewer, " None\n"));
     }
     PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_TRUE));
+
+    PetscCall(PetscViewerASCIIPrintf(viewer, "Natural BC Type: %s\n", bc_def->natural_bc_type));
 
     PetscCall(PetscViewerASCIIPopTab(viewer));  // BCDefinition
   }
@@ -259,10 +285,10 @@ PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
   @brief Set custom context struct for use in BCDefinition
 
   @param[in,out] bc_def      `BCDefinition` to add `ctx` to
-  @param[in]     destroy_ctx Optional function pointer that destroys the user context on `BCDefinitionDestroy()`
   @param[in]     ctx         Pointer to context struct
+  @param[in]     destroy_ctx Optional function pointer that destroys the user context on `BCDefinitionDestroy()`
 **/
-PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, PetscCtxDestroyFn *destroy_ctx, void *ctx) {
+PetscErrorCode BCDefinitionSetContext(BCDefinition bc_def, void *ctx, PetscCtxDestroyFn *destroy_ctx) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   if (bc_def->DestroyCtx) PetscCall((*bc_def->DestroyCtx)(&bc_def->ctx));
@@ -367,5 +393,78 @@ PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifu
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ifunction));
   if (add_ijac) PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ijacobian));
   PetscFunctionReturn(PETSC_SUCCESS);
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Setup the `BCDefinition`
+
+  This calls any setup functions to be run.
+  Must be called before `BCDefinitionAddOperators()`.
+
+  @param[in] bc_def `BCDefinition` to setup
+**/
+PetscErrorCode BCDefinitionSetup(BCDefinition bc_def) {
+  BCDefinitionSetupFn setup_fn;
+
+  PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  if (bc_def->natural_bc_type) {
+    PetscCall(PetscFunctionListFind(BCDefinitionNautralSetupList, bc_def->natural_bc_type, &setup_fn));
+    PetscCheck(setup_fn, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_UNKNOWN_TYPE, "Natural BC type \"%s\" not found in registery",
+               bc_def->natural_bc_type);
+    PetscCallBack("BCDefinition Setup Natural Callback", (*setup_fn)(bc_def, bc_def->ctx));
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Set natural type of `BCDefinition`
+
+  @param[in] bc_def       `BCDefinition`
+  @param[in] natural_type The natural BC type to set `bc_def` to
+**/
+PetscErrorCode BCDefinitionSetNaturalType(BCDefinition bc_def, const char *natural_type) {
+  PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscAssertPointer(natural_type, 2);
+  PetscCall(PetscFree(bc_def->natural_bc_type));
+  bc_def->natural_bc_type = NULL;
+  PetscCall(PetscStrallocpy(natural_type, &bc_def->natural_bc_type));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get natural type of `BCDefinition`
+
+  @param[in]  bc_def       `BCDefinition`
+  @param[out] natural_type The natural BC type `bc_def` is set to
+**/
+PetscErrorCode BCDefinitionGetNaturalType(BCDefinition bc_def, const char *natural_type[]) {
+  PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscAssertPointer(natural_type, 2);
+  *natural_type = bc_def->natural_bc_type;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Add natural BC setup function to registery
+
+  This is for setting up weak/Neumann/natural boundary conditions.
+  Effectively, if a BC is implemented as a boundary integral that is used in the primary residual CeedOperator, then this function does the initialization and setup process.
+  It's primary job is to set the IFunction and IJacobian operators via `BCDefinitionSetIFunction()` and `BCDefinitionSetIJacobian()` and do any options work necessary to set those functions up.
+
+  If the `name` has already been set in the registery, this function will overwrite the previously set defintion.
+  In the future, this should probably be changed to a failure.
+
+  To unset a `name`, simply pass `NULL` to `setup_fn`.
+
+  @param[in] name     Name used to register the setup under
+  @param[in] setup_fn Setup function pointer
+**/
+PetscErrorCode BCDefinitionRegisterNaturalSetup(const char name[], BCDefinitionSetupFn setup_fn) {
+  PetscFunctionBeginUser;
+  PetscCall(PetscFunctionListAdd(&BCDefinitionNautralSetupList, name, setup_fn));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

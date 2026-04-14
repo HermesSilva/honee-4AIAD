@@ -217,6 +217,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     if (num_comps_jac_data) PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "jac_data", num_comps_jac_data, CEED_EVAL_NONE));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ifunction_vol, NULL, NULL, &op_ifunction_vol));
+    PetscCallCeed(ceed, CeedOperatorSetName(op_ifunction_vol, "IFunction Domain Operator"));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q dot", elem_restr_q, basis_q, honee->q_dot_ceed));
@@ -246,6 +247,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ijacobian_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
     PetscCallCeed(ceed, CeedOperatorCreate(ceed, qf_ijacobian_vol, NULL, NULL, &op_ijacobian_vol));
+    PetscCallCeed(ceed, CeedOperatorSetName(op_ijacobian_vol, "IJacobian Domain Operator"));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "dq", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "Grad_dq", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ijacobian_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
@@ -262,7 +264,10 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
 
     PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &op_rhs));
     PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_rhs, op_rhs_vol));
-    for (PetscCount b = 0; b < problem->num_bc_defs; b++) PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], op_rhs, NULL));
+    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+      PetscCall(BCDefinitionSetup(problem->bc_defs[b]));
+      PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], op_rhs, NULL));
+    }
 
     PetscCall(OperatorApplyContextCreate(dm, dm, ceed, op_rhs, honee->q_ceed, honee->g_ceed, honee->Q_loc, NULL, &honee->op_rhs_ctx));
 
@@ -278,12 +283,17 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
 
     // Create Composite Operaters
     PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &honee->op_ifunction));
+    PetscCallCeed(ceed, CeedOperatorSetName(honee->op_ifunction, "IFunction Composite Operator"));
     PetscCallCeed(ceed, CeedOperatorCompositeAddSub(honee->op_ifunction, op_ifunction_vol));
     if (op_ijacobian_vol) {
       PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, &op_ijacobian));
+      PetscCallCeed(ceed, CeedOperatorSetName(op_ijacobian, "IJacobian Composite Operator"));
       PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_ijacobian, op_ijacobian_vol));
     }
-    for (PetscCount b = 0; b < problem->num_bc_defs; b++) PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], honee->op_ifunction, op_ijacobian));
+    for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
+      PetscCall(BCDefinitionSetup(problem->bc_defs[b]));
+      PetscCall(BCDefinitionAddOperators(problem->bc_defs[b], honee->op_ifunction, op_ijacobian));
+    }
 
     // ----- Get Context Labels for Operator
     PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(honee->op_ifunction, "solution time", &honee->phys->solution_time_label));

@@ -96,6 +96,25 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
   PetscCall(PetscSegBufferExtractAlloc(bc_defs_seg, &problem->bc_defs));
   PetscCall(PetscSegBufferDestroy(&bc_defs_seg));
 
+  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
+    HoneeBCStruct honee_bc;
+    BCDefinition  bc_def = problem->bc_defs[i];
+    PetscCall(PetscNew(&honee_bc));
+    honee_bc->honee = honee;
+    PetscCall(BCDefinitionSetContext(bc_def, honee_bc, (PetscCtxDestroyFn *)HoneeBCDestroy));
+  }
+
+  // TEMPORARY before major BC refactoring.
+  // In future, each natural BC (including example BCs) will have it's own name independent from the bc_def->name.
+  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
+    BCDefinition bc_def = problem->bc_defs[i];
+    PetscBool    has_no_natural_bc;
+
+    PetscCall(PetscStrcmpAny(bc_def->name, &has_no_natural_bc, "wall", "symmetry", ""));
+    if (has_no_natural_bc) continue;
+    PetscCall(BCDefinitionSetNaturalType(bc_def, bc_def->name));
+  }
+
   //TODO: Verify that the BCDefinition don't have overlapping claims to boundary faces
   PetscFunctionReturn(PETSC_SUCCESS);
 }

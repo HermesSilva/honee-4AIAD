@@ -11,9 +11,8 @@ bc_symmetry_z: 1,2
 reference:
   temperature: 0.25
   pressure: 71.75
-freestream:
-  # riemann: hll # causes thermal bubble to reflect acoustic waves from boundary
   velocity: 2,2,0
+# freestream_riemann: hll # causes thermal bubble to reflect acoustic waves from boundary
 
 epicenter: 0.33,0.75,0
 amplitude: 2

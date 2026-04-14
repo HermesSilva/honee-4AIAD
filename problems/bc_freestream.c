@@ -108,19 +108,25 @@ static PetscErrorCode FreestreamBCSetup_CreateIJacobianQF(BCDefinition bc_def, C
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
-PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm, void *ctx, NewtonianIdealGasContext newtonian_ig_ctx,
-                                 const StatePrimitive *reference) {
-  Honee                honee = *(Honee *)ctx;
-  MPI_Comm             comm  = honee->comm;
-  Ceed                 ceed  = honee->ceed;
-  FreestreamContext    freestream_ctx;
-  CeedQFunctionContext freestream_qfctx;
-  RiemannFluxType      flux_type = RIEMANN_HLLC;
-  Units                units     = honee->units;
-  FreestreamHoneeBCCtx freestream_honee_bc;
-  HoneeBCStruct        honee_bc;
+PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ctx) {
+  HoneeBCStruct                           honee_bc = (HoneeBCStruct)ctx;
+  Honee                                   honee    = honee_bc->honee;
+  MPI_Comm                                comm     = honee->comm;
+  Ceed                                    ceed     = honee->ceed;
+  FreestreamContext                       freestream_ctx;
+  CeedQFunctionContext                    freestream_qfctx;
+  RiemannFluxType                         flux_type = RIEMANN_HLLC;
+  Units                                   units     = honee->units;
+  FreestreamHoneeBCCtx                    freestream_honee_bc;
+  CeedQFunctionContext                    newtonian_ig_qfctx;
+  const struct NewtonianIdealGasContext_ *newtonian_ig_ctx;
+  const StatePrimitive                   *reference;
 
   PetscFunctionBeginUser;
+  PetscCall(HoneeGetContainer(honee, "Newtonian IG QFunction Ctx", &newtonian_ig_qfctx));
+  PetscCallCeed(ceed, CeedQFunctionContextGetDataRead(newtonian_ig_qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
+  PetscCall(HoneeGetContainer(honee, "Reference State", &reference));
+
   // Freestream inherits reference state. We re-dimensionalize so the defaults in -help will be visible in SI units.
   StatePrimitive Y_inf = {.pressure = reference->pressure / units->Pascal, .velocity = {0}, .temperature = reference->temperature / units->Kelvin};
   for (int i = 0; i < 3; i++) Y_inf.velocity[i] = reference->velocity[i] * units->second / units->meter;
@@ -158,15 +164,13 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
 
   PetscCall(PetscNew(&freestream_honee_bc));
   freestream_honee_bc->flux_type = flux_type;
-  PetscCall(PetscNew(&honee_bc));
-  *honee_bc = (struct HoneeBCStruct_){
-      .ctx                = freestream_honee_bc,
-      .DestroyCtx         = PetscCtxDestroyDefault,
-      .honee              = honee,
-      .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
-      .qfctx              = freestream_qfctx,
+  *honee_bc                      = (struct HoneeBCStruct_){
+                           .ctx                = freestream_honee_bc,
+                           .DestroyCtx         = PetscCtxDestroyDefault,
+                           .honee              = honee,
+                           .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
+                           .qfctx              = freestream_qfctx,
   };
-  PetscCall(BCDefinitionSetContext(bc_def, (PetscCtxDestroyFn *)HoneeBCDestroy, honee_bc));
 
   PetscCall(BCDefinitionSetIFunction(bc_def, FreestreamBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
   PetscCall(BCDefinitionSetIJacobian(bc_def, FreestreamBCSetup_CreateIJacobianQF, HoneeBCAddIJacobianOp));
@@ -177,6 +181,7 @@ PetscErrorCode FreestreamBCSetup(BCDefinition bc_def, ProblemData problem, DM dm
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-riemann_solver_unit_tests", &run_unit_tests, NULL));
     if (run_unit_tests) PetscCall(RiemannSolverUnitTests(comm, newtonian_ig_ctx->gas, 5e-7));
   }
+  PetscCallCeed(ceed, CeedQFunctionContextRestoreDataRead(newtonian_ig_qfctx, &newtonian_ig_ctx));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
