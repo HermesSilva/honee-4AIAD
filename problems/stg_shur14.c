@@ -327,7 +327,8 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
   } else {
     PetscCallCeed(ceed, CeedQFunctionContextReference(stg_qfctx));
     PetscCall(HoneeSetContainer(honee, STG_QFCTX_KEY, stg_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
-    PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Stg));
+    PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Stg));  // For legacy BC setting
+    PetscCall(BCDefinitionRegisterNaturalSetup("stg-weak", BCDefinitionNaturalSetup_Stg));
     problem->set_bc_from_ics = PETSC_TRUE;
   }
   PetscFunctionReturn(PETSC_SUCCESS);

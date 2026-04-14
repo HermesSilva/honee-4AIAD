@@ -37,6 +37,7 @@ PetscErrorCode HoneeSetContainer(Honee honee, const char key[], void *container,
 PetscErrorCode HoneeGetContainer(Honee honee, const char key[], void *container);
 PetscErrorCode HoneeHasContainer(Honee honee, const char key[], PetscBool *has_key);
 
+#define HONEE_MAX_BCDEFS 32
 extern const DMLabel  DMLABEL_DEFAULT;
 extern const PetscInt DMLABEL_DEFAULT_VALUE;
 

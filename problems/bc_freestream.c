@@ -121,6 +121,7 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   CeedQFunctionContext                    newtonian_ig_qfctx;
   const struct NewtonianIdealGasContext_ *newtonian_ig_ctx;
   const StatePrimitive                   *reference;
+  char                                   *cl_prefix;
 
   PetscFunctionBeginUser;
   PetscCall(HoneeGetContainer(honee, "Newtonian IG QFunction Ctx", &newtonian_ig_qfctx));
@@ -131,7 +132,8 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   StatePrimitive Y_inf = {.pressure = reference->pressure / units->Pascal, .velocity = {0}, .temperature = reference->temperature / units->Kelvin};
   for (int i = 0; i < 3; i++) Y_inf.velocity[i] = reference->velocity[i] * units->second / units->meter;
 
-  PetscOptionsBegin(comm, NULL, "Options for Freestream boundary condition", NULL);
+  PetscCall(HoneeBCCreatePrefix(bc_def, &cl_prefix));
+  PetscOptionsBegin(comm, cl_prefix, "Options for Freestream boundary condition", NULL);
   PetscCall(PetscOptionsEnum("-freestream_riemann", "Riemann solver to use in freestream boundary condition", NULL, RiemannSolverTypes,
                              (PetscEnum)flux_type, (PetscEnum *)&flux_type, NULL));
   PetscCall(PetscOptionsScalar("-freestream_pressure", "Pressure at freestream condition", NULL, Y_inf.pressure, &Y_inf.pressure, NULL));
@@ -145,6 +147,7 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   }
   PetscCall(PetscOptionsScalar("-freestream_temperature", "Temperature at freestream condition", NULL, Y_inf.temperature, &Y_inf.temperature, NULL));
   PetscOptionsEnd();
+  PetscCall(PetscFree(cl_prefix));
 
   Y_inf.pressure *= units->Pascal;
   for (int i = 0; i < 3; i++) Y_inf.velocity[i] *= units->meter / units->second;

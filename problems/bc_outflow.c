@@ -122,6 +122,7 @@ PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx) 
   CeedQFunctionContext                    newtonian_ig_qfctx;
   const struct NewtonianIdealGasContext_ *newtonian_ig_ctx;
   const StatePrimitive                   *reference;
+  char                                   *cl_prefix;
 
   PetscFunctionBeginUser;
   PetscCall(HoneeGetContainer(honee, "Newtonian IG QFunction Ctx", &newtonian_ig_qfctx));
@@ -131,7 +132,8 @@ PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx) 
   CeedScalar pressure    = reference->pressure / units->Pascal;
   CeedScalar temperature = reference->temperature / units->Kelvin;
   CeedScalar recirc = 1, softplus_velocity = 1e-2;
-  PetscOptionsBegin(honee->comm, NULL, "Options for Outflow boundary condition", NULL);
+  PetscCall(HoneeBCCreatePrefix(bc_def, &cl_prefix));
+  PetscOptionsBegin(honee->comm, cl_prefix, "Options for Outflow boundary condition", NULL);
   PetscCall(PetscOptionsEnum("-outflow_type", "Type of outflow condition", NULL, OutflowTypes, (PetscEnum)outflow_type, (PetscEnum *)&outflow_type,
                              NULL));
   PetscCall(PetscOptionsScalar("-outflow_pressure", "Pressure at outflow condition", NULL, pressure, &pressure, NULL));
@@ -143,6 +145,7 @@ PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx) 
                                &softplus_velocity, NULL));
   }
   PetscOptionsEnd();
+  PetscCall(PetscFree(cl_prefix));
   pressure *= units->Pascal;
   temperature *= units->Kelvin;
 

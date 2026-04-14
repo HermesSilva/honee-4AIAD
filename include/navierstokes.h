@@ -215,6 +215,7 @@ struct HoneeBCStruct_ {
 };
 
 PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx);
+PetscErrorCode HoneeBCCreatePrefix(BCDefinition bc_def, char **cl_prefix);
 PetscErrorCode HoneeBCDestroy(void **ctx);
 PetscErrorCode HoneeBCCreateIFunctionQF(BCDefinition bc_def, CeedQFunctionUser qf_func_ptr, const char *qf_loc, CeedQFunctionContext qfctx,
                                         CeedQFunction *qf_ifunc);
@@ -244,7 +245,7 @@ struct ProblemData_private {
   PetscBool   set_bc_from_ics, use_strong_bc_ceed, ics_use_wall_distance;
 
   // BC Definitions
-  PetscCount    num_bc_defs;
+  PetscInt      num_bc_defs;
   BCDefinition *bc_defs;
 
   PetscErrorCode (*print_info)(Honee, ProblemData, AppCtx);

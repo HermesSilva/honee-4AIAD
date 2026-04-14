@@ -62,7 +62,8 @@ PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char name[], PetscInt num
   PetscFunctionBeginUser;
   PetscAssertPointer(name, 2);
   PetscValidLogicalCollectiveIntComm(comm, num_label_values, 3);
-  PetscCheck(num_label_values > 0, comm, PETSC_ERR_ARG_INCOMP, "Number of label values must be positive non-negattive. Received %" PetscInt_FMT " for bc_def \"%s\"", num_label_values, name);
+  PetscCheck(num_label_values > 0, comm, PETSC_ERR_ARG_INCOMP,
+             "Number of label values must be positive non-negattive. Received %" PetscInt_FMT " for bc_def \"%s\"", num_label_values, name);
   PetscAssertPointer(label_values, 4);
   PetscAssertPointer(bc_def, 5);
   PetscCall(BCDefinitionInitalize());
@@ -215,9 +216,12 @@ PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essent
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   PetscValidLogicalCollectiveInt(bc_def, num_essential_comps, 2);
-  PetscCheck(num_essential_comps > 0, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP, "Number of essential components must be non-negative. Received %" PetscInt_FMT " for bc_def \"%s\"", num_essential_comps, bc_def->name);
+  PetscCheck(num_essential_comps > 0, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
+             "Number of essential components must be non-negative. Received %" PetscInt_FMT " for bc_def \"%s\"", num_essential_comps, bc_def->name);
   if (num_essential_comps) PetscAssertPointer(essential_comps, 3);
-  else PetscCheck(essential_comps == NULL, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP, "essential_comps must be NULL if num_essential_comps == 0. Failed for bc_def %s", bc_def->name);
+  else
+    PetscCheck(essential_comps == NULL, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
+               "essential_comps must be NULL if num_essential_comps == 0. Failed for bc_def %s", bc_def->name);
   bc_def->num_essential_comps = num_essential_comps;
   PetscCall(PetscMalloc1(num_essential_comps, &bc_def->essential_comps));
   PetscCall(PetscArraycpy(bc_def->essential_comps, essential_comps, num_essential_comps));

@@ -245,7 +245,8 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
 
     PetscCallCeed(ceed, CeedQFunctionContextReference(blasius_qfctx));
     PetscCall(HoneeSetContainer(honee, BLASIUS_QFCTX_KEY, blasius_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
-    PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Blasius));
+    PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Blasius));  // For legacy BC setting
+    PetscCall(BCDefinitionRegisterNaturalSetup("blasius-inflow", BCDefinitionNaturalSetup_Blasius));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

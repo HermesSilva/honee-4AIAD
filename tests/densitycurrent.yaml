@@ -1,0 +1,35 @@
+problem: density_current
+degree: 3
+
+center: 62.5,62.5,187.5
+rc: 100.
+thetaC: -35.
+mu: 75
+gravity: 0,0,-9.81
+
+bc_names: slip_x,slip_y,slip_z
+bc_slip_x:
+  face_ids: 5,6
+  essential_comps: 1
+bc_slip_y:
+  face_ids: 3,4
+  essential_comps: 2
+bc_slip_z:
+  face_ids: 1,2
+  essential_comps: 3
+
+units:
+  kilogram: 1e-9
+  meter: 1e-2
+  second: 1e-2
+
+dm_plex:
+  dim: 3
+  box:
+    faces: 1,1,2
+    lower: 0,0,0
+    upper: 125,125,250
+
+ts:
+  max_steps: 10
+  time_step: 1e-3

@@ -30,9 +30,14 @@ dm_plex:
   dim: 3
 
 degree: 1
-bc_symmetry_z: 1,2
-bc_wall: 3,4
-wall_comps: 1,2,3
+
+bc_names: symmetry,wall
+bc_wall:
+  face_ids: 3,4
+  essential_comps: 1,2,3
+bc_symmetry:
+  face_ids: 1,2
+  essential_comps: 3
 
 mu: 3.56e-2
 k: 5.07e-5

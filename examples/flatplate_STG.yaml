@@ -40,10 +40,16 @@ dm_plex:
      bd: none,none,periodic
 dm_plex_shape: zbox
 
-bc_wall: 3
-wall_comps: 1,2,3
-bc_inflow: 6
-bc_outflow: 5,4
+bc_names: wall,inflow,outflow
+bc_wall:
+  face_ids: 3
+  essential_comps: 1,2,3
+bc_inflow:
+  face_ids: 6
+  natural_type: consistent
+bc_outflow:
+  face_ids: 4,5
+  natural_type: outflow
 
 state_var: primitive
 
