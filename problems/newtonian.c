@@ -476,11 +476,10 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
                 .Ctau_M = 0.25 / degree,
                 .Ctau_E = 0.125,
                 },
-      .g            = {0, 0, 0}, // m/s^2
-      .idl_start    = 0,
-      .idl_length   = 0,
-      .idl_pressure = reference.pressure,
-      .idl_enable   = PETSC_FALSE,
+      .g          = {0, 0, 0}, // m/s^2
+      .idl_start  = 0,
+      .idl_length = 0,
+      .idl_enable = PETSC_FALSE,
   };
 
   PetscOptionsBegin(comm, NULL, "Options for Newtonian Ideal Gas based problem", NULL);
@@ -571,6 +570,7 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   newtonian_ig_ctx->gas.cp *= units->J_per_kg_K;
   newtonian_ig_ctx->gas.mu *= units->Pascal * units->second;
   newtonian_ig_ctx->gas.k *= units->W_per_m_K;
+  newtonian_ig_ctx->idl_pressure *= units->Pascal;
   for (PetscInt i = 0; i < 3; i++) newtonian_ig_ctx->g[i] *= units->m_per_squared_s;
   reference.pressure *= units->Pascal;
   for (PetscInt i = 0; i < 3; i++) reference.velocity[i] *= units->meter / units->second;
