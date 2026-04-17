@@ -17,6 +17,62 @@ static PetscErrorCode HoneeInitClass_Private() {
 }
 
 /**
+  @brief Get string version of libCEED version information
+
+  @param[in,out] version Static `char` array to store string
+  @param[in]     len     Length of `version` array
+**/
+PetscErrorCode HoneeGetCeedVersionString(char version[], size_t len) {
+  int         major, minor, patch;
+  PetscBool   release;
+  const char *git_version;
+
+  PetscFunctionBeginUser;
+  PetscCall(CeedGetVersion(&major, &minor, &patch, &release));
+  PetscCall(CeedGetGitVersion(&git_version));
+  PetscCall(PetscSNPrintf(version, len, "libCEED version: %d.%d.%d (%s)", major, minor, patch, release ? "release" : git_version));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Get string version of HONEE version information
+
+  @param[in,out] version Static `char` array to store string
+  @param[in]     len     Length of `version` array
+**/
+PetscErrorCode HoneeGetVersionString(char version[], size_t len) {
+  int         major, minor, patch;
+  PetscBool   release;
+  const char *git_version;
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetVersion(&major, &minor, &patch, &release));
+  PetscCall(HoneeGetGitVersion(&git_version));
+  PetscCall(PetscSNPrintf(version, len, "HONEE version: %d.%d.%d (%s)", major, minor, patch, release ? "release" : git_version));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+static PetscErrorCode HoneeVersionFunction(MPI_Comm comm) {
+  char        version[256];
+  PetscViewer viewer;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscViewerASCIIGetStdout(comm, &viewer));
+  PetscCall(HoneeGetVersionString(version, PETSC_STATIC_ARRAY_LENGTH(version)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "%s\n", version));
+  PetscCall(HoneeGetCeedVersionString(version, PETSC_STATIC_ARRAY_LENGTH(version)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "%s\n", version));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+// @brief Setup functions before running `PetscInitialize()`
+PetscErrorCode HoneePrePetscInitialize() {
+  PetscFunctionBeginUser;
+  PetscCall(PetscSetHelpVersionFunctions(NULL, HoneeVersionFunction));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Initialize `Honee` object
 
   @param[in]  comm  `MPI_Comm` for the object

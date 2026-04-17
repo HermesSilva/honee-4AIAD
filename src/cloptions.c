@@ -78,14 +78,12 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
   PetscFunctionBeginUser;
   {
     PetscInt  num_options;
-    PetscBool help_set;
+    PetscBool help_set, version_set;
 
     PetscCall(PetscOptionsHasHelp(NULL, &help_set));
-    if (help_set) {
+    PetscCall(PetscOptionsHasName(NULL, NULL, "-version", &version_set));
+    if (help_set || version_set) {
       PetscCall(PetscOptionsSetValue(NULL, "-ts_max_steps", "0"));
-      PetscCall(PetscPrintf(comm, "\n########################################\n\n"));
-      PetscCall(PetscPrintf(comm, "HONEE documentation may be found at https://honee.phypid.org\n\n"));
-      PetscCall(PetscPrintf(comm, "########################################\n\n"));
     } else {
       PetscCall(PetscOptionsLeftGet(NULL, &num_options, NULL, NULL));
       PetscCheck(num_options > 0, comm, PETSC_ERR_USER_INPUT,

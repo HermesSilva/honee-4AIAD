@@ -8,7 +8,9 @@
 //     ./navierstokes -ceed /gpu/cuda -problem advection -degree 1
 //
 
-const char help[] = "HONEE - High-Order Navier-stokes Equation Evaluator\n";
+const char help[] =
+    "HONEE - High-Order Navier-stokes Equation Evaluator\n"
+    "HONEE documentation may be found at https://honee.phypid.org\n";
 
 #include <navierstokes.h>
 #include <petscdevice.h>
@@ -21,11 +23,24 @@ int main(int argc, char **argv) {
   Honee     honee;
   MPI_Comm  comm;
   PetscEnum test_type = (PetscEnum)TESTTYPE_NONE;
+  PetscBool has_help;
 
+  PetscCall(HoneePrePetscInitialize());
   PetscCall(PetscInitialize(&argc, &argv, NULL, help));
   comm = PETSC_COMM_WORLD;
+
   PetscCall(PetscOptionsGetEnum(NULL, NULL, "-test_type", TestTypes, &test_type, NULL));
-  if (test_type == (PetscEnum)TESTTYPE_NONE) PetscCall(PrintRunBanner(comm, PETSC_VIEWER_STDOUT_WORLD));
+  PetscCall(PetscOptionsHasHelp(NULL, &has_help));
+  if (test_type == (PetscEnum)TESTTYPE_NONE && !has_help) {
+    char version[256];
+    PetscCall(PrintRunBanner(comm, PETSC_VIEWER_STDOUT_WORLD));
+    PetscCall(HoneeGetVersionString(version, 256));
+    PetscCall(PetscPrintf(comm, "%s\n", version));
+    PetscCall(HoneeGetCeedVersionString(version, 256));
+    PetscCall(PetscPrintf(comm, "%s\n", version));
+    PetscCall(PetscGetVersion(version, 256));
+    PetscCall(PetscPrintf(comm, "%s\n", version));
+  }
 
   PetscCall(HoneeInit(comm, &honee));
   AppCtx      app_ctx  = honee->app_ctx;

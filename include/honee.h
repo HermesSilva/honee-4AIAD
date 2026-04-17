@@ -32,6 +32,9 @@ typedef struct Honee_private *Honee;
 PetscErrorCode HoneeGetVersion(int *major, int *minor, int *patch, PetscBool *release);
 PetscErrorCode HoneeGetGitVersion(const char **git_version);
 PetscErrorCode HoneeGetBuildConfiguration(const char **build_config);
+PetscErrorCode HoneeGetVersionString(char version[], size_t len);
+PetscErrorCode HoneeGetCeedVersionString(char version[], size_t len);
+PetscErrorCode HoneePrePetscInitialize();
 
 PetscErrorCode HoneeSetContainer(Honee honee, const char key[], void *container, PetscCtxDestroyFn *container_destroy);
 PetscErrorCode HoneeGetContainer(Honee honee, const char key[], void *container);
