@@ -1,4 +1,8 @@
 # Runtime Options
+:::{note}
+Options in the documentation are specified by command-line flag and YAML format interchangeably.
+See {ref}`yaml-options` for details.
+:::
 
 ## Common Options
 HONEE is controlled via command-line options.
@@ -445,3 +449,40 @@ These options set the Newtonian reference state.
   - Reference/initial temperature. Also used as the default for `-ic_boundary_layer_wall_temperature`.
   - `288.15`
 :::
+
+(yaml-options)=
+## YAML vs Command line options
+
+Options for HONEE and PETSc can be given by either command line options or via a YAML file.
+Command-line flags can be represented in a YAML file by removing the leading `-` and by allowing underscores (`_`) to be converted into a hierarchy of options (so that options with redundant prefixes can be more easily grouped together).
+For example,
+```
+-dm_plex_shape zbox -dm_plex_box_faces 10,12,4 -dm_plex_box_bd none,none,periodic
+```
+could be represented as
+```yaml
+dm_plex:
+  shape: zbox
+  box:
+    faces: 10,12,4
+    bd: none,none,periodic
+```
+
+A YAML file of options can be passed to HONEE via `-options_file <yaml file>`.
+Overriding of options are done in the order that HONEE/PETSc reads them.
+Given the following YAML file:
+```yaml
+# ./options.yaml
+option_a: 1
+```
+Running
+```
+navierstokes -option_a 2 -options_file options.yaml
+```
+will result in `option_a == 1`, but
+```
+navierstokes -option_a 2 -options_file options.yaml -option_a 3
+```
+will result in `option_a == 3`.
+
+See [PETSc documentation](https://petsc.org/release/manual/other/#adding-options-from-a-file) for more advanced uses of the yaml file system.
