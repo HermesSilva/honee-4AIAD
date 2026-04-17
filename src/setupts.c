@@ -274,6 +274,7 @@ PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec 
 
   if (is_ascii) {
     if (format == PETSC_VIEWER_ASCII_CSV && !honee->app_ctx->wall_forces.header_written) {
+      PetscCall(HoneeWriteCSVHeader(viewer));
       PetscCall(PetscViewerASCIIPrintf(viewer, "Step,Time,Wall,ForceX,ForceY,ForceZ\n"));
       honee->app_ctx->wall_forces.header_written = PETSC_TRUE;
     }

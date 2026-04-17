@@ -5,6 +5,8 @@
 /// Custom file I/O functions for HONEE
 
 #include <honee-file.h>
+#include <honee.h>
+#include <time.h>
 
 /**
   @brief Check if a filename has a file extension
@@ -286,5 +288,51 @@ PetscErrorCode PhastaDatFileReadToArrayReal(MPI_Comm comm, const char path[], Pe
   }
 
   PetscCall(PetscFClose(comm, fp));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Write the provenance header information for a CSV file
+
+  This does not write the column headers, but provenance information (versions, dates, computer, etc).
+
+  @param[in] viewer `PetscViewer` to write to
+**/
+PetscErrorCode HoneeWriteCSVHeader(PetscViewer viewer) {
+  MPI_Comm    comm = PetscObjectComm((PetscObject)viewer);
+  char        buf[PETSC_MAX_PATH_LEN];
+  const char *buf_const;
+  int         major, minor, patch;
+  time_t      t = time(NULL);
+
+  PetscFunctionBeginUser;
+  PetscCall(HoneeGetVersion(&major, &minor, &patch, NULL));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# honee_version: %d.%d.%d\n", major, minor, patch));
+  PetscCall(HoneeGetGitVersion(&buf_const));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# honee_git_commit: %s\n", buf_const));
+  PetscCall(CeedGetVersion(&major, &minor, &patch, NULL));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# libceed_version: %d.%d.%d\n", major, minor, patch));
+  PetscCall(CeedGetGitVersion(&buf_const));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# libceed_git_commit: %s\n", buf_const));
+  PetscCall(PetscGetVersion(buf, sizeof(buf)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# petsc_version: %s\n", buf));
+  PetscCall(PetscGetPetscDir(&buf_const));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# petsc_directory: %s\n", buf_const));
+  PetscCall(PetscGetArchType(buf, sizeof(buf)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# petsc_arch: %s\n", buf));
+  PetscCheck(strftime(buf, sizeof(buf), "%FT%T%z", localtime(&t)), comm, PETSC_ERR_SYS, "strftime() call failed");
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# date: %s\n", buf));
+  PetscCheck(strftime(buf, sizeof(buf), "%Z", localtime(&t)), comm, PETSC_ERR_SYS, "strftime() call failed");
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# date_timezone: %s\n", buf));
+  PetscCall(PetscGetUserName(buf, sizeof(buf)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# username: %s\n", buf));
+  PetscCall(PetscGetHostName(buf, sizeof(buf)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# hostname: %s\n", buf));
+  PetscCall(PetscGetWorkingDirectory(buf, sizeof(buf)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# working_directory: %s\n", buf));
+  PetscCall(PetscViewerFileGetName(viewer, &buf_const));
+  PetscCall(PetscGetFullPath(buf_const, buf, sizeof(buf)));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "# original_file_path: %s\n", buf));
+  PetscCall(PetscViewerASCIIPrintf(viewer, "#\n"));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

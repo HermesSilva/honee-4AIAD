@@ -163,31 +163,7 @@ PetscErrorCode TSMonitor_Cfl(TS ts, PetscInt step, PetscReal solution_time, Vec 
 
   if (ctx->format == PETSC_VIEWER_ASCII_CSV) {
     if (!monitor_ctx->is_header_written) {
-      char        buf[PETSC_MAX_PATH_LEN];
-      const char *buf_const;
-      time_t      t = time(NULL);
-
-      PetscCall(PetscGetVersion(buf, sizeof(buf)));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# petsc_version: %s\n", buf));
-      PetscCall(PetscGetPetscDir(&buf_const));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# petsc_directory: %s\n", buf_const));
-      PetscCall(PetscGetArchType(buf, sizeof(buf)));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# petsc_arch: %s\n", buf));
-      PetscCheck(strftime(buf, sizeof(buf), "%FT%T%z", localtime(&t)), comm, PETSC_ERR_SYS, "strftime() call failed");
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# date: %s\n", buf));
-      PetscCheck(strftime(buf, sizeof(buf), "%Z", localtime(&t)), comm, PETSC_ERR_SYS, "strftime() call failed");
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# date_timezone: %s\n", buf));
-      PetscCall(PetscGetUserName(buf, sizeof(buf)));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# username: %s\n", buf));
-      PetscCall(PetscGetHostName(buf, sizeof(buf)));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# hostname: %s\n", buf));
-      PetscCall(PetscGetWorkingDirectory(buf, sizeof(buf)));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# working_directory: %s\n", buf));
-
-      PetscCall(PetscViewerFileGetName(ctx->viewer, &buf_const));
-      PetscCall(PetscGetFullPath(buf_const, buf, sizeof(buf)));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "# original_file_path: %s\n", buf));
-      PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "#\n"));
+      PetscCall(HoneeWriteCSVHeader(ctx->viewer));
       PetscCall(PetscViewerASCIIPrintf(ctx->viewer, "step,time,mincfl,maxcfl\n"));
       monitor_ctx->is_header_written = PETSC_TRUE;
     }
