@@ -217,10 +217,10 @@ Some of these are PETSc options here as reference, while others are custom to HO
 
 ### Nondimensionalization
 These options allow the units used during solving to be changed.
-For problems where solution components can differ by many orders of magnitude, this can help problem conditioning
+For problems where solution components can differ by many orders of magnitude, this can help problem conditioning.
 
 :::{caution}
-This feature may be broken for certain use cases. If you discover a bug related to nondimensionalization, please submit a issue to the HONEE repo so that we can address it.
+This feature may be broken for certain use cases. If you discover a bug related to nondimensionalization, please submit an issue to the HONEE repo so that we can address it.
 :::
 
 :::{list-table} Nondimensionalization Options
