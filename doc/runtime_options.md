@@ -339,31 +339,6 @@ For the case of a square/cubic mesh, the list of face indices to be used with `-
 
 ## Newtonian viscosity, Ideal Gas
 
-### Newtonian Reference State Options
-These options set the Newtonian reference state.
-
-:::{list-table} Newtonian Reference State Runtime Options
-:header-rows: 1
-
-* - Option
-  - Description
-  - Default value
-
-* - `-reference_pressure`
-  - Reference/initial pressure. Also used as the default for `-ic_boundary_layer_wall_pressure`.
-  - `1.01e5`
-
-* - `-reference_velocity`
-  - Reference/initial velocity (3 values). Also used as the default for `-ic_boundary_layer_wall_velocity`.
-  - `0,0,0`
-
-* - `-reference_temperature`
-  - Reference/initial temperature. Also used as the default for `-ic_boundary_layer_wall_temperature`.
-  - `288.15`
-:::
-
-For the Density Current, Channel, and Blasius problems, the following common command-line options are available:
-
 :::{list-table} Newtonian Ideal Gas problems Runtime Options
 :header-rows: 1
 
@@ -446,4 +421,27 @@ For the Density Current, Channel, and Blasius problems, the following common com
   - State variables to solve solution with. `conservative` ($\rho, \rho \bm{u}, \rho e$), `primitive` ($P, \bm{u}, T$), or `entropy` ($\frac{\gamma - s}{\gamma - 1} - \frac{\rho}{P} (e - c_v T),\ \frac{\rho}{P} \bm{u},\ -\frac{\rho}{P}$) where  $s = \ln(P\rho^{-\gamma})$
   - `conservative`
   - string
+:::
+
+### Newtonian Reference State Options
+These options set the Newtonian reference state.
+
+:::{list-table} Newtonian Reference State Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+
+* - `-reference_pressure`
+  - Reference/initial pressure. Also used as the default for `-ic_boundary_layer_wall_pressure`.
+  - `1.01e5`
+
+* - `-reference_velocity`
+  - Reference/initial velocity (3 values). Also used as the default for `-ic_boundary_layer_wall_velocity`.
+  - `0,0,0`
+
+* - `-reference_temperature`
+  - Reference/initial temperature. Also used as the default for `-ic_boundary_layer_wall_temperature`.
+  - `288.15`
 :::
