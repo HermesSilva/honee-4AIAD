@@ -250,41 +250,59 @@ This feature may be broken for certain use cases. If you discover a bug related 
 (bc-flags)=
 ## Boundary conditions
 
-:::{list-table} Boundary Condition Options
+Boundary conditions (BCs) are defined by a name and a list of face IDs that said BC applies to.
+These are collectively known as a `BCDefinition`.
+A list of `BCDefinition` names is specified by the user using `-bc_names`.
+The `BCDefinition` name will be used in the flag prefix `-bc_{name}_*` for every option pertaining to that `BCDefinition`.
+The list of face_ids used for a `BCDefinition` is specified using `-bc_{name}_face_ids`.
+For example:
+
+```yaml
+bc_names: airfoil,inflow
+bc_airfoil:
+    face_ids: 2,5
+bc_inflow:
+    face_ids: 1,3,4
+```
+
+Essential boundary conditions (i.e. strong, Dirichlet, etc.) are defined by the component indices they constrain in the solution vector.
+They are specified by `-bc_{name}_essential_comps`.
+
+:::{note}
+The essential boundary conditions are specified by component indices rather than by their solution component name to inhibit invalid states.
+For example, if the user specifies an essential constraint on velocity and is running with entropy solution variables, that constraint cannot be set, and is thus an invalid state.
+Additionally, this more generic interface allows for expansion to other governing equations (e.g. RANS turbulence models, chemistry transport, etc.).
+:::
+
+Natural boundary conditions (i.e. weak, Neumann, etc.) are specified by type (a string), from a list of possibilities given by the given governing equation and example problem.
+These possibilities are registered by the problem/governing equation and are specified by `-bc_{name}_natural_type`.
+
+:::{list-table} `BCDefinition` Options
 :header-rows: 1
 
 * - Option
   - Description
+  - Default value
 
-* - `-bc_wall`
-  - Use wall boundary conditions on this list of faces
+* - `-bc_names`
+  - List of names used to reference boundary conditions
+  -
 
-* - `-wall_comps`
-  - An array of constrained component numbers for wall BCs
+* - `-bc_{name}_face_ids`
+  - List of face label values to define BC
+  -
 
-* - `-bc_slip`
-  - Use weak slip boundary condition on this list of faces
+* - `-bc_{name}_essential_comps`
+  - Component indices to apply essential BC on
+  -
 
-* - `-bc_symmetry_x`
-  - Use symmetry boundary conditions, for the x component, on this list of faces
-
-* - `-bc_symmetry_y`
-  - Use symmetry boundary conditions, for the y component, on this list of faces
-
-* - `-bc_symmetry_z`
-  - Use symmetry boundary conditions, for the z component, on this list of faces
-
-* - `-bc_inflow`
-  - Use inflow boundary conditions on this list of faces
-
-* - `-bc_outflow`
-  - Use outflow boundary conditions on this list of faces
-
-* - `-bc_freestream`
-  - Use freestream boundary conditions on this list of faces
+* - `-bc_{name}_natural_type`
+  - Type of natural BC to apply (`freestream`, `outflow`, etc.)
+  -
 :::
 
-For the case of a square/cubic mesh, the list of face indices to be used with `-bc_wall`, `bc_inflow`, `bc_outflow`, `bc_freestream`  and/or `-bc_symmetry_x`, `-bc_symmetry_y`, and `-bc_symmetry_z` are:
+The `face_ids` are simply the label values of the `Face Sets` label on the DM.
+For the case of PETSc-generated box meshes, those labels correspond to the following faces:
 
 :::{list-table} 2D Face ID Labels
 :header-rows: 1

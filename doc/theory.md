@@ -501,22 +501,51 @@ The sequential mode is available using a libCEED based inference evaluation via 
 
 ## Boundary Conditions
 
-Boundary conditions for compressible viscous flows are notoriously tricky.
-Here we offer some recommendations.
+Below we detail the natural BC types for Newtonian.
+Natural BCs are applied by replacing the normal flux in the boundary integral with a specific $\bm{h}$ flux:
 
-### Inflow
+$$\int_\Gamma \bm{v} \cdot \bm{h}\diff \Gamma$$
 
-Inflow treatment is problem dependent.
+Below, we specify what $\bm{h}$ is equal to.
 
-1. `bc_freestream` for far-field boundaries with known exterior state. This uses a Riemann solve at the boundary and can handle local inflow and outflow dynamically.
-2. Generic Newtonian `bc_inflow` for `problem: newtonian`. This uses the weak boundary integral operator as a inflow treatment unless overridden by a problem-specific inflow model.
+### Consistency Integral
 
-Use `bc_freestream` in regions away from viscous walls where the full exterior state is known and to have the least reflective boundary condition for acoustics.
+The most basic natural BC type is the consistency integral.
+This simply evaluates the flux in {eq}`eq-ns-flux` based on the interior solution at the boundary:
 
-For freestream boundaries, the exterior primitive state $Y_\infty = (P_\infty, \bm{u}_\infty, T_\infty)$ is set by`-freestream_pressure`, `-freestream_velocity`, and `-freestream_temperature`.
+$$\bm{h} = \bm{F}_i(\bm{q}^\mathrm{int}) \hat{n}_i$$
+where $\bm{q}^\mathrm{int}$ is the solution state at the boundary.
+The consistency natural BC type is not meant to be used on its own, but in conjunction with some kind of essential boundary condition, such as {ref}`bc-stg`.
+It is specified by `-bc_{name}_natural_type consistent` and has no other options.
 
+(riemann-solvers)=
+### Riemann Solvers
 
-:::{list-table} Freestream Boundary Runtime Options
+In HONEE, we use Riemann solvers at to determine the flux to apply at natural boundary conditions.
+We give a brief introduction to them below.
+
+Riemann solvers are methods to approximately solve the [Riemann problem](https://en.wikipedia.org/wiki/Riemann_problem).
+The Riemann problem asks what is the inviscid flux normal to a boundary between fluids at two different constant states.
+We refer to the two different states at the interior and exterior state, respectively.
+The solution to the Riemann problem can be expressed as:
+
+$$\bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \bm{Y}^{\mathrm{ext}})$$
+where $\bm{F}^{\mathrm{Riemann}}$ is the flux, $\bm{Y}^{\mathrm{int}}$ is the interior state (given in primitive variables), and $\bm{Y}^{\mathrm{ext}}$ is the exterior state.
+
+In HONEE, we use Riemann solvers at to determine the flux to apply at natural boundary conditions.
+As such, $\bm{Y}^{\mathrm{int}}$ is nearly always the solution at the boundary of the domain, while $\bm{Y}^{\mathrm{ext}}$ is some other state, often specified by the user.
+The advantage of using Riemann solvers is that they allow acoustic waves to exit the domain cleanly and are generally stable to recirculation.
+
+### Freestream
+
+The freestream natural type uses a Riemann solver at the boundary for far-field boundaries with known exterior state and is set by `-bc_{name}_natural_type freestream`:
+
+$$\bm{h} = \bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \bm{Y}^{\mathrm{ext}})$$
+It can handle local inflow and outflow dynamically and is the least acoustically reflective natural BC type.
+The Riemann solver finds the flux at the boundary based on the state on the interior of the domain (at the boundary) and a user-set exterior state.
+The exterior primitive state $\bm{Y}^\mathrm{ext} = (P^\mathrm{ext}, \bm{u}^\mathrm{ext}, T^\mathrm{ext})$ is set by`-bc_{name}_freestream_pressure`, `-bc_{name}_freestream_velocity`, and `-bc_{name}_freestream_temperature`.
+
+:::{list-table} Freestream Natural Type Options
 :header-rows: 1
 
 * - Option
@@ -524,22 +553,22 @@ For freestream boundaries, the exterior primitive state $Y_\infty = (P_\infty, \
   - Default value
   - Unit
 
-* - `-freestream_riemann`
+* - `-bc_{name}_freestream_riemann`
   - Riemann solver used for freestream boundary flux (`hll`, `hllc`)
   - `hllc`
   -
 
-* - `-freestream_pressure`
+* - `-bc_{name}_freestream_pressure`
   - Pressure at freestream condition
   - `-reference_pressure`
   - `Pa`
 
-* - `-freestream_velocity`
+* - `-bc_{name}_freestream_velocity`
   - Velocity at freestream condition, array of size 3
   - `-reference_velocity`
   - `m/s`
 
-* - `-freestream_temperature`
+* - `-bc_{name}_freestream_temperature`
   - Temperature at freestream condition
   - `-reference_temperature`
   - `K`
@@ -547,30 +576,49 @@ For freestream boundaries, the exterior primitive state $Y_\infty = (P_\infty, \
 
 ### Outflow
 
-Outflow treatment is also problem dependent.
+The outflow natural type has two different modes for use with predominantly-outflow boundaries
+It is set by `-bc_{name}_natural_type outflow`.
 
-If you know the complete exterior state, `bc_freestream` is the least reflective boundary condition, but is disruptive to viscous flow structures.
-If thermal anomalies must exit the domain, the Riemann solver must resolve the contact wave to avoid reflections.
-The default Riemann solver, HLLC, is sufficient in this regard while the simpler HLL converts thermal structures exiting the domain into grid-scale reflecting acoustics.
+The first mode is `-bc_{name}_outflow_type pressure`, which applies the consistency integral, but forcing the pressure to a user-set value.
 
-If acoustic reflections are not a concern and/or the flow is impacted by walls or interior structures that you wish to resolve to near the boundary, choose `bc_outflow`.
-This condition (with default `outflow_type: riemann`) is stable for both inflow and outflow, so can be used in areas that have recirculation and lateral boundaries in which the flow fluctuates.
+$$\bm{h} = \bm{F}_i(\tilde{\bm{Y}}^\mathrm{int}) \hat{n}_i, \quad
+\tilde{\bm{Y}}^\mathrm{int} =
+\begin{pmatrix}
+    P^\mathrm{ext} \\
+    \bm{u}^\mathrm{int} \\
+    T^\mathrm{int}
+\end{pmatrix}
+$$
+where $P^\mathrm{ext}$ is the user-set value.
+This has the effect of weakly enforcing a pressure at the boundary.
+The `pressure` outflow requires that the flow have no recirculation at the boundary or the problem becomes unstable.
+Additionally, the `pressure` outflow is very acoustically reflective.
+These limitations motivate the second mode.
 
-The simpler `bc_outflow` variant, `outflow_type: pressure`, requires that the flow have no recirculation at the boundary (or the problem becomes ill-posed and the solver will diverge).
-In our experience, `riemann` is significantly less reflective and is stable in the presence of recirculation at the boundary.
-The `pressure` variant is retained to facilitate comparison with other codes, such as PHASTA-C, but we recommend `riemann` for general use.
+The second mode is `-bc_{name}_outflow_type riemann`, which uses a Riemann solver at the outflow to define the inviscid flux and adds in viscous fluxes at the boundary:
 
-For `outflow_type: riemann`, the boundary flux is evaluated pointwise by a local Riemann problem between the interior state and a constructed exterior state.
-This gives an inviscid interface flux in the face normal direction, $F_{\hat{n}}^{\mathrm{Riemann}}(Y^{\mathrm{int}}, \tilde{Y}^{\mathrm{ext}})$, using an approximate Riemann solver (HLLC in `bc_outflow`; HLL or HLLC in `bc_freestream`).
-The key advantage is that characteristic waves can leave and enter the domain in a numerically stable way.
+$$h = \bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \tilde{\bm{Y}}^{\mathrm{ext}}) + F_i^{\mathrm{diff}}(Y^{\mathrm{int}})\hat{n}_i, \quad
+\tilde{\bm{Y}}^\mathrm{ext} =
+\begin{pmatrix}
+    P^\mathrm{ext} \\
+    \bm{u}^\mathrm{int} \\
+    T^\mathrm{ext}
+\end{pmatrix}
+$$
+where the diffusive flux is defined in {eq}`eq-ns-flux`.
+This is similar to `freestream`, but differs in 2 key ways.
+First, the exterior state uses the interior velocity, which allows the boundary condition to handle significant velocity changes of the interior solution (a common feature at simulation outflows).
+Second, we add in the diffusive (viscous) flux.
+This makes the `riemann` outflow more consistent in viscous-dominated regions such as near no-slip walls.
 
-For viscous flow, the total boundary contribution is the inviscid Riemann flux plus a diffusive term from interior gradients:
-$h = F_{\hat{n}}^{\mathrm{Riemann}}(Y^{\mathrm{int}}, \tilde{Y}^{\mathrm{ext}}) + F_i^{\mathrm{diff}}(Y^{\mathrm{int}})\hat{n}_i$.
+This combination of features allows the `riemann` flux to be applied at boundaries near viscous-dominate boundaries, handle unknown velocity profiles, allow acoustic waves to exit the domain, and be resilient to recirculation.
+As such, we generally recommend `riemann` over `pressure`: `pressure` variant is retained to facilitate comparison with other codes.
 
-For Riemann outflow, the normal velocity correction added to the exterior state is $\Delta u_n = (1-r)\,\mathrm{Softplus}(-u_n, u_s)$, where $r$ is set by `-outflow_recirc`, and $u_s$ is set by `-outflow_softplus_velocity`.
-The pressure and temperature used in the exterior state are set by `-outflow_pressure` and `-outflow_temperature`.
+For `riemann` outflow, the velocity set in the exterior state can be modified to only allow some amount of recirculation in the exterior state.
+That modification is given as $\Delta u_n = (1-r)\,\mathrm{Softplus}(-u_n, u_s)$, where $r$ is set by `-bc_{name}_outflow_recirc`, and $u_s$ is set by `-bc_{name}_outflow_softplus_velocity`.
+The intention is to penalize recirculation, but it has not shown much benefit and often makes the simulation more unstable.
 
-:::{list-table} Newtonian Outflow Boundary Runtime Options
+:::{list-table} Outflow Natural Type Options
 :header-rows: 1
 
 * - Option
@@ -578,36 +626,47 @@ The pressure and temperature used in the exterior state are set by `-outflow_pre
   - Default value
   - Unit
 
-* - `-outflow_type`
+* - `-bc_{name}_outflow_type`
   - Outflow model selection (`riemann`, `pressure`)
   - `riemann`
   -
 
-* - `-outflow_pressure`
+* - `-bc_{name}_outflow_pressure`
   - Pressure at outflow condition
   - `-reference_pressure`
   - `Pa`
 
-* - `-outflow_temperature`
+* - `-bc_{name}_outflow_temperature`
   - Temperature at outflow condition (Riemann outflow only)
   - `-reference_temperature`
   - `K`
 
-* - `-outflow_recirc`
+* - `-bc_{name}_outflow_recirc`
   - Fraction of recirculation allowed in exterior velocity state, $r \in [0,1]$ (Riemann outflow only)
   - `1.0`
   -
 
-* - `-outflow_softplus_velocity`
+* - `-bc_{name}_outflow_softplus_velocity`
   - Characteristic velocity scale (Riemann outflow only)
   - `1e-2`
   - `m/s`
 :::
 
-Implementation notes:
+### Slip
 
-1. Riemann outflow has the option of modifying the velocity normal to the boundary, $u_n$, in the exterior state. The intention is to penalize recirculation, but it generally has not shown much benefit and is not recommended for most runs.
-2. In our testing, the outflow recirculation parameter $r$ (`-outflow_recirc`) has been unstable for any value $r \ne 1$.
+A slip natural type uses a Riemann function to weakly impose no-penetration, while allowing acoustic waves to exit the domain cleanly.
+To do this, `slip` sets the exterior state identical to the interior state, but reflects the velocity vector normal to the boundary:
+
+$$h = \bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \tilde{\bm{Y}}^{\mathrm{ext}}), \quad
+\tilde{\bm{Y}}^\mathrm{ext} =
+\begin{pmatrix}
+    P^\mathrm{int} \\
+    \bm{u}^\mathrm{ext} \\
+    T^\mathrm{int}
+\end{pmatrix}
+$$
+where $\bm{u}^\mathrm{ext} = u_i^{int} - 2 n_i u_j^\mathrm{int} n_j$.
+It is set by `-bc_{name}_natural_type slip` and has no other options.
 
 ### Periodicity
 
@@ -780,7 +839,7 @@ The following table is presented to help clarify the dimensionality of the numer
 
 #### Runtime Options
 
-To use the STG boundary condition, the `-bc_inflow` option should be set to the boundary faces that need the inflow (see {{ref}`bc-flags` and above).
+To use the STG boundary condition, the `-bc_inflow` option should be set to the boundary faces that need the inflow (see {ref}`bc-flags` and above).
 The `-stg_use` flag is then used to enable/disable applying STG to those faces.
 
 :::{list-table} STG Runtime Options

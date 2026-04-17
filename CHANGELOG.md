@@ -36,6 +36,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add `-ts_monitor_smartsim_solution` for writing solution vector to SmartSim database
 - Add wall distance calculations, see documentation for details
 - Add Initial condition boundary layer.
+- Refactor of boundary condition prescribing options
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic
