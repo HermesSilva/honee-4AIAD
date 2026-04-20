@@ -1,8 +1,12 @@
-# petsc_version: Petsc Development GIT revision: v3.22.2-220-gd555c4671e0  GIT Date: 2024-12-06 21:18:35 +0000
-# petsc_directory: /home/jrwrigh/software/petsc
+# honee_version: 0.0.0
+# honee_git_commit: 3e61ce9-dirty
+# libceed_version: 0.12.0
+# libceed_git_commit: v0.12.0-1263-ge205ca3fa
+# petsc_version: PETSc Development Git Revision: v3.24.5-565-g0d1c7fa71ab Git Date: 2026-03-13 05:44:56 +0000
+# petsc_directory: /home/jrwrigh/software/petsc_main
 # petsc_arch: arch-devdebug-test-asan
-# date: 2024-12-07T09:10:39-0700
-# date_timezone: MST
+# date: 2026-04-17T16:58:56-0600
+# date_timezone: MDT
 # username: jrwrigh
 # hostname: fermat
 # working_directory: /home/jrwrigh/software/HONEE

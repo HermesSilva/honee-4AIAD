@@ -19,3 +19,5 @@ PetscErrorCode HoneeWriteBinaryVec(PetscViewer viewer, Vec Q, PetscReal time, Pe
 PetscErrorCode PhastaDatFileOpen(const MPI_Comm comm, const char path[], const PetscInt char_array_len, PetscInt dims[2], FILE **fp);
 PetscErrorCode PhastaDatFileGetNRows(const MPI_Comm comm, const char path[], PetscInt *nrows);
 PetscErrorCode PhastaDatFileReadToArrayReal(const MPI_Comm comm, const char path[], PetscReal array[]);
+
+PetscErrorCode HoneeWriteCSVHeader(PetscViewer viewer);
