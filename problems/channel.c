@@ -146,8 +146,10 @@ PetscErrorCode NS_CHANNEL(ProblemData problem, DM dm, void *ctx) {
 
   PetscCallCeed(ceed, CeedQFunctionContextReference(channel_qfctx));
   PetscCall(HoneeSetContainer(honee, CHANNEL_QFCTX_KEY, channel_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
-  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_ChannelInflow));
-  PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_ChannelOutflow));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_ChannelInflow));    // For legacy BC setting
+  PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_ChannelOutflow));  // For legacy BC setting
+  PetscCall(BCDefinitionRegisterNaturalSetup("channel-inflow", BCDefinitionNaturalSetup_ChannelInflow));
+  PetscCall(BCDefinitionRegisterNaturalSetup("channel-outflow", BCDefinitionNaturalSetup_ChannelOutflow));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

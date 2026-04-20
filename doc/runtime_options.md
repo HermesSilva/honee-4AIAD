@@ -1,4 +1,8 @@
 # Runtime Options
+:::{note}
+Options in the documentation are specified by command-line flag and YAML format interchangeably.
+See {ref}`yaml-options` for details.
+:::
 
 ## Common Options
 HONEE is controlled via command-line options.
@@ -213,10 +217,10 @@ Some of these are PETSc options here as reference, while others are custom to HO
 
 ### Nondimensionalization
 These options allow the units used during solving to be changed.
-For problems where solution components can differ by many orders of magnitude, this can help problem conditioning
+For problems where solution components can differ by many orders of magnitude, this can help problem conditioning.
 
 :::{caution}
-This feature may be broken for certain use cases. If you discover a bug related to nondimensionalization, please submit a issue to the HONEE repo so that we can address it.
+This feature may be broken for certain use cases. If you discover a bug related to nondimensionalization, please submit an issue to the HONEE repo so that we can address it.
 :::
 
 :::{list-table} Nondimensionalization Options
@@ -246,41 +250,59 @@ This feature may be broken for certain use cases. If you discover a bug related 
 (bc-flags)=
 ## Boundary conditions
 
-:::{list-table} Boundary Condition Options
+Boundary conditions (BCs) are defined by a name and a list of face IDs that said BC applies to.
+These are collectively known as a `BCDefinition`.
+A list of `BCDefinition` names is specified by the user using `-bc_names`.
+The `BCDefinition` name will be used in the flag prefix `-bc_{name}_*` for every option pertaining to that `BCDefinition`.
+The list of face_ids used for a `BCDefinition` is specified using `-bc_{name}_face_ids`.
+For example:
+
+```yaml
+bc_names: airfoil,inflow
+bc_airfoil:
+    face_ids: 2,5
+bc_inflow:
+    face_ids: 1,3,4
+```
+
+Essential boundary conditions (i.e. strong, Dirichlet, etc.) are defined by the component indices they constrain in the solution vector.
+They are specified by `-bc_{name}_essential_comps`.
+
+:::{note}
+The essential boundary conditions are specified by component indices rather than by their solution component name to inhibit invalid states.
+For example, if the user specifies an essential constraint on velocity and is running with entropy solution variables, that constraint cannot be set, and is thus an invalid state.
+Additionally, this more generic interface allows for expansion to other governing equations (e.g. RANS turbulence models, chemistry transport, etc.).
+:::
+
+Natural boundary conditions (i.e. weak, Neumann, etc.) are specified by type (a string), from a list of possibilities given by the given governing equation and example problem.
+These possibilities are registered by the problem/governing equation and are specified by `-bc_{name}_natural_type`.
+
+:::{list-table} `BCDefinition` Options
 :header-rows: 1
 
 * - Option
   - Description
+  - Default value
 
-* - `-bc_wall`
-  - Use wall boundary conditions on this list of faces
+* - `-bc_names`
+  - List of names used to reference boundary conditions
+  -
 
-* - `-wall_comps`
-  - An array of constrained component numbers for wall BCs
+* - `-bc_{name}_face_ids`
+  - List of face label values to define BC
+  -
 
-* - `-bc_slip`
-  - Use weak slip boundary condition on this list of faces
+* - `-bc_{name}_essential_comps`
+  - Component indices to apply essential BC on
+  -
 
-* - `-bc_symmetry_x`
-  - Use symmetry boundary conditions, for the x component, on this list of faces
-
-* - `-bc_symmetry_y`
-  - Use symmetry boundary conditions, for the y component, on this list of faces
-
-* - `-bc_symmetry_z`
-  - Use symmetry boundary conditions, for the z component, on this list of faces
-
-* - `-bc_inflow`
-  - Use inflow boundary conditions on this list of faces
-
-* - `-bc_outflow`
-  - Use outflow boundary conditions on this list of faces
-
-* - `-bc_freestream`
-  - Use freestream boundary conditions on this list of faces
+* - `-bc_{name}_natural_type`
+  - Type of natural BC to apply (`freestream`, `outflow`, etc.)
+  -
 :::
 
-For the case of a square/cubic mesh, the list of face indices to be used with `-bc_wall`, `bc_inflow`, `bc_outflow`, `bc_freestream`  and/or `-bc_symmetry_x`, `-bc_symmetry_y`, and `-bc_symmetry_z` are:
+The `face_ids` are simply the label values of the `Face Sets` label on the DM.
+For the case of PETSc-generated box meshes, those labels correspond to the following faces:
 
 :::{list-table} 2D Face ID Labels
 :header-rows: 1
@@ -338,31 +360,6 @@ For the case of a square/cubic mesh, the list of face indices to be used with `-
 :::
 
 ## Newtonian viscosity, Ideal Gas
-
-### Newtonian Reference State Options
-These options set the Newtonian reference state.
-
-:::{list-table} Newtonian Reference State Runtime Options
-:header-rows: 1
-
-* - Option
-  - Description
-  - Default value
-
-* - `-reference_pressure`
-  - Reference/initial pressure. Also used as the default for `-ic_boundary_layer_wall_pressure`.
-  - `1.01e5`
-
-* - `-reference_velocity`
-  - Reference/initial velocity (3 values). Also used as the default for `-ic_boundary_layer_wall_velocity`.
-  - `0,0,0`
-
-* - `-reference_temperature`
-  - Reference/initial temperature. Also used as the default for `-ic_boundary_layer_wall_temperature`.
-  - `288.15`
-:::
-
-For the Density Current, Channel, and Blasius problems, the following common command-line options are available:
 
 :::{list-table} Newtonian Ideal Gas problems Runtime Options
 :header-rows: 1
@@ -447,3 +444,63 @@ For the Density Current, Channel, and Blasius problems, the following common com
   - `conservative`
   - string
 :::
+
+### Newtonian Reference State Options
+These options set the Newtonian reference state.
+
+:::{list-table} Newtonian Reference State Runtime Options
+:header-rows: 1
+
+* - Option
+  - Description
+  - Default value
+
+* - `-reference_pressure`
+  - Reference/initial pressure. Also used as the default for `-ic_boundary_layer_wall_pressure`.
+  - `1.01e5`
+
+* - `-reference_velocity`
+  - Reference/initial velocity (3 values). Also used as the default for `-ic_boundary_layer_wall_velocity`.
+  - `0,0,0`
+
+* - `-reference_temperature`
+  - Reference/initial temperature. Also used as the default for `-ic_boundary_layer_wall_temperature`.
+  - `288.15`
+:::
+
+(yaml-options)=
+## YAML vs Command line options
+
+Options for HONEE and PETSc can be given by either command line options or via a YAML file.
+Command-line flags can be represented in a YAML file by removing the leading `-` and by allowing underscores (`_`) to be converted into a hierarchy of options (so that options with redundant prefixes can be more easily grouped together).
+For example,
+```
+-dm_plex_shape zbox -dm_plex_box_faces 10,12,4 -dm_plex_box_bd none,none,periodic
+```
+could be represented as
+```yaml
+dm_plex:
+  shape: zbox
+  box:
+    faces: 10,12,4
+    bd: none,none,periodic
+```
+
+A YAML file of options can be passed to HONEE via `-options_file <yaml file>`.
+Overriding of options are done in the order that HONEE/PETSc reads them.
+Given the following YAML file:
+```yaml
+# ./options.yaml
+option_a: 1
+```
+Running
+```
+navierstokes -option_a 2 -options_file options.yaml
+```
+will result in `option_a == 1`, but
+```
+navierstokes -option_a 2 -options_file options.yaml -option_a 3
+```
+will result in `option_a == 3`.
+
+See [PETSc documentation](https://petsc.org/release/manual/other/#adding-options-from-a-file) for more advanced uses of the yaml file system.

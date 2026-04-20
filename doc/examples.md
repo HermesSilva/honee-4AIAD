@@ -18,8 +18,8 @@ $$
 where $A$ and $\sigma$ are the amplitude and width of the perturbation, respectively, and $(\bar{x}, \bar{y}) = (x-x_e, y-y_e)$ is the distance to the epicenter of the perturbation, $(x_e, y_e)$.
 The simulation produces a strong acoustic wave and leaves behind a cold thermal bubble that advects at the fluid velocity.
 
-The boundary conditions are freestream in the x and y directions. When using an HLL (Harten, Lax, van Leer) Riemann solver {cite}`toro2009` (option `-freestream_riemann hll`), the acoustic waves exit the domain cleanly, but when the thermal bubble reaches the boundary, it produces strong thermal oscillations that become acoustic waves reflecting into the domain.
-This problem can be fixed using a more sophisticated Riemann solver such as HLLC {cite}`toro2009` (option `-freestream_riemann hllc`, which is default), which is a linear constant-pressure wave that transports temperature and transverse momentum at the fluid velocity.
+The boundary conditions are freestream in the x and y directions. When using an HLL (Harten, Lax, van Leer) Riemann solver {cite}`toro2009` (option `-bc_freestream_riemann hll`), the acoustic waves exit the domain cleanly, but when the thermal bubble reaches the boundary, it produces strong thermal oscillations that become acoustic waves reflecting into the domain.
+This problem can be fixed using a more sophisticated Riemann solver such as HLLC {cite}`toro2009` (option `-bc_freestream_riemann hllc`, which is default), which is a linear constant-pressure wave that transports temperature and transverse momentum at the fluid velocity.
 
 #### Running
 :::{list-table} Gaussian Wave Runtime Options
@@ -297,6 +297,7 @@ If this flag is given an empty string, then the algorithmic approach will be per
 #### Laminar Boundary Layer - Blasius
 
 Simulation of a laminar boundary layer flow, with the inflow being prescribed by a [Blasius similarity solution](https://en.wikipedia.org/wiki/Blasius_boundary_layer).
+To use the blasius inflow, use natural type `blasius-inflow`.
 At the inflow, the velocity is prescribed by the Blasius soution profile, density is set constant, and temperature is allowed to float.
 Using `weakT: true`, density is allowed to float and temperature is set constant.
 At the outlet, a user-set pressure is used for pressure in the inviscid flux terms (all other inviscid flux terms use interior solution values).
@@ -603,6 +604,7 @@ Some require specific advection profiles, other's can be used with multiple.
   This IC is meant to be paired with the boundary layer advection profile.
   This initial condition features a linear profile in the y direction up to a height set by the user.
 
+Inflow and outflow boundary conditions are combined into a single natural type `inflow-outflow`.
 For the inflow boundary conditions, a prescribed $E_{wind}$ is applied weakly on the inflow boundaries such that the weak form boundary integral in {eq}`eq-weak-vector-ns` is defined as
 
 $$

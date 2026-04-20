@@ -77,7 +77,8 @@ static PetscErrorCode SetupNewtonianICBoundaryLayerFromOptions(Honee honee, Prob
   }
 
   PetscCall(HoneeHasContainer(honee, "Wall Distance Context", &has_walldist));
-  PetscCheck(has_walldist, honee->comm, PETSC_ERR_USER_INPUT, "-ic_boundary_layer_use requires wall-distance to be setup (typically via -bc_wall)");
+  PetscCheck(has_walldist, honee->comm, PETSC_ERR_USER_INPUT,
+             "-ic_boundary_layer_use requires wall-distance to be setup (by setting a boundary condition with -bc_{name}_is_viscous_wall)");
 
   problem->ics_use_wall_distance = PETSC_TRUE;
   ic_boundary_layer->height *= units->meter;
@@ -710,7 +711,8 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_Outflow));
   PetscCall(BCDefinitionRegisterNaturalSetup("freestream", BCDefinitionNaturalSetup_Freestream));
   PetscCall(BCDefinitionRegisterNaturalSetup("slip", BCDefinitionNaturalSetup_Slip));
-  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_BoundaryIntegral));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_BoundaryIntegral));  // For legacy BC setting
+  PetscCall(BCDefinitionRegisterNaturalSetup("consistent", BCDefinitionNaturalSetup_BoundaryIntegral));
 
   if (unit_tests) PetscCall(UnitTests_Newtonian(honee, newtonian_ig_ctx->gas));
   PetscFunctionReturn(PETSC_SUCCESS);

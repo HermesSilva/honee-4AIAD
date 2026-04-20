@@ -20,6 +20,31 @@ static PetscErrorCode AddBCDefinitionToSegBuffer(BCDefinition bc_def, PetscSegBu
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
+static PetscErrorCode HoneeBCCreatePrefix_Private(const char name[], char **cl_prefix) {
+  PetscSizeT name_len, prefix_len;
+
+  PetscFunctionBeginUser;
+  PetscCall(PetscStrlen(name, &name_len));
+  prefix_len = name_len + 5;
+  PetscCall(PetscCalloc1(prefix_len, cl_prefix));
+  PetscCall(PetscSNPrintf(*cl_prefix, prefix_len, "bc_%s_", name));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Create command line prefix for bc_def
+
+  @param[in]  bc_def    `BCDefinition`
+  @param[out] cl_prefix Prefex to be used with command line arguments
+**/
+PetscErrorCode HoneeBCCreatePrefix(BCDefinition bc_def, char **cl_prefix) {
+  const char *name;
+  PetscFunctionBeginUser;
+  PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+  PetscCall(HoneeBCCreatePrefix_Private(name, cl_prefix));
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 /**
    @brief Create and setup `BCDefinition`s from commandline options
 
@@ -28,94 +53,184 @@ static PetscErrorCode AddBCDefinitionToSegBuffer(BCDefinition bc_def, PetscSegBu
    @param[in]     app_ctx `AppCtx`
 **/
 PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx app_ctx) {
-  PetscSegBuffer bc_defs_seg;
+  MPI_Comm       comm = honee->comm;
   PetscBool      flg;
-  BCDefinition   bc_def;
+  PetscSegBuffer wall_face_ids_sb;
+  char          *bc_names[HONEE_MAX_BCDEFS] = {NULL};
 
   PetscFunctionBeginUser;
-  PetscCall(PetscSegBufferCreate(sizeof(BCDefinition), 4, &bc_defs_seg));
 
-  PetscOptionsBegin(honee->comm, NULL, "Boundary Condition Options", NULL);
+  PetscOptionsBegin(comm, NULL, "Boundary Condition Options", NULL);
+  problem->num_bc_defs = HONEE_MAX_BCDEFS;
+  PetscCall(PetscOptionsStringArray("-bc_names", "Name of boundary condition names to be read", __func__, bc_names, &problem->num_bc_defs, &flg));
+  PetscOptionsEnd();
 
-  PetscCall(PetscOptionsBCDefinition("-bc_wall", "Face IDs to apply wall BC", NULL, "wall", &bc_def, NULL));
-  PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+  PetscCall(PetscSegBufferCreate(sizeof(PetscInt), 4, &wall_face_ids_sb));
+  PetscCall(PetscCalloc1(problem->num_bc_defs, &problem->bc_defs));
+  for (PetscInt b = 0; b < problem->num_bc_defs; b++) {
+    const char  *name   = bc_names[b];
+    BCDefinition bc_def = NULL;
+    size_t       len;
+    char         buffer[PETSC_MAX_OPTION_NAME];
+    char        *cl_prefix;
+    PetscInt     essential_comps[16], num_essential_comps = PETSC_STATIC_ARRAY_LENGTH(essential_comps);
 
-  if (bc_def) {  // Setup wall distance based on wall bc
-    const PetscInt *label_values;
-    PetscInt        num_label_values;
-    PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_label_values, &label_values));
-    PetscCall(HoneeWallDistanceSetup(honee, num_label_values, label_values));
+    if (name[0] == '\0') continue;  // skip empty names
+    for (PetscInt i = 0; i < b; i++) {
+      PetscBool match;
+      PetscCall(PetscStrcmp(name, problem->bc_defs[i]->name, &match));
+      PetscCheck(!match, comm, PETSC_ERR_USER_INPUT, "Cannot have repeat values in -bc_names found duplicate of %s", name);
+    }
+
+    PetscCall(PetscSNPrintf(buffer, PETSC_STATIC_ARRAY_LENGTH(buffer), "Boundary Condition Options: %s", name));
+    PetscCall(HoneeBCCreatePrefix_Private(name, &cl_prefix));
+    PetscOptionsBegin(comm, cl_prefix, buffer, NULL);
+    PetscCall(PetscFree(cl_prefix));
+
+    PetscCall(PetscOptionsBCDefinition("-face_ids", "Face IDs to apply boundary condition to", NULL, name, &problem->bc_defs[b], NULL));
+    PetscCheck(problem->bc_defs[b], comm, PETSC_ERR_USER_INPUT, "Could not find face_ids for bc_name \"%s\"", name);
+    bc_def = problem->bc_defs[b];
+    len    = PETSC_STATIC_ARRAY_LENGTH(buffer);
+    PetscCall(PetscOptionsString("-natural_type", "Name of natural BC to apply", NULL, buffer, buffer, len, &flg));
+    if (flg) {
+      PetscCall(PetscStrlen(buffer, &len));
+      PetscCheck(len < PETSC_STATIC_ARRAY_LENGTH(buffer), comm, PETSC_ERR_USER_INPUT, "Name in -%s_natural_type longer than %zu, only recieved %s",
+                 name, PETSC_STATIC_ARRAY_LENGTH(buffer), buffer);
+      PetscCall(BCDefinitionSetNaturalType(bc_def, buffer));
+    }
+
+    PetscCall(PetscOptionsIntArray("-essential_comps", "An array of constrained component numbers", NULL, essential_comps, &num_essential_comps,
+                                   &flg));
+    if (flg) PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
+
+    PetscBool is_viscous_wall = PETSC_FALSE;
+    PetscCall(PetscOptionsBool("-is_viscous_wall", "Whether to treat the boundaries labeled here as a viscous wall", NULL, is_viscous_wall,
+                               &is_viscous_wall, NULL));
+    if (is_viscous_wall) {
+      const PetscInt *label_values;
+      PetscInt       *label_values_seg, num_label_values;
+
+      PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_label_values, &label_values));
+      PetscCall(PetscSegBufferGetInts(wall_face_ids_sb, num_label_values, &label_values_seg));
+      PetscCall(PetscArraycpy(label_values_seg, label_values, num_label_values));
+    }
+
+    {  // Add HoneeBCStruct to bc_def
+      HoneeBCStruct honee_bc;
+
+      PetscCall(PetscNew(&honee_bc));
+      honee_bc->honee = honee;
+      PetscCall(BCDefinitionSetContext(bc_def, honee_bc, (PetscCtxDestroyFn *)HoneeBCDestroy));
+    }
+    PetscOptionsEnd();
+    PetscCall(PetscFree(bc_names[b]));
   }
-  if (bc_def) {
-    PetscInt num_essential_comps = 16, essential_comps[16];
 
-    PetscCall(PetscOptionsIntArray("-wall_comps", "An array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &flg));
-    PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
+  {  // Setup wall distance
+    PetscInt  *wall_face_ids;
+    PetscCount num_wall_face_ids_count;
 
-    app_ctx->wall_forces.num_wall = bc_def->num_label_values;
-    PetscCall(PetscMalloc1(bc_def->num_label_values, &app_ctx->wall_forces.walls));
-    PetscCall(PetscArraycpy(app_ctx->wall_forces.walls, bc_def->label_values, bc_def->num_label_values));
+    PetscCall(PetscSegBufferGetSize(wall_face_ids_sb, &num_wall_face_ids_count));
+    PetscCall(PetscSegBufferExtractAlloc(wall_face_ids_sb, &wall_face_ids));
+    PetscCall(PetscSegBufferDestroy(&wall_face_ids_sb));
+    if (num_wall_face_ids_count) {
+      PetscCall(HoneeWallDistanceSetup(honee, num_wall_face_ids_count, wall_face_ids));
+      app_ctx->wall_forces.num_wall = num_wall_face_ids_count;
+      PetscCall(PetscMalloc1(num_wall_face_ids_count, &app_ctx->wall_forces.walls));
+      PetscCall(PetscArraycpy(app_ctx->wall_forces.walls, wall_face_ids, num_wall_face_ids_count));
+    }
+
+    PetscCall(PetscFree(wall_face_ids));
   }
 
-  {  // Symmetry Boundary Conditions
-    const char *deprecated[3] = {"-bc_slip_x", "-bc_slip_y", "-bc_slip_z"};
-    const char *flags[3]      = {"-bc_symmetry_x", "-bc_symmetry_y", "-bc_symmetry_z"};
+  // Use legacy boundary condition options only if new options are not used at all
+  if (problem->num_bc_defs == 0) {
+    BCDefinition   bc_def;
+    PetscSegBuffer bc_defs_seg;
 
-    for (PetscInt j = 0; j < 3; j++) {
-      PetscCall(PetscOptionsDeprecated(deprecated[j], flags[j], "libCEED 0.12.0",
-                                       "Use -bc_symmetry_[x,y,z] for direct equivalency, or -bc_slip for weak, Riemann-based, direction-invariant "
-                                       "slip/no-penatration boundary conditions"));
-      PetscCall(PetscOptionsBCDefinition(flags[j], "Face IDs to apply symmetry BC", NULL, "symmetry", &bc_def, NULL));
-      if (!bc_def) {
-        PetscCall(PetscOptionsBCDefinition(deprecated[j], "Face IDs to apply symmetry BC", NULL, "symmetry", &bc_def, NULL));
-      }
-      PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
-      if (bc_def) {
-        PetscInt essential_comps[1] = {j + 1};
+    PetscCall(PetscSegBufferCreate(sizeof(BCDefinition), 4, &bc_defs_seg));
+    PetscOptionsBegin(comm, NULL, "Boundary Condition Options", NULL);
+    PetscCall(PetscOptionsBCDefinition("-bc_wall", "Face IDs to apply wall BC", NULL, "wall", &bc_def, NULL));
+    PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
 
-        PetscCall(BCDefinitionSetEssential(bc_def, 1, essential_comps));
+    if (bc_def) {  // Setup wall distance based on wall bc
+      const PetscInt *label_values;
+      PetscInt        num_label_values;
+      PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_label_values, &label_values));
+      PetscCall(HoneeWallDistanceSetup(honee, num_label_values, label_values));
+    }
+    if (bc_def) {
+      PetscInt num_essential_comps = 16, essential_comps[16];
+
+      PetscCall(PetscOptionsIntArray("-wall_comps", "An array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &flg));
+      PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
+
+      app_ctx->wall_forces.num_wall = bc_def->num_label_values;
+      PetscCall(PetscMalloc1(bc_def->num_label_values, &app_ctx->wall_forces.walls));
+      PetscCall(PetscArraycpy(app_ctx->wall_forces.walls, bc_def->label_values, bc_def->num_label_values));
+    }
+
+    {  // Symmetry Boundary Conditions
+      const char *deprecated[3] = {"-bc_slip_x", "-bc_slip_y", "-bc_slip_z"};
+      const char *flags[3]      = {"-bc_symmetry_x", "-bc_symmetry_y", "-bc_symmetry_z"};
+
+      for (PetscInt j = 0; j < 3; j++) {
+        PetscCall(PetscOptionsDeprecated(deprecated[j], flags[j], "libCEED 0.12.0",
+                                         "Use -bc_symmetry_[x,y,z] for direct equivalency, or -bc_slip for weak, Riemann-based, direction-invariant "
+                                         "slip/no-penatration boundary conditions"));
+        PetscCall(PetscOptionsBCDefinition(flags[j], "Face IDs to apply symmetry BC", NULL, "symmetry", &bc_def, NULL));
+        if (!bc_def) {
+          PetscCall(PetscOptionsBCDefinition(deprecated[j], "Face IDs to apply symmetry BC", NULL, "symmetry", &bc_def, NULL));
+        }
+        PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+        if (bc_def) {
+          PetscInt essential_comps[1] = {j + 1};
+
+          PetscCall(BCDefinitionSetEssential(bc_def, 1, essential_comps));
+        }
       }
+    }
+
+    PetscCall(PetscOptionsBCDefinition("-bc_inflow", "Face IDs to apply inflow BC", NULL, "inflow", &bc_def, NULL));
+    PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+    PetscCall(PetscOptionsBCDefinition("-bc_outflow", "Face IDs to apply outflow BC", NULL, "outflow", &bc_def, NULL));
+    PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+    PetscCall(PetscOptionsBCDefinition("-bc_freestream", "Face IDs to apply freestream BC", NULL, "freestream", &bc_def, NULL));
+    PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+    PetscCall(PetscOptionsBCDefinition("-bc_slip", "Face IDs to apply slip BC", NULL, "slip", &bc_def, NULL));
+    PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
+    PetscOptionsEnd();
+
+    PetscCount num_bc_defs_count;
+    PetscCall(PetscSegBufferGetSize(bc_defs_seg, &num_bc_defs_count));
+    problem->num_bc_defs = num_bc_defs_count;
+    PetscCall(PetscSegBufferExtractAlloc(bc_defs_seg, &problem->bc_defs));
+    PetscCall(PetscSegBufferDestroy(&bc_defs_seg));
+
+    if (problem->num_bc_defs)
+      PetscCall(PetscPrintf(comm, "WARNING: Legacy style of setting boundary conditions is deprecated and will be removed in the future"));
+
+    // TEMPORARY before major BC refactoring.
+    // In future, each natural BC (including example BCs) will have it's own name independent from the bc_def->name.
+    for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
+      BCDefinition bc_def = problem->bc_defs[i];
+      PetscBool    has_no_natural_bc;
+
+      PetscCall(PetscStrcmpAny(bc_def->name, &has_no_natural_bc, "wall", "symmetry", ""));
+      if (has_no_natural_bc) continue;
+      PetscCall(BCDefinitionSetNaturalType(bc_def, bc_def->name));
+    }
+    for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
+      HoneeBCStruct honee_bc;
+      BCDefinition  bc_def = problem->bc_defs[i];
+
+      PetscCall(PetscNew(&honee_bc));
+      honee_bc->honee = honee;
+      PetscCall(BCDefinitionSetContext(bc_def, honee_bc, (PetscCtxDestroyFn *)HoneeBCDestroy));
     }
   }
 
-  PetscCall(PetscOptionsBCDefinition("-bc_inflow", "Face IDs to apply inflow BC", NULL, "inflow", &bc_def, NULL));
-  PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
-
-  PetscCall(PetscOptionsBCDefinition("-bc_outflow", "Face IDs to apply outflow BC", NULL, "outflow", &bc_def, NULL));
-  PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
-
-  PetscCall(PetscOptionsBCDefinition("-bc_freestream", "Face IDs to apply freestream BC", NULL, "freestream", &bc_def, NULL));
-  PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
-
-  PetscCall(PetscOptionsBCDefinition("-bc_slip", "Face IDs to apply slip BC", NULL, "slip", &bc_def, NULL));
-  PetscCall(AddBCDefinitionToSegBuffer(bc_def, bc_defs_seg));
-
-  PetscOptionsEnd();
-
-  PetscCall(PetscSegBufferGetSize(bc_defs_seg, &problem->num_bc_defs));
-  PetscCall(PetscSegBufferExtractAlloc(bc_defs_seg, &problem->bc_defs));
-  PetscCall(PetscSegBufferDestroy(&bc_defs_seg));
-
-  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
-    HoneeBCStruct honee_bc;
-    BCDefinition  bc_def = problem->bc_defs[i];
-    PetscCall(PetscNew(&honee_bc));
-    honee_bc->honee = honee;
-    PetscCall(BCDefinitionSetContext(bc_def, honee_bc, (PetscCtxDestroyFn *)HoneeBCDestroy));
-  }
-
-  // TEMPORARY before major BC refactoring.
-  // In future, each natural BC (including example BCs) will have it's own name independent from the bc_def->name.
-  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
-    BCDefinition bc_def = problem->bc_defs[i];
-    PetscBool    has_no_natural_bc;
-
-    PetscCall(PetscStrcmpAny(bc_def->name, &has_no_natural_bc, "wall", "symmetry", ""));
-    if (has_no_natural_bc) continue;
-    PetscCall(BCDefinitionSetNaturalType(bc_def, bc_def->name));
-  }
-
-  //TODO: Verify that the BCDefinition don't have overlapping claims to boundary faces
+  // TODO: Verify that the BCDefinition don't have overlapping claims to boundary faces
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

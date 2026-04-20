@@ -614,6 +614,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
 
   PetscCallCeed(ceed, CeedQFunctionContextReference(advection_qfctx));
   PetscCall(HoneeSetContainer(honee, ADVECTION_QFCTX_KEY, advection_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
-  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Advection));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_Advection));  // For legacy BC setting
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow-outflow", BCDefinitionNaturalSetup_Advection));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

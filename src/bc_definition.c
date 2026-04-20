@@ -52,14 +52,20 @@ static PetscErrorCode BCDefinitionInitalize() {
 
    @param[in]  comm             `MPI_Comm` for the object
    @param[in]  name             Name of the boundary condition
-   @param[in]  num_label_values Number of `DMLabel` values
+   @param[in]  num_label_values Number of label values in the `DMLabel` "FaceSets"
    @param[in]  label_values     Array of label values that define the boundaries controlled by the `BCDefinition`, size `num_label_values`
    @param[out] bc_def           The new `BCDefinition`
 **/
-PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char *name, PetscInt num_label_values, PetscInt label_values[], BCDefinition *bc_def) {
+PetscErrorCode BCDefinitionCreate(MPI_Comm comm, const char name[], PetscInt num_label_values, PetscInt label_values[], BCDefinition *bc_def) {
   BCDefinition bc_def_;
 
   PetscFunctionBeginUser;
+  PetscAssertPointer(name, 2);
+  PetscValidLogicalCollectiveIntComm(comm, num_label_values, 3);
+  PetscCheck(num_label_values > 0, comm, PETSC_ERR_ARG_INCOMP,
+             "Number of label values must be positive non-negattive. Received %" PetscInt_FMT " for bc_def \"%s\"", num_label_values, name);
+  PetscAssertPointer(label_values, 4);
+  PetscAssertPointer(bc_def, 5);
   PetscCall(BCDefinitionInitalize());
   PetscCall(PetscHeaderCreate(bc_def_, BC_DEFINITION_CLASSID, "BCDefinition", "BCDefinition", "BCDefinition", comm, BCDefinitionDestroy,
                               BCDefinitionView));
@@ -170,6 +176,7 @@ PetscErrorCode BCDefinitionView(BCDefinition bc_def, PetscViewer viewer) {
 PetscErrorCode BCDefinitionViewFromOptions(BCDefinition bc_def, PetscObject obj, const char name[]) {
   PetscFunctionBegin;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscAssertPointer(name, 3);
   PetscCall(PetscObjectViewFromOptions((PetscObject)bc_def, obj, name));
   PetscFunctionReturn(PETSC_SUCCESS);
 }
@@ -208,6 +215,13 @@ PetscErrorCode BCDefinitionGetInfo(BCDefinition bc_def, const char *name[], Pets
 PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, PetscInt essential_comps[]) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscValidLogicalCollectiveInt(bc_def, num_essential_comps, 2);
+  PetscCheck(num_essential_comps > 0, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
+             "Number of essential components must be non-negative. Received %" PetscInt_FMT " for bc_def \"%s\"", num_essential_comps, bc_def->name);
+  if (num_essential_comps) PetscAssertPointer(essential_comps, 3);
+  else
+    PetscCheck(essential_comps == NULL, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
+               "essential_comps must be NULL if num_essential_comps == 0. Failed for bc_def %s", bc_def->name);
   bc_def->num_essential_comps = num_essential_comps;
   PetscCall(PetscMalloc1(num_essential_comps, &bc_def->essential_comps));
   PetscCall(PetscArraycpy(bc_def->essential_comps, essential_comps, num_essential_comps));
@@ -273,9 +287,8 @@ PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm) {
   @param[out] dm     `DM` assigned to BCDefinition
 **/
 PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm) {
-  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
-
   PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   PetscAssertPointer(dm, 2);
   *dm = bc_def->dm;
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -351,7 +364,7 @@ PetscErrorCode BCDefinitionSetIJacobian(BCDefinition bc_def, BCDefinitionCreateQ
   @param[in,out] op_ijac  Composite operator for IJacobian operators to be added to
 **/
 PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifunc, CeedOperator op_ijac) {
-  Ceed            ceed = CeedOperatorReturnCeed(op_ifunc);
+  Ceed            ceed;
   CeedQFunction   qf_ifunction, qf_ijacobian;
   DMLabel         face_sets_label;
   PetscInt        num_face_set_values;
@@ -359,6 +372,8 @@ PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifu
 
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscAssertPointer(op_ifunc, 2);
+  ceed = CeedOperatorReturnCeed(op_ifunc);
   if (!bc_def->CreateIFunctionQF || !bc_def->AddIFunctionOperator) PetscFunctionReturn(PETSC_SUCCESS);
   PetscBool add_ijac = (!bc_def->CreateIJacobianQF || !bc_def->AddIJacobianOperator || !op_ijac) ? PETSC_FALSE : PETSC_TRUE;
   PetscCheck(bc_def->dm, PETSC_COMM_SELF, PETSC_ERR_ARG_WRONGSTATE, "BCDefinition must have DM set using BCDefinitionSetDM()");
@@ -465,6 +480,7 @@ PetscErrorCode BCDefinitionGetNaturalType(BCDefinition bc_def, const char *natur
 **/
 PetscErrorCode BCDefinitionRegisterNaturalSetup(const char name[], BCDefinitionSetupFn setup_fn) {
   PetscFunctionBeginUser;
+  PetscAssertPointer(name, 1);
   PetscCall(PetscFunctionListAdd(&BCDefinitionNautralSetupList, name, setup_fn));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

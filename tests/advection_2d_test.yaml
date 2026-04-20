@@ -1,0 +1,21 @@
+problem: advection
+stab: supg
+degree: 3
+dm_plex_box:
+  faces: 2,2
+  lower: 0,0
+  upper: 125,125
+units:
+  kilogram: 1e-9
+  meter: 1e-2
+  second: 1e-2
+
+advection_ic_bubble_rc: 100.
+ts:
+  time_step: 1e-3
+  max_steps: 10
+
+bc_names: wall
+bc_wall:
+  face_ids: 1,2,3,4
+  essential_comps: 4

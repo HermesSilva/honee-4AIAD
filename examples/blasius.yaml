@@ -33,13 +33,22 @@ stab: 'supg'
 dm_plex_box_lower: 0,0,0
 dm_plex_box_upper: 4.2e-3,4.2e-3,5.e-5
 dm_plex_dim: 3
-# Faces labeled 1=z- 2=z+ 3=y- 4=y+ 5=x+ 6=x-
-bc_symmetry_z: 1,2
-bc_wall: 3
-wall_comps: 1,2,3
-bc_inflow: 6
-bc_outflow: 5,4
 gravity: 0,0,0
+# Faces labeled 1=z- 2=z+ 3=y- 4=y+ 5=x+ 6=x-
+bc_names: symmetry,wall,inflow,outflow
+bc_symmetry:
+  face_ids: 1,2
+  essential_comps: 3
+bc_wall:
+  face_ids: 3
+  essential_comps: 1,2,3
+  is_viscous_wall:
+bc_inflow:
+  face_ids: 6
+  natural_type: blasius-inflow
+bc_outflow:
+  face_ids: 5,4
+  natural_type: outflow
 
 # stg:
 #   use: false

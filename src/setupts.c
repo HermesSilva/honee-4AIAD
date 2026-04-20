@@ -265,6 +265,8 @@ PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec 
   if (!viewer) PetscFunctionReturn(PETSC_SUCCESS);
   PetscCall(DMGetNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
   PetscCall(PetscCalloc1(num_wall * dim, &reaction_force));
+  if (num_wall <= 0)
+    PetscCall(PetscPrintf(PetscObjectComm((PetscObject)ts), "WARNING: Wall forces requested, but no boundaries are labeled as wall."));
   PetscCall(Surface_Forces_NS(honee->dm, G_loc, num_wall, walls, reaction_force));
   PetscCall(DMRestoreNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
 

@@ -189,8 +189,10 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
 
   PetscCallCeed(ceed, CeedQFunctionContextReference(euler_qfctx));
   PetscCall(HoneeSetContainer(honee, EULER_QFCTX_KEY, euler_qfctx, (PetscCtxDestroyFn *)CeedQFunctionContextDestroy));
-  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_EulerInflow));
-  PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_EulerOutflow));
+  PetscCall(BCDefinitionRegisterNaturalSetup("inflow", BCDefinitionNaturalSetup_EulerInflow));    // For legacy BC setting
+  PetscCall(BCDefinitionRegisterNaturalSetup("outflow", BCDefinitionNaturalSetup_EulerOutflow));  // For legacy BC setting
+  PetscCall(BCDefinitionRegisterNaturalSetup("vortex-inflow", BCDefinitionNaturalSetup_EulerInflow));
+  PetscCall(BCDefinitionRegisterNaturalSetup("vortex-outflow", BCDefinitionNaturalSetup_EulerOutflow));
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&euler_qfctx));
   PetscFunctionReturn(PETSC_SUCCESS);

@@ -1,0 +1,31 @@
+problem: shocktube
+degree: 1
+q_extra: 2
+
+stab: su
+yzb:
+
+units:
+  meter: 1e-2
+  second: 1e-2
+
+dm_plex:
+  dim: 3
+  box:
+    faces: 50,1,1
+    lower: 0,0,0
+    upper: 1000,20,20
+
+bc_names: slip_x,slip_y,slip_z
+bc_slip_x:
+  face_ids: 5,6
+  essential_comps: 1
+bc_slip_y:
+  face_ids: 3,4
+  essential_comps: 2
+bc_slip_z:
+  face_ids: 1,2
+  essential_comps: 3
+
+ts:
+  max_steps: 10

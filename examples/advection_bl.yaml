@@ -29,5 +29,8 @@ dm_plex:
   box_faces: 20,20
   shape: box
   box_bd: none,none
-bc_wall: 1,2,3,4
-wall_comps: 0,1,2,3,4
+
+bc_names: boundary
+bc_boundary:
+  face_ids: 1,2,3,4
+  essential_comps: 0,1,2,3,4

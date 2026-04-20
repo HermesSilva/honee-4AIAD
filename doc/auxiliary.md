@@ -53,7 +53,7 @@ This is fine if $d$ is only needed at quadrature points.
 However, to visualize $d$ or have $d$ at the nodes of the elements, it must be projected onto the finite element space.
 This projected field can be output to file using the `-walldistance_projection_view` flag.
 
-To set the boundary faces to be used as walls, HONEE will use the label values assigned to `bc_wall`.
+To set the boundary faces to be used as walls, HONEE will use the label values assigned to `BCDefintion`s with `-bc_{name}_is_viscous_wall` set.
 It is possible internally to allow other labels values to be used, but that is not a runtime option at this time.
 Please let us know if this is desired; it should be a quick add-on.
 

@@ -1,0 +1,28 @@
+problem: euler_vortex
+degree: 3
+mean_velocity: 1.4,-2.,0
+vortex_strength: 2
+
+bc_names: inflow,outflow,symmetry
+bc_inflow:
+  face_ids: 4,6
+  natural_type: vortex-inflow
+bc_outflow:
+  face_ids: 3,5
+  natural_type: vortex-outflow
+bc_symmetry:
+  face_ids: 1,2
+  essential_comps: 3
+
+units:
+  meter: 1e-4
+  second: 1e-4
+
+dm_plex:
+  dim: 3
+  box:
+    lower: 0,0,0
+    upper: 125,125,250
+
+ts:
+  max_steps: 10

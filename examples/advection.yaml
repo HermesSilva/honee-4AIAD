@@ -8,7 +8,10 @@ dm_plex:
   box_lower: 0,0,0
   box_upper: 125,125,250
 
-bc_inflow: 1,2,3,4,5,6
+bc_names: boundary
+bc_boundary:
+  face_ids: 1,2,3,4,5,6
+  natural_type: inflow-outflow
 
 ksp:
   atol: 1e-4
