@@ -12,7 +12,6 @@
 #include <navierstokes.h>
 #include <smartsim.h>
 #include <spanstats.h>
-#include "../qfunctions/newtonian_state.h"
 
 // @brief Insert Boundary values if it's a new time
 PetscErrorCode UpdateBoundaryValues(Honee honee, Vec Q_loc, PetscReal t) {
@@ -387,12 +386,12 @@ PetscErrorCode TSSolve_NS(DM dm, Honee honee, AppCtx app_ctx, Physics phys, Prob
   }
   if (honee->set_poststep) PetscCall(TSSetPostStep(*ts, TSPostStep_Honee));
   if (app_ctx->test_type == TESTTYPE_NONE) PetscCall(TSMonitorSet(*ts, TSMonitor_NS, honee, NULL));
-  if (app_ctx->wall_forces.viewer) PetscCall(TSMonitorSet(*ts, TSMonitor_WallForce, honee, NULL));
 
   PetscOptionsBegin(comm, NULL, "HONEE TS Monitor Options", NULL);
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_total_kinetic_energy", "Monitor total kinetic energy balance terms in the domain", NULL,
                                     TSMonitor_TotalKineticEnergy, SetupMontiorTotalKineticEnergy));
   PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_cfl", "Monitor element CFL statistics", NULL, TSMonitor_Cfl, SetupMontiorCfl));
+  PetscCall(TSMonitorSetFromOptions(*ts, "-ts_monitor_wall_force", "Calculate wall forces", NULL, TSMonitor_WallForce, SetupMontiorWallForce));
 
   PetscCall(PetscOptionsDeprecated("-ts_monitor_turbulence_spanstats_viewer_interval", "-ts_monitor_spanstats_turbulence_interval", "HONEE 0.0",
                                    NULL));

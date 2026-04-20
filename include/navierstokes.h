@@ -101,14 +101,6 @@ struct AppCtx_private {
   PetscScalar test_tol;
   char        test_file_path[PETSC_MAX_PATH_LEN];
   PetscBool   has_test_run;
-  // Wall forces
-  struct {
-    PetscInt          num_wall;
-    PetscInt         *walls;
-    PetscViewer       viewer;
-    PetscViewerFormat viewer_format;
-    PetscBool         header_written;
-  } wall_forces;
   // Subgrid Stress Model
   SGSModelType sgs_model_type;
   PetscBool    sgs_train_enable;
@@ -361,7 +353,9 @@ PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt steps, PetscReal sol
 PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx);
 PetscErrorCode TSMonitor_Cfl(TS ts, PetscInt step, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
 
-PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec Q, void *ctx);
+PetscErrorCode HoneeWallForceSetup(Honee honee, PetscInt num_walls, const PetscInt walls[]);
+PetscErrorCode SetupMontiorWallForce(TS ts, PetscViewerAndFormat *ctx);
+PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec Q, PetscViewerAndFormat *ctx);
 
 PetscErrorCode KSPPostSolve_Honee(KSP ksp, Vec rhs, Vec x, void *ctx);
 

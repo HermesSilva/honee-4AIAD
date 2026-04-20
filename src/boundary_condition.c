@@ -135,9 +135,7 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     PetscCall(PetscSegBufferDestroy(&wall_face_ids_sb));
     if (num_wall_face_ids_count) {
       PetscCall(HoneeWallDistanceSetup(honee, num_wall_face_ids_count, wall_face_ids));
-      app_ctx->wall_forces.num_wall = num_wall_face_ids_count;
-      PetscCall(PetscMalloc1(num_wall_face_ids_count, &app_ctx->wall_forces.walls));
-      PetscCall(PetscArraycpy(app_ctx->wall_forces.walls, wall_face_ids, num_wall_face_ids_count));
+      PetscCall(HoneeWallForceSetup(honee, num_wall_face_ids_count, wall_face_ids));
     }
 
     PetscCall(PetscFree(wall_face_ids));
@@ -158,16 +156,13 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
       PetscInt        num_label_values;
       PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_label_values, &label_values));
       PetscCall(HoneeWallDistanceSetup(honee, num_label_values, label_values));
+      PetscCall(HoneeWallForceSetup(honee, num_label_values, label_values));
     }
     if (bc_def) {
       PetscInt num_essential_comps = 16, essential_comps[16];
 
       PetscCall(PetscOptionsIntArray("-wall_comps", "An array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &flg));
       PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
-
-      app_ctx->wall_forces.num_wall = bc_def->num_label_values;
-      PetscCall(PetscMalloc1(bc_def->num_label_values, &app_ctx->wall_forces.walls));
-      PetscCall(PetscArraycpy(app_ctx->wall_forces.walls, bc_def->label_values, bc_def->num_label_values));
     }
 
     {  // Symmetry Boundary Conditions
