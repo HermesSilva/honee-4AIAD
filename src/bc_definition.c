@@ -384,8 +384,10 @@ PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifu
   PetscCall(DMGetLabel(bc_def->dm, "Face Sets", &face_sets_label));
   PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_face_set_values, &face_set_values));
   for (PetscInt f = 0; f < num_face_set_values; f++) {
-    DMLabel  face_orientation_label;
-    PetscInt num_orientations_values, *orientation_values;
+    DMLabel         face_orientation_label;
+    IS              orientation_is;
+    PetscInt        num_orientations_values;
+    const PetscInt *orientation_values;
 
     {
       char *face_orientation_label_name;
@@ -394,7 +396,9 @@ PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifu
       PetscCall(DMGetLabel(bc_def->dm, face_orientation_label_name, &face_orientation_label));
       PetscCall(PetscFree(face_orientation_label_name));
     }
-    PetscCall(DMLabelCreateGlobalValueArray(bc_def->dm, face_orientation_label, &num_orientations_values, &orientation_values));
+    PetscCall(DMLabelGetValueISGlobal(PetscObjectComm((PetscObject)bc_def), face_orientation_label, PETSC_FALSE, &orientation_is));
+    PetscCall(ISGetSize(orientation_is, &num_orientations_values));
+    PetscCall(ISGetIndices(orientation_is, &orientation_values));
     for (PetscInt o = 0; o < num_orientations_values; o++) {
       CeedOperator sub_op_ifunc;
       PetscInt     orientation = orientation_values[o];
@@ -403,7 +407,8 @@ PetscErrorCode BCDefinitionAddOperators(BCDefinition bc_def, CeedOperator op_ifu
       if (add_ijac) PetscCall(bc_def->AddIJacobianOperator(bc_def, sub_op_ifunc, face_orientation_label, orientation, qf_ijacobian, op_ijac));
       PetscCallCeed(ceed, CeedOperatorDestroy(&sub_op_ifunc));
     }
-    PetscCall(PetscFree(orientation_values));
+    PetscCall(ISRestoreIndices(orientation_is, &orientation_values));
+    PetscCall(ISDestroy(&orientation_is));
   }
   PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ifunction));
   if (add_ijac) PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_ijacobian));

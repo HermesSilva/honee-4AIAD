@@ -56,11 +56,15 @@ PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMet
       diff_flux_proj_->eval_mode_div_diff_flux = CEED_EVAL_INTERP;
 
       {  // Create face labels on projection->dm for boundary integrals
-        DMLabel  face_sets_label;
-        PetscInt num_face_set_values, *face_set_values;
+        DMLabel         face_sets_label;
+        IS              face_sets_is;
+        PetscInt        num_face_set_values;
+        const PetscInt *face_set_values;
 
         PetscCall(DMGetLabel(honee->dm, "Face Sets", &face_sets_label));
-        PetscCall(DMLabelCreateGlobalValueArray(honee->dm, face_sets_label, &num_face_set_values, &face_set_values));
+        PetscCall(DMLabelGetValueISGlobal(PetscObjectComm((PetscObject)projection->dm), face_sets_label, PETSC_FALSE, &face_sets_is));
+        PetscCall(ISGetSize(face_sets_is, &num_face_set_values));
+        PetscCall(ISGetIndices(face_sets_is, &face_set_values));
         for (PetscInt f = 0; f < num_face_set_values; f++) {
           DMLabel face_orientation_label;
           char   *face_orientation_label_name;
@@ -70,7 +74,8 @@ PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMet
           PetscCall(DMAddLabel(projection->dm, face_orientation_label));
           PetscCall(PetscFree(face_orientation_label_name));
         }
-        PetscCall(PetscFree(face_set_values));
+        PetscCall(ISRestoreIndices(face_sets_is, &face_set_values));
+        PetscCall(ISDestroy(&face_sets_is));
       }
     } break;
     case DIV_DIFF_FLUX_PROJ_INDIRECT: {

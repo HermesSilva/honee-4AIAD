@@ -24,7 +24,6 @@ PetscErrorCode DMPlexCeedBasisCellToFaceCoordinateCreate(Ceed ceed, DM dm, DMLab
 PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face, PetscInt dm_field,
                                                CeedBasis *basis);
 PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_name);
-PetscErrorCode DMLabelCreateGlobalValueArray(DM dm, DMLabel label, PetscInt *num_values, PetscInt **value_array);
 
 PetscErrorCode DMGetCoordinateNumComps(DM dm, PetscInt *num_comp_x);
 PetscErrorCode DMGetFieldNumComps(DM dm, PetscInt field, PetscInt *num_comp);
