@@ -156,8 +156,6 @@ PetscErrorCode HoneeDestroy(Honee *honee) {
   PetscCall(PetscFunctionListDestroy(&app_ctx->problems));
 
   PetscCall(PetscFree(app_ctx->amat_type));
-  PetscCall(PetscFree(app_ctx->wall_forces.walls));
-  PetscCall(PetscViewerDestroy(&app_ctx->wall_forces.viewer));
 
   // -- Structs
   for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
