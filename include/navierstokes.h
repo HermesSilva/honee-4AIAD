@@ -361,6 +361,8 @@ PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt steps, PetscReal sol
 PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx);
 PetscErrorCode TSMonitor_Cfl(TS ts, PetscInt step, PetscReal solution_time, Vec Q, PetscViewerAndFormat *ctx);
 
+PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec Q, void *ctx);
+
 PetscErrorCode KSPPostSolve_Honee(KSP ksp, Vec rhs, Vec x, void *ctx);
 
 PetscErrorCode HoneeWallDistanceSetup(Honee honee, PetscInt num_label_values, const PetscInt *label_values);
