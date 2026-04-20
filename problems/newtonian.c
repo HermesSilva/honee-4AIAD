@@ -226,10 +226,12 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
   }
 
   {  // Add the boundary integral CeedOperator
-    CeedQFunction qf_rhs_boundary;
-    DMLabel       face_sets_label;
-    PetscInt      num_face_set_values, *face_set_values;
-    CeedInt       q_data_size;
+    CeedQFunction   qf_rhs_boundary;
+    DMLabel         face_sets_label;
+    IS              face_sets_is;
+    PetscInt        num_face_set_values;
+    const PetscInt *face_set_values;
+    CeedInt         q_data_size;
 
     // -- Build RHS operator
     switch (honee->phys->state_var) {
@@ -255,10 +257,14 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_boundary, "diffusive flux RHS", projection->num_comp, CEED_EVAL_INTERP));
 
     PetscCall(DMGetLabel(projection->dm, "Face Sets", &face_sets_label));
-    PetscCall(DMLabelCreateGlobalValueArray(projection->dm, face_sets_label, &num_face_set_values, &face_set_values));
+    PetscCall(DMLabelGetValueISGlobal(PetscObjectComm((PetscObject)projection->dm), face_sets_label, PETSC_FALSE, &face_sets_is));
+    PetscCall(ISGetSize(face_sets_is, &num_face_set_values));
+    PetscCall(ISGetIndices(face_sets_is, &face_set_values));
     for (PetscInt f = 0; f < num_face_set_values; f++) {
-      DMLabel  face_orientation_label;
-      PetscInt num_orientations_values, *orientation_values;
+      DMLabel         face_orientation_label;
+      IS              orientation_is;
+      PetscInt        num_orientations_values;
+      const PetscInt *orientation_values;
 
       {
         char *face_orientation_label_name;
@@ -267,7 +273,9 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
         PetscCall(DMGetLabel(projection->dm, face_orientation_label_name, &face_orientation_label));
         PetscCall(PetscFree(face_orientation_label_name));
       }
-      PetscCall(DMLabelCreateGlobalValueArray(projection->dm, face_orientation_label, &num_orientations_values, &orientation_values));
+      PetscCall(DMLabelGetValueISGlobal(PetscObjectComm((PetscObject)projection->dm), face_orientation_label, PETSC_FALSE, &orientation_is));
+      PetscCall(ISGetSize(orientation_is, &num_orientations_values));
+      PetscCall(ISGetIndices(orientation_is, &orientation_values));
       for (PetscInt o = 0; o < num_orientations_values; o++) {
         CeedOperator        op_rhs_boundary;
         CeedBasis           basis_q, basis_diff_flux_boundary;
@@ -300,9 +308,11 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_NS(Honee honee, DivD
         PetscCallCeed(ceed, CeedBasisDestroy(&basis_diff_flux_boundary));
         PetscCallCeed(ceed, CeedVectorDestroy(&q_data));
       }
-      PetscCall(PetscFree(orientation_values));
+      PetscCall(ISRestoreIndices(orientation_is, &orientation_values));
+      PetscCall(ISDestroy(&orientation_is));
     }
-    PetscCall(PetscFree(face_set_values));
+    PetscCall(ISRestoreIndices(face_sets_is, &face_set_values));
+    PetscCall(ISDestroy(&face_sets_is));
     PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs_boundary));
   }
 

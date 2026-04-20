@@ -75,8 +75,10 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
 
   // Compute contribution on each boundary face
   for (CeedInt i = 0; i < num_inflow_faces; i++) {
-    DMLabel  face_orientation_label;
-    PetscInt num_orientations_values, *orientation_values;
+    DMLabel         face_orientation_label;
+    IS              orientation_is;
+    PetscInt        num_orientations_values;
+    const PetscInt *orientation_values;
 
     {
       char *face_orientation_label_name;
@@ -85,7 +87,9 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
       PetscCall(DMGetLabel(dm, face_orientation_label_name, &face_orientation_label));
       PetscCall(PetscFree(face_orientation_label_name));
     }
-    PetscCall(DMLabelCreateGlobalValueArray(dm, face_orientation_label, &num_orientations_values, &orientation_values));
+    PetscCall(DMLabelGetValueISGlobal(comm, face_orientation_label, PETSC_FALSE, &orientation_is));
+    PetscCall(ISGetSize(orientation_is, &num_orientations_values));
+    PetscCall(ISGetIndices(orientation_is, &orientation_values));
     for (PetscInt o = 0; o < num_orientations_values; o++) {
       CeedBasis           basis_x_to_q_cell;
       CeedElemRestriction elem_restr_x_cell;
@@ -170,7 +174,8 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
       PetscCallCeed(ceed, CeedOperatorDestroy(&op_setup));
       PetscCallCeed(ceed, CeedOperatorDestroy(&op_stgdata));
     }
-    PetscCall(PetscFree(orientation_values));
+    PetscCall(ISRestoreIndices(orientation_is, &orientation_values));
+    PetscCall(ISDestroy(&orientation_is));
   }
 
   PetscCallCeed(ceed, CeedOperatorGetContextFieldLabel(op_strong_bc, "solution time", &phys->stg_solution_time_label));
