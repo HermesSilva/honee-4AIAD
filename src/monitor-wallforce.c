@@ -83,9 +83,9 @@ PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec 
     for (PetscInt w = 0; w < num_wall; w++) {
       PetscInt wall = walls[w];
       if (format == PETSC_VIEWER_ASCII_CSV) {
-        PetscCall(PetscViewerASCIIPrintf(viewer, "%" PetscInt_FMT ",%g,%" PetscInt_FMT ",%g,%g,%g\n", step_no, time, wall,
-                                         reaction_force[w * dim + 0], reaction_force[w * dim + 1], reaction_force[w * dim + 2]));
-
+        PetscCall(PetscViewerASCIIPrintf(viewer, "%" PetscInt_FMT ",%.17e,%" PetscInt_FMT ",%.17e,%.17e,%.17e\n", step_no, time, wall,
+                                         (double)reaction_force[w * dim + 0], (double)reaction_force[w * dim + 1],
+                                         (double)reaction_force[w * dim + 2]));
       } else {
         PetscCall(PetscViewerASCIIPrintf(viewer, "Wall %" PetscInt_FMT " Forces: Force_x = %12g, Force_y = %12g, Force_z = %12g\n", wall,
                                          reaction_force[w * dim + 0], reaction_force[w * dim + 1], reaction_force[w * dim + 2]));
