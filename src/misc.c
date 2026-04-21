@@ -326,20 +326,28 @@ PetscErrorCode PrintRunInfo(Honee honee, Physics phys_ctx, ProblemData problem, 
                         used_resource, CeedMemTypes[mem_type_backend]));
   // PETSc
   {
-    VecType  vec_type;
-    char     box_faces_str[PETSC_MAX_PATH_LEN] = "3,3,3";
-    PetscInt dim;
+    VecType   vec_type;
+    PetscInt  dim;
+    char      buffer[PETSC_MAX_PATH_LEN] = "3,3,3";
+    PetscBool has_box_faces, has_plex_filename;
 
-    PetscCall(DMGetDimension(honee->dm, &dim));
-    if (dim == 2) box_faces_str[3] = '\0';
-    PetscCall(PetscOptionsGetString(NULL, NULL, "-dm_plex_box_faces", box_faces_str, sizeof(box_faces_str), NULL));
+    PetscCall(PetscPrintf(comm, "  PETSc:\n"));
+    PetscCall(PetscOptionsHasName(NULL, NULL, "-dm_plex_box_faces", &has_box_faces));
+    PetscCall(PetscOptionsHasName(NULL, NULL, "-dm_plex_filename", &has_plex_filename));
+    if (has_box_faces && !has_plex_filename) {
+      PetscCall(DMGetDimension(honee->dm, &dim));
+      if (dim == 2) buffer[3] = '\0';
+      PetscCall(PetscOptionsGetString(NULL, NULL, "-dm_plex_box_faces", buffer, sizeof(buffer), NULL));
+      PetscCall(PetscPrintf(comm, "    Box Faces                          : %s\n", buffer));
+    } else {
+      PetscCall(PetscOptionsGetString(NULL, NULL, "-dm_plex_filename", buffer, sizeof(buffer), NULL));
+      PetscCall(PetscPrintf(comm, "    Plex Filename                      : %s\n", buffer));
+    }
     PetscCall(DMGetVecType(honee->dm, &vec_type));
     PetscCall(PetscPrintf(comm,
-                          "  PETSc:\n"
-                          "    Box Faces                          : %s\n"
                           "    DM VecType                         : %s\n"
                           "    Time Stepping Scheme               : %s\n",
-                          box_faces_str, vec_type, phys_ctx->implicit ? "implicit" : "explicit"));
+                          vec_type, phys_ctx->implicit ? "implicit" : "explicit"));
   }
   {
     char           pmat_type_str[PETSC_MAX_PATH_LEN];
