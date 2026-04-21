@@ -597,7 +597,7 @@ These limitations motivate the second mode.
 
 The second mode is `-bc_{name}_outflow_type riemann`, which uses a Riemann solver at the outflow to define the inviscid flux and adds in viscous fluxes at the boundary:
 
-$$h = \bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \tilde{\bm{Y}}^{\mathrm{ext}}) + F_i^{\mathrm{diff}}(Y^{\mathrm{int}})\hat{n}_i, \quad
+$$\bm{h} = \bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \tilde{\bm{Y}}^{\mathrm{ext}}) + F_i^{\mathrm{diff}}(Y^{\mathrm{int}})\hat{n}_i, \quad
 \tilde{\bm{Y}}^\mathrm{ext} =
 \begin{pmatrix}
     P^\mathrm{ext} \\
@@ -657,7 +657,7 @@ The intention is to penalize recirculation, but it has not shown much benefit an
 A slip natural type uses a Riemann function to weakly impose no-penetration, while allowing acoustic waves to exit the domain cleanly.
 To do this, `slip` sets the exterior state identical to the interior state, but reflects the velocity vector normal to the boundary:
 
-$$h = \bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \tilde{\bm{Y}}^{\mathrm{ext}}), \quad
+$$\bm{h} = \bm{F}^{\mathrm{Riemann}}(\bm{Y}^{\mathrm{int}}, \tilde{\bm{Y}}^{\mathrm{ext}}), \quad
 \tilde{\bm{Y}}^\mathrm{ext} =
 \begin{pmatrix}
     P^\mathrm{int} \\
