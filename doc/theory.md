@@ -1,7 +1,7 @@
 # Theory and Background
 
 HONEE solves the time-dependent Navier-Stokes equations of compressible gas dynamics in a static Eulerian three-dimensional frame using unstructured high-order finite/spectral element spatial discretizations and explicit or implicit high-order time-stepping (available in PETSc).
-Moreover, the Navier-Stokes example has been developed using PETSc, so that the pointwise physics (defined at quadrature points) is separated from the parallelization and meshing concerns.
+Moreover, HONEE has been developed using PETSc, so that the pointwise physics (defined at quadrature points) is separated from the parallelization and meshing concerns.
 
 ## The Navier-Stokes Equations
 
@@ -257,6 +257,7 @@ $$ (eq-su-stabilize-advdiff)
 where the term in parentheses is a rank-1 diffusivity tensor that has been pulled back to the reference element.
 See {cite}`hughesetal2010` equations 15-17 and 34-36 for further discussion of this formulation.
 
+(theory-ns-tau)=
 #### Navier-Stokes $\tau$ definition
 
 For the Navier-Stokes and Euler equations, {cite}`whiting2003hierarchical` defines a $5\times 5$ diagonal stabilization $\mathrm{diag}(\tau_c, \tau_m, \tau_m, \tau_m, \tau_E)$ consisting of
@@ -332,9 +333,7 @@ Note that this wave speed is specific to ideal gases as $\gamma$ is an ideal gas
 
 :::
 
-Currently, this demo provides three types of problems/physical models that can be selected at run time via the option `-problem`.
-{ref}`problem-advection`, the problem of the transport of energy in a uniform vector velocity field, {ref}`problem-euler-vortex`, the exact solution to the Euler equations, and the so called {ref}`example-density-current` problem.
-
+(theory-divdiff)=
 ### Divergence of Diffusive Flux Projection
 
 The strong residual in the SUPG operator in {eq}`eq-weak-vector-ns-supg` and {eq}`eq-weak-vector-ns-su` features the term $\nabla \cdot \bm F_{\text{diff}}(\bm{q}_N)$, the divergence of the diffusive flux.
@@ -382,6 +381,7 @@ The projection can be enabled using `-div_diff_flux_projection_method direct`.
 The $L^2$ projection in either method uses the standard mass matrix, which is rowsum lumped for performance by default.
 The linear solve for the projection can be controlled via `-div_diff_flux_projection_ksp*` flags.
 
+(theory-sgs)=
 ### Subgrid Stress Modeling
 
 When a fluid simulation is under-resolved (the smallest length scale resolved by the grid is much larger than the smallest physical scale, the [Kolmogorov length scale](https://en.wikipedia.org/wiki/Kolmogorov_microscales)), this is mathematically interpreted as filtering the Navier-Stokes equations.
@@ -668,6 +668,7 @@ $$
 where $\bm{u}^\mathrm{ext} = u_i^{int} - 2 n_i u_j^\mathrm{int} n_j$.
 It is set by `-bc_{name}_natural_type slip` and has no other options.
 
+(bc-periodicity)=
 ### Periodicity
 
 PETSc provides two ways to specify periodicity:
