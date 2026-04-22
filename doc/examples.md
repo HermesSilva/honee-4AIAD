@@ -236,7 +236,7 @@ This problem can be run with the `examples/channel.yaml` file via:
 ### Flat Plate Boundary Layer
 
 (example-platemesh)=
-#### Meshing
+#### Platemesh Transform
 
 The flat plate boundary layer example has custom meshing features to better resolve the flow when using a generated box mesh.
 These meshing features modify the nodal layout of the default, equispaced box mesh and are enabled via `-meshtransform platemesh`.
