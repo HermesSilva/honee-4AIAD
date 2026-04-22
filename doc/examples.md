@@ -1,3 +1,4 @@
+(examples)=
 # Examples
 
 ## Compressible Navier-Stokes Equations
@@ -234,24 +235,25 @@ This problem can be run with the `examples/channel.yaml` file via:
 
 ### Flat Plate Boundary Layer
 
+(example-platemesh)=
 #### Meshing
 
 The flat plate boundary layer example has custom meshing features to better resolve the flow when using a generated box mesh.
-These meshing features modify the nodal layout of the default, equispaced box mesh and are enabled via `-mesh_transform platemesh`.
+These meshing features modify the nodal layout of the default, equispaced box mesh and are enabled via `-meshtransform platemesh`.
 One of those is tilting the top of the domain, allowing for it to be a outflow boundary condition.
-The angle of this tilt is controlled by `-platemesh_top_angle`.
+The angle of this tilt is controlled by `-meshtransform_platemesh_top_angle`.
 
 The primary meshing feature is the ability to grade the mesh, providing better resolution near the wall.
 There are two methods to do this; algorithmically, or specifying the node locations via a file.
 Algorithmically, a base node distribution is defined at the inlet (assumed to be $\min(x)$) and then linearly stretched/squeezed to match the slanted top boundary condition.
-Nodes are placed such that `-platemesh_Ndelta` elements are within `-platemesh_refine_height` of the wall.
-They are placed such that the element height matches a geometric growth ratio defined by `-platemesh_growth`.
-The remaining elements are then distributed from `-platemesh_refine_height` to the top of the domain linearly in logarithmic space.
+Nodes are placed such that `-meshtransform_platemesh_Ndelta` elements are within `-meshtransform_platemesh_refine_height` of the wall.
+They are placed such that the element height matches a geometric growth ratio defined by `-meshtransform_platemesh_growth`.
+The remaining elements are then distributed from `-meshtransform_platemesh_refine_height` to the top of the domain linearly in logarithmic space.
 
 Alternatively, a file may be specified containing the locations of each node.
 The file should be newline delimited, with the first line specifying the number of points and the rest being the locations of the nodes.
 The node locations used exactly at the inlet (assumed to be $\min(x)$) and linearly stretched/squeezed to match the slanted top boundary condition.
-The file is specified via `-platemesh_y_node_locs_path`.
+The file is specified via `-meshtransform_platemesh_y_node_locs_path`.
 If this flag is given an empty string, then the algorithmic approach will be performed.
 
 :::{list-table} Boundary Layer Meshing Runtime Options
@@ -262,32 +264,32 @@ If this flag is given an empty string, then the algorithmic approach will be per
   - Default value
   - Unit
 
-* - `-platemesh_modify_mesh`
+* - `-meshtransform_platemesh_modify_mesh`
   - Whether to modify the mesh using the given options below.
   - `false`
   -
 
-* - `-platemesh_refine_height`
-  - Height at which `-platemesh_Ndelta` number of elements should refined into
+* - `-meshtransform_platemesh_refine_height`
+  - Height at which `-meshtransform_platemesh_Ndelta` number of elements should refined into
   - `5.9E-4`
   - `m`
 
-* - `-platemesh_Ndelta`
-  - Number of elements to keep below `-platemesh_refine_height`
+* - `-meshtransform_platemesh_Ndelta`
+  - Number of elements to keep below `-meshtransform_platemesh_refine_height`
   - `45`
   -
 
-* - `-platemesh_growth`
+* - `-meshtransform_platemesh_growth`
   - Growth rate of the elements in the refinement region
   - `1.08`
   -
 
-* - `-platemesh_top_angle`
+* - `-meshtransform_platemesh_top_angle`
   - Downward angle of the top face of the domain. This face serves as an outlet.
   - `5`
   - `degrees`
 
-* - `-platemesh_y_node_locs_path`
+* - `-meshtransform_platemesh_y_node_locs_path`
   - Path to file with y node locations. If empty, will use mesh warping instead.
   - `""`
   -
