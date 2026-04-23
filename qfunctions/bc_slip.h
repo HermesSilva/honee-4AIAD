@@ -38,8 +38,8 @@ CEED_QFUNCTION_HELPER int Slip(void *ctx, CeedInt Q, const CeedScalar *const *in
 
     if (newt_ctx->is_implicit) {
       StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
-    } else { // if called from RHS function (explicit) negate for PETSc/libCEED convention
-      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1; 
+    } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
     }
   }
   return 0;

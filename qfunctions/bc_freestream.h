@@ -44,8 +44,8 @@ CEED_QFUNCTION_HELPER int Freestream(void *ctx, CeedInt Q, const CeedScalar *con
 
     if (is_implicit) {
       StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
-    } else { // if called from RHS function (explicit) negate for PETSc/libCEED convention
-      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1; 
+    } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
     }
   }
   return 0;
@@ -83,9 +83,9 @@ CEED_QFUNCTION_HELPER int Freestream_Jacobian(void *ctx, CeedInt Q, const CeedSc
 
   CeedScalar(*v)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const FreestreamContext     context     = (FreestreamContext)ctx;
-  const NewtonianIGProperties gas         = context->newt_ctx.gas;
-  const State                 dS_infty    = {0};
+  const FreestreamContext     context  = (FreestreamContext)ctx;
+  const NewtonianIGProperties gas      = context->newt_ctx.gas;
+  const State                 dS_infty = {0};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];

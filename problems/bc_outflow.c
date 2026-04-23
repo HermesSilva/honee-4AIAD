@@ -164,11 +164,11 @@ PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx) 
   PetscCall(PetscNew(&outflow_honee_bc));
   outflow_honee_bc->outflow_type = outflow_type;
   *honee_bc                      = (struct HoneeBCStruct_){
-                           .ctx                = outflow_honee_bc,
-                           .DestroyCtx         = PetscCtxDestroyDefault,
-                           .honee              = honee,
-                           .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
-                           .qfctx              = outflow_qfctx,
+      .ctx                = outflow_honee_bc,
+      .DestroyCtx         = PetscCtxDestroyDefault,
+      .honee              = honee,
+      .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
+      .qfctx              = outflow_qfctx,
   };
 
   PetscCall(BCDefinitionSetIFunction(bc_def, OutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

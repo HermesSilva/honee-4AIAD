@@ -225,10 +225,10 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
   {
     Units units = honee->units;
     *units      = (struct Units_private){
-             .meter    = 1.0,
-             .second   = 1.0,
-             .kilogram = 1.0,
-             .Kelvin   = 1.0,
+        .meter    = 1.0,
+        .second   = 1.0,
+        .kilogram = 1.0,
+        .Kelvin   = 1.0,
     };
 
     PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, units->meter, &units->meter, NULL));
