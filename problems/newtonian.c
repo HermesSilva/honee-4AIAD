@@ -44,8 +44,8 @@ static PetscErrorCode SetupNewtonianICBoundaryLayerFromOptions(Honee honee, Prob
   PetscFunctionBeginUser;
   problem->ics_use_wall_distance = PETSC_FALSE;
   *ic_boundary_layer             = (ICBoundaryLayer){
-      .wall   = reference,
-      .height = 0,
+                  .wall   = reference,
+                  .height = 0,
   };
 
   PetscOptionsBegin(honee->comm, NULL, "Options for Newtonian initial-condition boundary layer", NULL);

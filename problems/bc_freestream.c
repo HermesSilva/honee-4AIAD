@@ -168,11 +168,11 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   PetscCall(PetscNew(&freestream_honee_bc));
   freestream_honee_bc->flux_type = flux_type;
   *honee_bc                      = (struct HoneeBCStruct_){
-      .ctx                = freestream_honee_bc,
-      .DestroyCtx         = PetscCtxDestroyDefault,
-      .honee              = honee,
-      .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
-      .qfctx              = freestream_qfctx,
+                           .ctx                = freestream_honee_bc,
+                           .DestroyCtx         = PetscCtxDestroyDefault,
+                           .honee              = honee,
+                           .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
+                           .qfctx              = freestream_qfctx,
   };
 
   PetscCall(BCDefinitionSetIFunction(bc_def, FreestreamBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
