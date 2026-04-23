@@ -492,7 +492,6 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral(void *ctx, CeedInt Q, const CeedScala
 
     CeedScalar wdetJb, dXdx[2][3], normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     State grad_s[3];
     StatePhysicalGradientFromReference_Boundary(Q, i, gas, s, state_var, Grad_q, dXdx, grad_s);
@@ -509,11 +508,13 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral(void *ctx, CeedInt Q, const CeedScala
     CeedScalar Flux[5];
     FluxTotal_Boundary(F_inviscid, stress, Fe, normal, Flux);
 
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * Flux[j];
 
     if (is_implicit) {
       StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
       StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+    } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
     }
   }
   return 0;
@@ -542,14 +543,12 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral_Jacobian(void *ctx, CeedInt Q, const 
   const CeedScalar(*jac_data_sur)   = in[4];
   CeedScalar(*v)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const NewtonianIdealGasContext context     = (NewtonianIdealGasContext)ctx;
-  const NewtonianIGProperties    gas         = context->gas;
-  const bool                     is_implicit = context->is_implicit;
+  const NewtonianIdealGasContext context = (NewtonianIdealGasContext)ctx;
+  const NewtonianIGProperties    gas     = context->gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, dXdx[2][3], normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     CeedScalar qi[5], kmstress[6], dqi[5];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
@@ -575,7 +574,7 @@ CEED_QFUNCTION_HELPER int BoundaryIntegral_Jacobian(void *ctx, CeedInt Q, const 
     CeedScalar dFlux[5];
     FluxTotal_Boundary(dF_inviscid, dstress, dFe, normal, dFlux);
 
-    for (int j = 0; j < 5; j++) v[j][i] = -wdetJb * dFlux[j];
+    for (int j = 0; j < 5; j++) v[j][i] = wdetJb * dFlux[j];
   }
   return 0;
 }
