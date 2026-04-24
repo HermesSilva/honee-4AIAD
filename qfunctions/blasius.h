@@ -138,7 +138,6 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     // Calculate inflow values
     const CeedScalar x[3] = {X[0][i], X[1][i], 0.};
@@ -168,7 +167,11 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     const CeedScalar Fe[3] = {0};  // TODO: viscous energy flux needs grad temperature
     CeedScalar       Flux[5];
     FluxTotal_Boundary(Flux_inviscid, stress, Fe, normal, Flux);
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * Flux[j];
+
+    // if called from RHS function (explicit) negate for PETSc/libCEED convention
+    if (!is_implicit)
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
   }
   return 0;
 }
@@ -180,20 +183,18 @@ CEED_QFUNCTION(Blasius_Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *
   const CeedScalar(*X)[CEED_Q_VLA]  = (const CeedScalar(*)[CEED_Q_VLA])in[3];
   CeedScalar(*v)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const BlasiusContext        context     = (BlasiusContext)ctx;
-  const NewtonianIGProperties gas         = context->newt_ctx.gas;
-  const bool                  is_implicit = context->implicit;
-  const CeedScalar            Rd          = GasConstant(gas);
-  const CeedScalar            gamma       = HeatCapacityRatio(gas);
-  const State                 S_infty     = context->S_infty;
-  const CeedScalar            rho_0       = S_infty.U.density;
-  const CeedScalar            U_infty     = Norm3(S_infty.Y.velocity);
-  const CeedScalar            x0          = U_infty * rho_0 / (gas.mu * 25 / Square(context->delta0));
+  const BlasiusContext        context = (BlasiusContext)ctx;
+  const NewtonianIGProperties gas     = context->newt_ctx.gas;
+  const CeedScalar            Rd      = GasConstant(gas);
+  const CeedScalar            gamma   = HeatCapacityRatio(gas);
+  const State                 S_infty = context->S_infty;
+  const CeedScalar            rho_0   = S_infty.U.density;
+  const CeedScalar            U_infty = Norm3(S_infty.Y.velocity);
+  const CeedScalar            x0      = U_infty * rho_0 / (gas.mu * 25 / Square(context->delta0));
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     // Calculate inflow values
     const CeedScalar x[3] = {X[0][i], X[1][i], X[2][i]};
@@ -218,11 +219,11 @@ CEED_QFUNCTION(Blasius_Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *
 
     const CeedScalar u_normal = Dot3(normal, s.Y.velocity);
 
-    v[0][i] = -wdetJb * drho * u_normal;
+    v[0][i] = wdetJb * drho * u_normal;
     for (int j = 0; j < 3; j++) {
-      v[j + 1][i] = -wdetJb * (drho * u_normal * s.Y.velocity[j] + normal[j] * dP);
+      v[j + 1][i] = wdetJb * (drho * u_normal * s.Y.velocity[j] + normal[j] * dP);
     }
-    v[4][i] = -wdetJb * u_normal * (dE + dP);
+    v[4][i] = wdetJb * u_normal * (dE + dP);
   }
   return 0;
 }
