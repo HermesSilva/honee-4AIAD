@@ -474,7 +474,7 @@ These large differences in scales can lead to poorly-conditioned problems.
 To ease these issues, the values solved can be nondimensionalized.
 
 :::{caution}
-This feature may be broken for certain use cases. If you discover a bug related to nondimensionalization, please submit an issue to the HONEE repo so that we can address it.
+This feature does not have comprehensive test coverage. If you discover a bug related to nondimensionalization, please submit an issue to the HONEE repo so that we can address it.
 :::
 
 :::{list-table} Nondimensionalization Options
