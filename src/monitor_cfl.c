@@ -46,11 +46,12 @@ PetscErrorCode SetupMontiorCfl(TS ts, PetscViewerAndFormat *ctx) {
 
   PetscCall(PetscNew(&monitor_ctx));
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
-  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
   PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
-  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, num_comp_cfl, &elem_restr_cfl));
+  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, num_comp_cfl,
+                                                 &elem_restr_cfl));
 
   {  // Get restriction and basis from the RHS function
     CeedOperator *sub_ops, main_op = honee->op_ifunction ? honee->op_ifunction : honee->op_rhs_ctx->op;

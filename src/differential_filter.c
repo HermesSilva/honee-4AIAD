@@ -21,12 +21,12 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
   CeedVector          q_data, x_coord;
   CeedElemRestriction elem_restr_qd, elem_restr_x;
   CeedBasis           basis_x;
-  PetscInt            height = 0;
 
   PetscFunctionBeginUser;
   PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
   PetscCall(DMGetFieldNumComps(honee->dm, 0, &num_comp_q));
-  PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_x, &basis_x, &x_coord));
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &elem_restr_x, &basis_x,
+                                            &x_coord));
   PetscCall(QDataGet(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 
   {  // -- Create RHS MatopApplyContext
@@ -49,8 +49,8 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
       PetscCallCeed(ceed, CeedQFunctionDestroy(&qf_rhs));
       PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, DifferentialFilter_MMS_RHS, DifferentialFilter_MMS_RHS_loc, &qf_rhs));
     }
-    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
-    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
 
     PetscCallCeed(ceed, CeedQFunctionSetContext(qf_rhs, diff_filter_qfctx));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs, "q", num_comp_q, CEED_EVAL_INTERP));
@@ -72,8 +72,9 @@ static PetscErrorCode DifferentialFilterCreateOperators(Honee honee, CeedQFuncti
       CeedElemRestriction elem_restr_filter;
       CeedBasis           basis_filter;
 
-      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_filter));
-      PetscCall(DMPlexCeedBasisCreate(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_filter));
+      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
+                                                &elem_restr_filter));
+      PetscCall(DMPlexCeedBasisCreate(ceed, dm_filter, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &basis_filter));
 
       PetscCall(PetscSNPrintf(field_name, PETSC_MAX_PATH_LEN, "v%" PetscInt_FMT, dm_field));
       PetscCallCeed(ceed, CeedOperatorSetField(op_rhs, field_name, elem_restr_filter, basis_filter, CEED_VECTOR_ACTIVE));

@@ -5,6 +5,9 @@
 #include <ceed.h>
 #include <petscdm.h>
 
+#define PLEXHEIGHT_CELL 0  // Plex height corresponding to cells/domain elements (the highest dimensioned topological entities in the mesh)
+#define PLEXHEIGHT_FACE 1  // Plex height corresponding to faces/boundary elements (the 2nd highest dimensioned topological entities in the mesh)
+
 PetscErrorCode DMPlexCeedElemRestrictionCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height, PetscInt dm_field,
                                                CeedElemRestriction *restriction);
 PetscErrorCode DMPlexCeedElemRestrictionCoordinateCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt height,

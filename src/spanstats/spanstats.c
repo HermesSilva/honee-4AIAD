@@ -179,26 +179,26 @@ static PetscErrorCode SpanwiseStatisticsSetupDataCreate(Honee honee, SpanStatsCt
   DM                  dm   = spanstats->dm;
   Vec                 X_loc;
   CeedInt             num_comp_x, num_comp_stats = spanstats->num_comp_stats;
-  PetscInt            height = 0, dm_field = 0;
+  PetscInt            dm_field = 0;
   CeedElemRestriction elem_restr_q;
   CeedBasis           basis_q;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(stats_setup_data));
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
                                             &(*stats_setup_data)->elem_restr_parent_stats));
-  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height,
+  PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL,
                                                       &(*stats_setup_data)->elem_restr_parent_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents((*stats_setup_data)->elem_restr_parent_x, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector((*stats_setup_data)->elem_restr_parent_x, &(*stats_setup_data)->x_coord, NULL));
-  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, &(*stats_setup_data)->basis_x));
-  PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &(*stats_setup_data)->basis_stats));
+  PetscCall(DMPlexCeedBasisCoordinateCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &(*stats_setup_data)->basis_x));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &(*stats_setup_data)->basis_stats));
 
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, (*stats_setup_data)->basis_stats, (*stats_setup_data)->elem_restr_parent_stats,
                                             &(*stats_setup_data)->elem_restr_parent_colloc));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
-  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
   PetscCall(CreateElemRestrColloc_CompMajor(ceed, num_comp_stats, basis_q, elem_restr_q, &(*stats_setup_data)->elem_restr_child_colloc));
   PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));
   PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
@@ -249,8 +249,8 @@ static PetscErrorCode SpanwiseStatisticsCreateSF(Honee honee, SpanStatsCtx spans
   const PetscInt num_comp_sf = num_comp_x - 1;  // Number of coord components used in the creation of the SF
 
   // Get quad_coords for child and parent DM
-  PetscCall(GetQuadratureCoords(ceed, childdm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &Child_qx_coords, &child_num_qpnts));
-  PetscCall(GetQuadratureCoords(ceed, parentdm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &Parent_qx_coords, &parent_num_qpnts));
+  PetscCall(GetQuadratureCoords(ceed, childdm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &Child_qx_coords, &child_num_qpnts));
+  PetscCall(GetQuadratureCoords(ceed, parentdm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &Parent_qx_coords, &parent_num_qpnts));
 
   {  // Remove z component of coordinates for matching
     const PetscReal *child_quad_coords, *parent_quad_coords;

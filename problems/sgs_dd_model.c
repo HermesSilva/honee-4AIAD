@@ -119,11 +119,11 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
   CeedVector          inv_multiplicity, x_coord;
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs, elem_restr_q, elem_restr_x;
   CeedBasis           basis_x;
-  PetscInt            height = 0, dm_field = 0;
+  PetscInt            dm_field = 0;
   NodalProjectionData grad_velo_proj;
 
   PetscFunctionBeginUser;
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
   PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_q, &num_comp_q));
   PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(sgs_dd_setup_data->elem_restr_grid_aniso, &num_comp_grid_aniso));
@@ -136,11 +136,13 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
     PetscCallCeed(ceed, CeedOperatorFieldGetElemRestriction(op_field, &elem_restr_grad_velo));
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_grad_velo, &num_comp_grad_velo));
   }
-  PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_x, &basis_x, &x_coord));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_sgs));
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &elem_restr_x, &basis_x,
+                                            &x_coord));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
+                                            &elem_restr_sgs));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_sgs, &sgs_dd_data->sgs_nodal_ceed, NULL));
 
-  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, PETSC_FALSE,
+  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, PETSC_FALSE,
                                    &elem_restr_inv_multiplicity, &inv_multiplicity));
 
   // -- Create operator for SGS DD model nodal evaluation
@@ -158,7 +160,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Fused(Ceed ceed, Honee honee, Sg
 
   // Mesh/geometry order and solution basis order may differ, therefore must interpolate
   CeedBasis basis_x_to_q, basis_q;
-  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
   PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x, basis_q, &basis_x_to_q));
 
   PetscCallCeed(ceed, CeedQFunctionSetContext(qf_sgs_dd_nodal, sgs_dd_setup_data->sgsdd_qfctx));
@@ -316,7 +318,7 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
   NodalProjectionData grad_velo_proj;
   CeedElemRestriction elem_restr_inv_multiplicity, elem_restr_grad_velo, elem_restr_sgs, elem_restr_eigvec, elem_restr_dd_inputs,
       elem_restr_dd_outputs, elem_restr_q;
-  PetscInt height = 0, dm_field = 0;
+  PetscInt dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
@@ -375,19 +377,20 @@ static PetscErrorCode SgsDDSetupNodalEvaluation_Sequential(Ceed ceed, Honee hone
     PetscCallCeed(ceed, CeedElemRestrictionGetNumComponents(elem_restr_grad_velo, &num_comp_grad_velo));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_grad_velo, &sgs_dd_data->grad_velo_ceed, NULL));
   }
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_sgs));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
+                                            &elem_restr_sgs));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_sgs, &sgs_dd_data->sgs_nodal_ceed, NULL));
-  PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, num_comp_eigvec,
-                                                      &elem_restr_eigvec));
+  PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL,
+                                                      num_comp_eigvec, &elem_restr_eigvec));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_eigvec, &eigvec, NULL));
 
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_inputs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_inputs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
                                             &elem_restr_dd_inputs));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_outputs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, sgs_dd_data->dm_dd_outputs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
                                             &elem_restr_dd_outputs));
 
-  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, PETSC_FALSE,
+  PetscCall(GetInverseMultiplicity(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, PETSC_FALSE,
                                    &elem_restr_inv_multiplicity, &inv_multiplicity));
 
   {  // Create operator for data-driven input evaluation
@@ -500,15 +503,15 @@ static PetscErrorCode SgsSetupNodalIFunction(Ceed ceed, Honee honee, SgsDDSetupD
   PetscFunctionBeginUser;
   PetscCall(HoneeGetContainer(honee, SGS_DD_DATA_KEY, &sgs_dd_data));
   PetscCall(DMGetDimension(honee->dm, &dim));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
   PetscCall(DMGetFieldNumComps(honee->dm, 0, &num_comp_q));
   PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
 
   {
-    PetscInt height = 0, dm_field = 0;
+    PetscInt dm_field = 0;
 
-    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
-    PetscCall(DMPlexCeedBasisCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_sgs));
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &basis_sgs));
     PetscCall(QDataGet(ceed, sgs_dd_data->dm_sgs, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
   }
 
@@ -656,8 +659,8 @@ PetscErrorCode SgsDDSetup(Ceed ceed, Honee honee, ProblemData problem) {
     CeedElemRestriction elem_restr_q;
     CeedBasis           basis_q;
 
-    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
-    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
     // TODO: Should probably move the elem_restr_q and basis_q creation to inside the velocity gradient projection setup???
     PetscCall(VelocityGradientProjectionSetup(ceed, honee, problem, honee->phys->state_var, elem_restr_q, basis_q, &grad_velo_proj));
     PetscCallCeed(ceed, CeedElemRestrictionDestroy(&elem_restr_q));

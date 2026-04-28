@@ -139,7 +139,7 @@ static PetscErrorCode HoneeWallDistance_ComputePLaplacian(Honee honee) {
   HoneePLaplacian       plaplacian_ctx;
   PetscCall(PetscNew(&plaplacian_ctx));
   {
-    PetscInt             height = 0, dm_field = 0;
+    PetscInt             dm_field = 0;
     CeedQFunction        qf_laplacian;
     CeedOperator         op_laplacian;
     CeedQFunctionContext laplacian_qfctx;
@@ -149,8 +149,8 @@ static PetscErrorCode HoneeWallDistance_ComputePLaplacian(Honee honee) {
     CeedInt              q_data_size;
 
     PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
-    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &elem_restr_laplacian));
-    PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_laplacian));
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &elem_restr_laplacian));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &basis_laplacian));
 
     {
       PLaplacianContext laplacian_ctx;
@@ -346,7 +346,7 @@ PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestricti
   CeedElemRestriction elem_restr_laplacian;
   CeedBasis           basis_laplacian;
   const DMLabel       domain_label = DMLABEL_DEFAULT;
-  const PetscInt      label_value = DMLABEL_DEFAULT_VALUE, dm_field = 0, height = 0;
+  const PetscInt      label_value = DMLABEL_DEFAULT_VALUE, dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(PetscLogEventBegin(HONEE_WallDistL2Projection, honee->dm, NULL, NULL, NULL));
@@ -362,8 +362,8 @@ PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestricti
   PetscCall(DMGetDimension(dm, &dim));
 
   PetscCall(QDataGet(ceed, dm, domain_label, label_value, &elem_restr_qd, &q_data, &q_data_size));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, height, dm_field, &elem_restr_laplacian));
-  PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, height, dm_field, &basis_laplacian));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, domain_label, label_value, PLEXHEIGHT_CELL, dm_field, &elem_restr_laplacian));
+  PetscCall(DMPlexCeedBasisCreate(ceed, dm, domain_label, label_value, PLEXHEIGHT_CELL, dm_field, &basis_laplacian));
   PetscCall(PetscNew(&projection));
   projection->num_comp = 1;
   {  // -- Build Mass operator
@@ -397,7 +397,7 @@ PetscErrorCode HoneeWallDistanceGetProjectedField(Honee honee, CeedElemRestricti
     CeedElemRestriction  elem_restr_walldistq;
     CeedVector           vec_walldistq;
 
-    PetscCall(HoneeWallDistanceGetQuadratureValues(honee, domain_label, label_value, height, &elem_restr_walldistq, &vec_walldistq));
+    PetscCall(HoneeWallDistanceGetQuadratureValues(honee, domain_label, label_value, PLEXHEIGHT_CELL, &elem_restr_walldistq, &vec_walldistq));
     switch (dim) {
       case 2:
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, WallDistance_ProjectionRHS_2D, WallDistance_ProjectionRHS_2D_loc, &qf_rhs));
@@ -498,7 +498,8 @@ PetscErrorCode HoneeWallDistanceTest(Honee honee) {
   CeedSize            vec_walldist_size;
 
   PetscFunctionBeginUser;
-  PetscCall(HoneeWallDistanceGetQuadratureValues(honee, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_walldist, &vec_walldist));
+  PetscCall(HoneeWallDistanceGetQuadratureValues(honee, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &elem_restr_walldist,
+                                                 &vec_walldist));
 
   PetscCallCeed(ceed, CeedVectorGetLength(vec_walldist, &vec_walldist_size));
   PetscCall(VecCreate(PETSC_COMM_SELF, &walldist_qpts));

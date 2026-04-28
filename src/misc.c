@@ -23,7 +23,7 @@ PetscErrorCode ICs_FixMultiplicity(DM dm, Honee honee, Vec Q_loc, Vec Q, CeedSca
   PetscCall(ApplyCeedOperatorLocalToGlobal(NULL, Q, honee->op_ics_ctx));
 
   // -- Get multiplicity
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
   PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &mult_vec, NULL));
   PetscCall(DMGetLocalVector(dm, &Multiplicity_loc));
   PetscCall(VecPetscToCeed(Multiplicity_loc, &m_mem_type, mult_vec));
@@ -248,7 +248,7 @@ PetscErrorCode HoneeCalculateDomainSize(Honee honee, PetscScalar *volume) {
   PetscFunctionBeginUser;
   PetscCall(DMGetCoordinateDM(dm, &dm_coord));
   PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &qdata, &q_data_size));
-  PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_x, &basis_x, NULL));
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &elem_restr_x, &basis_x, NULL));
   PetscCall(DMGetCoordinateNumComps(dm, &num_comps_x));
 
   PetscCall(HoneeMassQFunctionCreate(ceed, num_comps_x, q_data_size, &qf_mass));

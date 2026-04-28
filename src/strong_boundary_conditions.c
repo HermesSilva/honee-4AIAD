@@ -17,7 +17,7 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
   CeedQFunction       qf_setup, qf_strongbc, qf_stgdata;
   CeedOperator        op_setup, op_strong_bc_sub, op_stgdata;
   DMLabel             domain_label;
-  const PetscInt      dm_field = 0, height_face = 1, height_cell = 0;
+  const PetscInt      dm_field = 0;
   PetscInt            dim;
   MPI_Comm            comm = honee->comm;
 
@@ -25,15 +25,15 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
   PetscCall(DMGetLabel(dm, "Face Sets", &domain_label));
   PetscCall(DMGetDimension(dm, &dim));
   num_comp_x = dim;
-  dXdx_size  = num_comp_x * (dim - height_cell);
+  dXdx_size  = num_comp_x * (dim - PLEXHEIGHT_CELL);
 
   {  // Basis
     CeedBasis basis_x_face, basis_q_face;
     DM        dm_coord;
 
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height_face, dm_field, &basis_q_face));
-    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height_face, dm_field, &basis_x_face));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_FACE, dm_field, &basis_q_face));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm_coord, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_FACE, dm_field, &basis_x_face));
 
     PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x_face, basis_q_face, &basis_x_to_q_face));
 
@@ -99,24 +99,25 @@ PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData pr
         CeedBasis basis_x_cell_to_face, basis_q_face;
 
         PetscCall(DMPlexCeedBasisCellToFaceCoordinateCreate(ceed, dm, face_orientation_label, orientation, orientation, &basis_x_cell_to_face));
-        PetscCall(DMPlexCeedBasisCreate(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &basis_q_face));
+        PetscCall(DMPlexCeedBasisCreate(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_FACE, dm_field, &basis_q_face));
         PetscCallCeed(ceed, CeedBasisCreateProjection(basis_x_cell_to_face, basis_q_face, &basis_x_to_q_cell));
         PetscCallCeed(ceed, CeedBasisDestroy(&basis_x_cell_to_face));
         PetscCallCeed(ceed, CeedBasisDestroy(&basis_q_face));
       }
 
-      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, face_orientation_label, orientation, height_face, dm_field, &elem_restr_q_face));
-      PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, face_orientation_label, orientation, height_face, &elem_restr_x_face));
-      PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, face_orientation_label, orientation, height_cell, &elem_restr_x_cell, NULL, &x_coord));
+      PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_FACE, dm_field, &elem_restr_q_face));
+      PetscCall(DMPlexCeedElemRestrictionCoordinateCreate(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_FACE, &elem_restr_x_face));
+      PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_CELL, &elem_restr_x_cell, NULL, &x_coord));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q_face, &multiplicity, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionGetMultiplicity(elem_restr_q_face, multiplicity));
 
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, num_comp_x,
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_FACE, num_comp_x,
                                                           &elem_restr_x_stored));
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, 1, &elem_restr_scale));
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, stg_data_size,
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_FACE, 1, &elem_restr_scale));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_FACE, stg_data_size,
                                                           &elem_restr_stgdata));
-      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, height_face, dXdx_size, &elem_restr_dXdx));
+      PetscCall(DMPlexCeedElemRestrictionCollocatedCreate(ceed, dm, face_orientation_label, orientation, PLEXHEIGHT_FACE, dXdx_size,
+                                                          &elem_restr_dXdx));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_x_stored, &x_stored, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_scale, &scale_stored, NULL));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_stgdata, &stg_data, NULL));

@@ -982,7 +982,7 @@ PetscErrorCode DMPlexCeedCoordinateCreateField(Ceed ceed, DM dm, DMLabel domain_
 **/
 PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_label, PetscInt label_value, PetscInt face, PetscInt dm_field,
                                                CeedBasis *basis) {
-  PetscInt        ds_field = -1, height = 0;
+  PetscInt        ds_field = -1;
   PetscDS         ds;
   PetscFE         fe;
   PetscQuadrature face_quadrature;
@@ -1003,7 +1003,7 @@ PetscErrorCode DMPlexCeedBasisCellToFaceCreate(Ceed ceed, DM dm, DMLabel domain_
     {  // Verify compatible element topology
       DMPolytopeType cell_type;
 
-      PetscCall(GetGlobalDMPlexPolytopeType(dm, domain_label, label_value, height, &cell_type));
+      PetscCall(GetGlobalDMPlexPolytopeType(dm, domain_label, label_value, PLEXHEIGHT_CELL, &cell_type));
       elem_topo = PolytopeTypePetscToCeed(cell_type);
       PetscCheck(elem_topo, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "DMPlex topology not supported: %s", DMPolytopeTypes[cell_type]);
     }
@@ -1207,7 +1207,7 @@ static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt 
   @param[out]     face_label_name   Label name for newly created label, or `NULL` if no elements match the `material` and `dm_face`
 **/
 PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_name) {
-  PetscInt        num_face_points = 0, face_height = 1;
+  PetscInt        num_face_points = 0;
   const PetscInt *face_points;
   IS              is_face_points;
   DMLabel         face_label = NULL;
@@ -1228,7 +1228,7 @@ PetscErrorCode DMPlexCreateFaceLabel(DM dm, PetscInt dm_face, char **face_label_
     PetscCall(DMGetLabel(dm, *face_label_name, &face_label));
   }
 
-  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", dm_face, face_height, &is_face_points));
+  PetscCall(DMGetStratumISAtHeight(dm, "Face Sets", dm_face, PLEXHEIGHT_FACE, &is_face_points));
   if (is_face_points) {
     PetscCall(ISGetLocalSize(is_face_points, &num_face_points));
     PetscCall(ISGetIndices(is_face_points, &face_points));

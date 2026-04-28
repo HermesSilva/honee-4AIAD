@@ -71,9 +71,10 @@ static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCt
              "Could not create CFL/Pe spanstats collection QFunction for dim %" PetscInt_FMT " and state variable %s", dim,
              StateVariables[honee->phys->state_var]);
 
-  PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, &elem_restr_x, &basis_x, &x_coord));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &elem_restr_q));
-  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+  PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &elem_restr_x, &basis_x,
+                                            &x_coord));
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
+  PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
   PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
   {  // Setup Collection Context
     PetscBool is_advection;

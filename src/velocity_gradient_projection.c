@@ -42,7 +42,7 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
   CeedBasis           basis_grad_velo;
   CeedElemRestriction elem_restr_grad_velo, elem_restr_qd;
   CeedVector          q_data;
-  PetscInt            dim, height = 0, dm_field = 0, num_comp_input;
+  PetscInt            dim, dm_field = 0, num_comp_input;
   CeedInt             q_data_size;
 
   PetscFunctionBeginUser;
@@ -52,9 +52,9 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
   // -- Get Pre-requisite things
   PetscCall(DMGetDimension(grad_velo_proj->dm, &dim));
   PetscCall(DMGetFieldNumComps(honee->dm, 0, &num_comp_input));
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
                                             &elem_restr_grad_velo));
-  PetscCall(DMPlexCeedBasisCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_grad_velo));
+  PetscCall(DMPlexCeedBasisCreate(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &basis_grad_velo));
   PetscCall(QDataGet(ceed, grad_velo_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 
   {  // -- Build RHS operator
@@ -66,7 +66,8 @@ PetscErrorCode VelocityGradientProjectionSetup(Ceed ceed, Honee honee, ProblemDa
     PetscInt            num_comp_x;
 
     PetscCall(DMGetCoordinateNumComps(honee->dm, &num_comp_x));
-    PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, &elem_restr_x, &basis_x, &x_coord));
+    PetscCall(DMPlexCeedCoordinateCreateField(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &elem_restr_x, &basis_x,
+                                              &x_coord));
     switch (state_var_input) {
       case STATEVAR_PRIMITIVE:
         PetscCallCeed(ceed, CeedQFunctionCreateInterior(ceed, 1, VelocityGradientProjectionRHS_Prim, VelocityGradientProjectionRHS_Prim_loc,
