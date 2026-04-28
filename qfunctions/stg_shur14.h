@@ -357,7 +357,6 @@ CEED_QFUNCTION(StgShur14Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
     const CeedScalar x[] = {X[0][i], X[1][i], X[2][i]};
     CeedScalar       wdetJb, dXdx[2][3], normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     CeedScalar h_node_sep[3];
     h_node_sep[0] = dx;
@@ -395,44 +394,43 @@ CEED_QFUNCTION(StgShur14Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
 
     // The Physics
     // -- Density
-    v[0][i] -= wdetJb * rho * u_normal;
+    v[0][i] += wdetJb * rho * u_normal;
 
     // -- Momentum
-    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] -= wdetJb * (rho * u_normal * u[j] + normal[j] * P);
+    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] += wdetJb * (rho * u_normal * u[j] + normal[j] * P);
 
     // -- Total Energy Density
-    v[4][i] -= wdetJb * u_normal * (E + P);
-
-    const CeedScalar U[] = {rho, u[0], u[1], u[2], E}, kmstress[6] = {0.};
-    StoredValuesPack(Q, i, 0, 5, U, jac_data_sur);
-    StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+    v[4][i] += wdetJb * u_normal * (E + P);
+    if (is_implicit) {
+      const CeedScalar U[] = {rho, u[0], u[1], u[2], E}, kmstress[6] = {0.};
+      StoredValuesPack(Q, i, 0, 5, U, jac_data_sur);
+      StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+    } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
+    }
   }
   return 0;
 }
 
 CEED_QFUNCTION(StgShur14Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out) {
   const CeedScalar(*dq)[CEED_Q_VLA]           = (const CeedScalar(*)[CEED_Q_VLA])in[0];
-  const CeedScalar(*q_data_sur)[CEED_Q_VLA]   = (const CeedScalar(*)[CEED_Q_VLA])in[2];
+  const CeedScalar(*q_data_sur)               = in[2];
   const CeedScalar(*jac_data_sur)[CEED_Q_VLA] = (const CeedScalar(*)[CEED_Q_VLA])in[4];
   CeedScalar(*v)[CEED_Q_VLA]                  = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const StgShur14Context      stg_ctx  = (StgShur14Context)ctx;
-  const NewtonianIGProperties gas      = stg_ctx->newt_ctx.gas;
-  const bool                  implicit = stg_ctx->is_implicit;
-  const CeedScalar            cv       = gas.cv;
-  const CeedScalar            Rd       = GasConstant(gas);
-  const CeedScalar            gamma    = HeatCapacityRatio(gas);
+  const StgShur14Context      stg_ctx     = (StgShur14Context)ctx;
+  const NewtonianIGProperties gas         = stg_ctx->newt_ctx.gas;
+  const bool                  is_implicit = stg_ctx->is_implicit;
+  const CeedScalar            cv          = gas.cv;
+  const CeedScalar            Rd          = GasConstant(gas);
+  const CeedScalar            gamma       = HeatCapacityRatio(gas);
 
   const CeedScalar theta0      = stg_ctx->theta0;
   const bool       prescribe_T = stg_ctx->prescribe_T;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
-    // Setup
-    // -- Interp-to-Interp q_data
-    // For explicit mode, the surface integral is on the RHS of ODE q_dot = f(q).
-    // For implicit mode, it gets pulled to the LHS of implicit ODE/DAE g(q_dot, q).
-    // We can effect this by swapping the sign on this weight
-    const CeedScalar wdetJb = (implicit ? -1. : 1.) * q_data_sur[0][i];
+    CeedScalar wdetJb, normal[3];
+    QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
 
     // Calculate inflow values
     CeedScalar velocity[3];
@@ -453,13 +451,16 @@ CEED_QFUNCTION(StgShur14Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar 
       dE   = dq[4][i];
       dP   = dE * (gamma - 1.);
     }
-    const CeedScalar normal[3] = {q_data_sur[1][i], q_data_sur[2][i], q_data_sur[3][i]};
 
     const CeedScalar u_normal = Dot3(normal, velocity);
 
-    v[0][i] = -wdetJb * drho * u_normal;
-    for (int j = 0; j < 3; j++) v[j + 1][i] = -wdetJb * (drho * u_normal * velocity[j] + normal[j] * dP);
-    v[4][i] = -wdetJb * u_normal * (dE + dP);
+    v[0][i] = wdetJb * drho * u_normal;
+    for (int j = 0; j < 3; j++) v[j + 1][i] = wdetJb * (drho * u_normal * velocity[j] + normal[j] * dP);
+    v[4][i] = wdetJb * u_normal * (dE + dP);
+
+    // if called from RHS function (explicit) negate for PETSc/libCEED convention
+    if (!is_implicit)
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
   }
   return 0;
 }

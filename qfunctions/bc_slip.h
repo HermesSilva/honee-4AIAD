@@ -23,7 +23,6 @@ CEED_QFUNCTION_HELPER int Slip(void *ctx, CeedInt Q, const CeedScalar *const *in
 
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
-    wdetJb *= newt_ctx->is_implicit ? -1. : 1.;
 
     CeedScalar       vel_reflect[3];
     const CeedScalar vel_normal = Dot3(s.Y.velocity, normal);
@@ -35,9 +34,13 @@ CEED_QFUNCTION_HELPER int Slip(void *ctx, CeedInt Q, const CeedScalar *const *in
 
     CeedScalar Flux[5];
     UnpackState_U(flux, Flux);
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * Flux[j];
 
-    if (newt_ctx->is_implicit) StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
+    if (newt_ctx->is_implicit) {
+      StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
+    } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
+    }
   }
   return 0;
 }
@@ -67,7 +70,6 @@ CEED_QFUNCTION_HELPER int Slip_Jacobian(void *ctx, CeedInt Q, const CeedScalar *
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
-    wdetJb *= newt_ctx->is_implicit ? -1. : 1.;
 
     CeedScalar qi[5], dqi[5];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
@@ -91,7 +93,7 @@ CEED_QFUNCTION_HELPER int Slip_Jacobian(void *ctx, CeedInt Q, const CeedScalar *
 
     CeedScalar dFlux[5];
     UnpackState_U(dflux, dFlux);
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * dFlux[j];
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * dFlux[j];
   }
   return 0;
 }

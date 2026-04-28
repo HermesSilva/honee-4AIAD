@@ -28,7 +28,6 @@ CEED_QFUNCTION_HELPER int Freestream(void *ctx, CeedInt Q, const CeedScalar *con
 
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     StateConservative flux;
     switch (flux_type) {
@@ -41,9 +40,13 @@ CEED_QFUNCTION_HELPER int Freestream(void *ctx, CeedInt Q, const CeedScalar *con
     }
     CeedScalar Flux[5];
     UnpackState_U(flux, Flux);
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * Flux[j];
 
-    if (is_implicit) StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
+    if (is_implicit) {
+      StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
+    } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
+    }
   }
   return 0;
 }
@@ -80,15 +83,13 @@ CEED_QFUNCTION_HELPER int Freestream_Jacobian(void *ctx, CeedInt Q, const CeedSc
 
   CeedScalar(*v)[CEED_Q_VLA] = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const FreestreamContext     context     = (FreestreamContext)ctx;
-  const NewtonianIGProperties gas         = context->newt_ctx.gas;
-  const bool                  is_implicit = context->newt_ctx.is_implicit;
-  const State                 dS_infty    = {0};
+  const FreestreamContext     context  = (FreestreamContext)ctx;
+  const NewtonianIGProperties gas      = context->newt_ctx.gas;
+  const State                 dS_infty = {0};
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     CeedScalar qi[5], dqi[5];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
@@ -107,7 +108,7 @@ CEED_QFUNCTION_HELPER int Freestream_Jacobian(void *ctx, CeedInt Q, const CeedSc
     }
     CeedScalar dFlux[5];
     UnpackState_U(dflux, dFlux);
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * dFlux[j];
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * dFlux[j];
   }
   return 0;
 }

@@ -48,7 +48,6 @@ CEED_QFUNCTION_HELPER int RiemannOutflow(void *ctx, CeedInt Q, const CeedScalar 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, dXdx[2][3], normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
     const CeedScalar qi[5] = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
     const State      s_int = StateFromQ(gas, qi, state_var);
 
@@ -76,12 +75,14 @@ CEED_QFUNCTION_HELPER int RiemannOutflow(void *ctx, CeedInt Q, const CeedScalar 
     CeedScalar Flux[5];
     FluxTotal_RiemannBoundary(F_inviscid_normal, stress, Fe, normal, Flux);
 
-    for (CeedInt j = 0; j < 5; j++) v[j][i] = -wdetJb * Flux[j];
+    for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * Flux[j];
 
     // Save values for Jacobian
     if (is_implicit) {
       StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
       StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+    } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
     }
   }
   return 0;
@@ -110,14 +111,12 @@ CEED_QFUNCTION_HELPER int RiemannOutflow_Jacobian(void *ctx, CeedInt Q, const Ce
   const CeedScalar(*jac_data_sur)   = in[4];
   CeedScalar(*v)[CEED_Q_VLA]        = (CeedScalar(*)[CEED_Q_VLA])out[0];
 
-  const OutflowContext        outflow     = (OutflowContext)ctx;
-  const NewtonianIGProperties gas         = outflow->newt_ctx.gas;
-  const bool                  is_implicit = outflow->newt_ctx.is_implicit;
+  const OutflowContext        outflow = (OutflowContext)ctx;
+  const NewtonianIGProperties gas     = outflow->newt_ctx.gas;
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, dXdx[2][3], normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     CeedScalar qi[5], kmstress[6], dqi[5];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
@@ -158,7 +157,7 @@ CEED_QFUNCTION_HELPER int RiemannOutflow_Jacobian(void *ctx, CeedInt Q, const Ce
     CeedScalar dFlux[5];
     FluxTotal_RiemannBoundary(dF_inviscid_normal, dstress, dFe, normal, dFlux);
 
-    for (int j = 0; j < 5; j++) v[j][i] = -wdetJb * dFlux[j];
+    for (int j = 0; j < 5; j++) v[j][i] = wdetJb * dFlux[j];
   }
   return 0;
 }

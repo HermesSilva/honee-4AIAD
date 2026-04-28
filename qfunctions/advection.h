@@ -510,20 +510,22 @@ CEED_QFUNCTION_HELPER int Advection_InOutFlowGeneric(void *ctx, CeedInt Q, const
 
     CeedScalar wdetJb, normal[3];
     QdataBoundaryUnpack_ND(dim, Q, i, q_data_sur, &wdetJb, NULL, normal);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     const CeedScalar u_normal = DotN(normal, u, dim);
 
     // No Change in density or momentum
-    for (CeedInt j = 0; j < 4; j++) {
-      v[j][i] = 0;
-    }
+    for (CeedInt j = 0; j < 4; j++) v[j][i] = 0;
+
     // Implementing in/outflow BCs
     if (u_normal > 0) {  // outflow
-      v[4][i] = -(1 - strong_form) * wdetJb * E * u_normal;
+      v[4][i] = (1 - strong_form) * wdetJb * E * u_normal;
     } else {  // inflow
-      v[4][i] = -(1 - strong_form) * wdetJb * E_wind * u_normal;
+      v[4][i] = (1 - strong_form) * wdetJb * E_wind * u_normal;
     }
+
+    // if called from RHS function (explicit) negate for PETSc/libCEED convention
+    if (!is_implicit)
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
   }
   return 0;
 }

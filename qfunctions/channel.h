@@ -89,7 +89,6 @@ CEED_QFUNCTION(Channel_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, norm[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, norm);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     // There is a gravity body force but it is excluded from
     //   the potential energy due to periodicity.
@@ -123,13 +122,17 @@ CEED_QFUNCTION(Channel_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
 
     // The Physics
     // -- Density
-    v[0][i] -= wdetJb * rho_in * u_normal;
+    v[0][i] += wdetJb * rho_in * u_normal;
 
     // -- Momentum
-    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] -= wdetJb * (rho_in * u_normal * s_exact.Y.velocity[j] + norm[j] * P);
+    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] += wdetJb * (rho_in * u_normal * s_exact.Y.velocity[j] + norm[j] * P);
 
     // -- Total Energy Density
-    v[4][i] -= wdetJb * u_normal * (E + P);
+    v[4][i] += wdetJb * u_normal * (E + P);
+
+    // if called from RHS function (explicit) negate for PETSc/libCEED convention
+    if (!is_implicit)
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
   }
   return 0;
 }
@@ -148,7 +151,6 @@ CEED_QFUNCTION(Channel_Outflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     CeedScalar wdetJb, norm[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, NULL, norm);
-    wdetJb *= is_implicit ? -1. : 1.;
 
     const CeedScalar rho  = q[0][i];
     const CeedScalar u[3] = {q[1][i] / rho, q[2][i] / rho, q[3][i] / rho};
@@ -163,13 +165,17 @@ CEED_QFUNCTION(Channel_Outflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
     const CeedScalar u_normal = Dot3(norm, u);  // Normal velocity
     // The Physics
     // -- Density
-    v[0][i] -= wdetJb * rho * u_normal;
+    v[0][i] += wdetJb * rho * u_normal;
 
     // -- Momentum
-    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] -= wdetJb * (rho * u_normal * u[j] + norm[j] * P);
+    for (CeedInt j = 0; j < 3; j++) v[j + 1][i] += wdetJb * (rho * u_normal * u[j] + norm[j] * P);
 
     // -- Total Energy Density
-    v[4][i] -= wdetJb * u_normal * (E + P);
+    v[4][i] += wdetJb * u_normal * (E + P);
+
+    // if called from RHS function (explicit) negate for PETSc/libCEED convention
+    if (!is_implicit)
+      for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
   }
   return 0;
 }
