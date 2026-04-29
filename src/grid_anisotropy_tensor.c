@@ -14,8 +14,8 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
   CeedVector          q_data;
   CeedElemRestriction elem_restr_qd;
   CeedInt             q_data_size;
-  MPI_Comm            comm   = PetscObjectComm((PetscObject)honee->dm);
-  PetscInt            height = 0, dm_field = 0;
+  MPI_Comm            comm     = PetscObjectComm((PetscObject)honee->dm);
+  PetscInt            dm_field = 0;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&grid_aniso_proj));
@@ -44,9 +44,9 @@ PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, 
   }
 
   // -- Get Pre-requisite things
-  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field,
+  PetscCall(DMPlexCeedElemRestrictionCreate(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field,
                                             elem_restr_grid_aniso));
-  PetscCall(DMPlexCeedBasisCreate(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_grid_aniso));
+  PetscCall(DMPlexCeedBasisCreate(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &basis_grid_aniso));
   PetscCall(QDataGet(ceed, grid_aniso_proj->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 
   {  // -- Build RHS operator
@@ -129,17 +129,16 @@ PetscErrorCode GridAnisotropyTensorCalculateCollocatedVector(Ceed ceed, Honee ho
   CeedOperator        op_colloc;
   CeedVector          q_data;
   CeedElemRestriction elem_restr_qd;
-  PetscInt            height = 0;
 
   PetscFunctionBeginUser;
   *num_comp_aniso = 7;
   {
     CeedBasis basis_q;
-    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, 0, 0, &basis_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &basis_q));
     PetscCallCeed(ceed, CeedBasisGetNumNodes(basis_q, &num_nodes));
     PetscCallCeed(ceed, CeedBasisDestroy(&basis_q));
   }
-  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, *num_comp_aniso,
+  PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, *num_comp_aniso,
                                                  elem_restr_grid_aniso));
   PetscCall(QDataGet(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size));
 

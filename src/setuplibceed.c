@@ -107,22 +107,23 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
   CeedBasis           basis_diff_flux      = NULL;
   CeedEvalMode        eval_mode_diff_flux  = -1;
   {  // Create bases and element restrictions
-    PetscInt height = 0, dm_field = 0;
+    PetscInt dm_field = 0;
     DM       dm_coord;
 
     PetscCall(DMGetCoordinateDM(dm, &dm_coord));
-    PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, dm_field, &basis_q));
+    PetscCall(DMPlexCeedBasisCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, dm_field, &basis_q));
 
-    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, 0, &elem_restr_q));
+    PetscCall(DMPlexCeedElemRestrictionCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));
     if (num_comps_jac_data) {
-      PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, num_comps_jac_data, &elem_restr_jd_i));
+      PetscCall(DMPlexCeedElemRestrictionQDataCreate(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, num_comps_jac_data,
+                                                     &elem_restr_jd_i));
       PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_jd_i, &jac_data, NULL));
     }
 
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &honee->q_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &honee->q_dot_ceed, NULL));
     PetscCallCeed(ceed, CeedElemRestrictionCreateVector(elem_restr_q, &honee->g_ceed, NULL));
-    PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, height, &elem_restr_x, &basis_x, &x_coord));
+    PetscCall(DMPlexCeedCoordinateCreateField(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, &elem_restr_x, &basis_x, &x_coord));
 
     PetscCall(QDataGet(ceed, dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, &elem_restr_qd, &q_data, &q_data_size_vol));
   }
