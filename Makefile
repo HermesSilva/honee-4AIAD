@@ -3,7 +3,7 @@ CONFIG ?= config.mk
 COMMON ?= common.mk
 -include $(COMMON)
 
-pkgconf-path = $(if $(wildcard $(1)/$(2).pc),$(1)/$(2).pc,$(2))
+pkgconf-path = $(if $(realpath $(1)/$(2).pc),$(1)/$(2).pc,$(2))
 
 # Library dependencies
 # Note: PETSC_ARCH can be undefined or empty for installations which do not use
