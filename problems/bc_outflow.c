@@ -134,7 +134,8 @@ PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx) 
   CeedScalar recirc = 1, softplus_velocity = 1e-2;
   PetscCall(HoneeBCCreatePrefix(bc_def, &cl_prefix));
   PetscOptionsBegin(honee->comm, cl_prefix, "Options for Outflow boundary condition", NULL);
-  PetscCall(PetscOptionsEnum("-outflow_type", "Type of outflow condition", NULL, OutflowTypes, (PetscEnum)outflow_type, (PetscEnum *)&outflow_type,
+  PetscCall(PetscOptionsEnum("-outflow_type", "Type of outflow condition", NULL, OutflowTypes, (PetscEnum)outflow_type,  // NOLINT
+                             (PetscEnum *)&outflow_type,                                                                 // NOLINT
                              NULL));
   PetscCall(PetscOptionsScalar("-outflow_pressure", "Pressure at outflow condition", NULL, pressure, &pressure, NULL));
   if (outflow_type == OUTFLOW_RIEMANN) {
@@ -164,11 +165,11 @@ PetscErrorCode BCDefinitionNaturalSetup_Outflow(BCDefinition bc_def, void *ctx) 
   PetscCall(PetscNew(&outflow_honee_bc));
   outflow_honee_bc->outflow_type = outflow_type;
   *honee_bc                      = (struct HoneeBCStruct_){
-                           .ctx                = outflow_honee_bc,
-                           .DestroyCtx         = PetscCtxDestroyDefault,
-                           .honee              = honee,
-                           .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
-                           .qfctx              = outflow_qfctx,
+      .ctx                = outflow_honee_bc,
+      .DestroyCtx         = PetscCtxDestroyDefault,
+      .honee              = honee,
+      .num_comps_jac_data = honee->phys->implicit ? 11 : 0,
+      .qfctx              = outflow_qfctx,
   };
 
   PetscCall(BCDefinitionSetIFunction(bc_def, OutflowBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

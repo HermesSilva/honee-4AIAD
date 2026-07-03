@@ -52,7 +52,7 @@ noether-format:
     - shell
   script:
     - rm -f .SUCCESS
-    - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-15 && $CLANG_FORMAT --version
+    - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-22 && $CLANG_FORMAT --version
     - make -j$NPROC_CPU format && git diff --color=always --exit-code
     - echo "-------------- PETSc ---------------"
     - export PETSC_DIR=/projects/honee/petsc
@@ -92,7 +92,7 @@ noether-lint:
     - echo "-------------- make Werror ---------"
     - PEDANTIC=1 PEDANTICFLAGS="-Werror -Wall -Wno-pass-failed" make -j$NPROC_CPU
     # Clang-tidy
-    - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-15 && $CLANG_TIDY --version
+    - echo "-------------- clang-tidy ----------" && export CLANG_TIDY=clang-tidy-22 && $CLANG_TIDY --version
     - PETSC_ARCH=arch-serial-cuda make -j$NPROC_CPU tidy
     # Report status
     - touch .SUCCESS
@@ -110,7 +110,7 @@ noether-memcheck:
   script:
     - rm -f .SUCCESS
     # Environment
-    - export COVERAGE=1 CC=clang-15
+    - export COVERAGE=1 CC=clang-22
     - export NPROC_POOL=8
     - echo "-------------- nproc ---------------" && NPROC_CPU=$(nproc) && NPROC_GPU=$(($(nproc)<8?$(nproc):8)) && echo "NPROC_CPU" $NPROC_CPU && echo "NPROC_GPU" $NPROC_GPU
     - echo "-------------- CC ------------------" && $CC --version

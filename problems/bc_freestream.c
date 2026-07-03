@@ -135,7 +135,7 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   PetscCall(HoneeBCCreatePrefix(bc_def, &cl_prefix));
   PetscOptionsBegin(comm, cl_prefix, "Options for Freestream boundary condition", NULL);
   PetscCall(PetscOptionsEnum("-freestream_riemann", "Riemann solver to use in freestream boundary condition", NULL, RiemannSolverTypes,
-                             (PetscEnum)flux_type, (PetscEnum *)&flux_type, NULL));
+                             (PetscEnum)flux_type, (PetscEnum *)&flux_type, NULL));  // NOLINT
   PetscCall(PetscOptionsScalar("-freestream_pressure", "Pressure at freestream condition", NULL, Y_inf.pressure, &Y_inf.pressure, NULL));
   PetscInt  narray = 3;
   PetscBool freestream_velocity_set;
@@ -168,11 +168,11 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   PetscCall(PetscNew(&freestream_honee_bc));
   freestream_honee_bc->flux_type = flux_type;
   *honee_bc                      = (struct HoneeBCStruct_){
-                           .ctx                = freestream_honee_bc,
-                           .DestroyCtx         = PetscCtxDestroyDefault,
-                           .honee              = honee,
-                           .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
-                           .qfctx              = freestream_qfctx,
+      .ctx                = freestream_honee_bc,
+      .DestroyCtx         = PetscCtxDestroyDefault,
+      .honee              = honee,
+      .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
+      .qfctx              = freestream_qfctx,
   };
 
   PetscCall(BCDefinitionSetIFunction(bc_def, FreestreamBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));

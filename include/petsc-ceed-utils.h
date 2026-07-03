@@ -258,8 +258,10 @@ static inline CeedElemTopology PolytopeTypePetscToCeed(DMPolytopeType cell_type)
       return CEED_TOPOLOGY_TET;
     case DM_POLYTOPE_HEXAHEDRON:
       return CEED_TOPOLOGY_HEX;
+      // LCOV_EXCL_START
     default:
-      return 0;
+      return 0;  // NOLINT
+                 // LCOV_EXCL_STOP
   }
 }
 
