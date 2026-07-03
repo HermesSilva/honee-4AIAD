@@ -408,42 +408,42 @@ static PetscErrorCode BCDefinitionNaturalSetup_Advection(BCDefinition bc_def, vo
 static const char *const component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
 
 PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
-  AdvDifWindType       wind_type;
-  AdvDifICType         advectionic_type;
-  StabilizationType    stab;
-  StabilizationTauType stab_tau;
-  SetupContextAdv      setup_context;
   Honee                honee = *(Honee *)ctx;
   MPI_Comm             comm  = honee->comm;
   Ceed                 ceed  = honee->ceed;
   PetscBool            implicit;
   AdvectionContext     advection_ctx;
   CeedQFunctionContext advection_qfctx, ics_qfctx;
+  SetupContextAdv      setup_context;
   PetscInt             dim;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&setup_context));
   PetscCall(PetscNew(&advection_ctx));
   PetscCall(DMGetDimension(dm, &dim));
-  AdvDifBubbleContinuityType bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
 
   // ------------------------------------------------------
   //             Create the QFunction context
   // ------------------------------------------------------
-  CeedScalar     rc               = 1000.;  // m (Radius of bubble)
-  CeedScalar     CtauS            = 0.;     // dimensionless
-  PetscBool      strong_form      = PETSC_FALSE;
-  CeedScalar     E_wind           = 1.e6;  // J
-  CeedScalar     Ctau_a           = PetscPowScalarInt(honee->app_ctx->degree, 2);
-  CeedScalar     Ctau_d           = PetscPowScalarInt(honee->app_ctx->degree, 4);
-  CeedScalar     Ctau_t           = 0.;
-  PetscReal      wind[3]          = {1., 0, 0};  // m/s
-  CeedScalar     diffusion_coeff  = 0.;
-  CeedScalar     wave_frequency   = 2 * M_PI;
-  CeedScalar     wave_phase       = 0;
-  AdvDifWaveType wave_type        = ADVDIF_WAVE_SINE;
-  PetscScalar    bl_height_factor = 1.;
-  PetscReal      domain_min[3], domain_max[3], domain_size[3] = {0.};
+  AdvDifICType               advectionic_type;
+  AdvDifBubbleContinuityType bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
+  CeedScalar                 rc                     = 1000.;  // m (Radius of bubble)
+  StabilizationType          stab;
+  StabilizationTauType       stab_tau;
+  CeedScalar                 CtauS       = 0.;  // dimensionless
+  PetscBool                  strong_form = PETSC_FALSE;
+  CeedScalar                 Ctau_a      = PetscPowScalarInt(honee->app_ctx->degree, 2);
+  CeedScalar                 Ctau_d      = PetscPowScalarInt(honee->app_ctx->degree, 4);
+  CeedScalar                 Ctau_t      = 0.;
+  AdvDifWindType             wind_type;
+  CeedScalar                 E_wind           = 1.e6;        // J
+  PetscReal                  wind[3]          = {1., 0, 0};  // m/s
+  CeedScalar                 diffusion_coeff  = 0.;
+  AdvDifWaveType             wave_type        = ADVDIF_WAVE_SINE;
+  CeedScalar                 wave_frequency   = 2 * M_PI;
+  CeedScalar                 wave_phase       = 0;
+  PetscScalar                bl_height_factor = 1.;
+  PetscReal                  domain_min[3], domain_max[3], domain_size[3] = {0.};
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
   for (PetscInt i = 0; i < dim; i++) domain_size[i] = domain_max[i] - domain_min[i];
 
