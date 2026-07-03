@@ -3,17 +3,21 @@
 /// @file
 /// MatCEED implementation
 
-#include <ceed.h>
-#include <ceed/backend.h>
 #include <mat-ceed-impl.h>
 #include <mat-ceed.h>
 #include <petsc-ceed-utils.h>
 #include <petsc-ceed.h>
+
 #include <petscdm.h>
 #include <petscmat.h>
+
+#include <ceed.h>
+#include <ceed/backend.h>
+
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <string.h>
 
 #if PETSC_VERSION_LT(3, 24, 0)
@@ -292,8 +296,11 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
     PetscCall(PetscViewerASCIIPushTab(viewer));  // CeedOperator
     PetscCall(PetscViewerASCIIGetTab(viewer, &num_tabs));
     PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult, num_tabs));
-    if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult, file));
-    else PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult, file));
+    if (is_detailed) {
+      PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult, file));
+    } else {
+      PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult, file));
+    }
     PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult, 0));
     PetscCall(PetscViewerASCIIPopTab(viewer));  // CeedOperator
     if (ctx->op_mult_transpose) {
@@ -302,8 +309,11 @@ static PetscErrorCode MatView_Ceed(Mat mat_ceed, PetscViewer viewer) {
       PetscCall(PetscViewerASCIIGetTab(viewer, &num_tabs));
       PetscCallCeed(ctx->ceed, CeedOperatorGetNumViewTabs(ctx->op_mult_transpose, &prev_num_tabs));
       PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult_transpose, num_tabs));
-      if (is_detailed) PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult_transpose, file));
-      else PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult_transpose, file));
+      if (is_detailed) {
+        PetscCallCeed(ctx->ceed, CeedOperatorView(ctx->op_mult_transpose, file));
+      } else {
+        PetscCallCeed(ctx->ceed, CeedOperatorViewTerse(ctx->op_mult_transpose, file));
+      }
       PetscCallCeed(ctx->ceed, CeedOperatorSetNumViewTabs(ctx->op_mult_transpose, prev_num_tabs));
       PetscCall(PetscViewerASCIIPopTab(viewer));  // CeedOperator
     }
@@ -1032,8 +1042,11 @@ PetscErrorCode MatCeedGetContext(Mat mat, void *ctx) {
 
   PetscFunctionBeginUser;
   PetscCall(PetscObjectQuery((PetscObject)mat, "MatCeed user context", (PetscObject *)&user_ctx));
-  if (user_ctx) PetscCall(PetscContainerGetPointer(user_ctx, (void **)ctx));
-  else *(void **)ctx = NULL;
+  if (user_ctx) {
+    PetscCall(PetscContainerGetPointer(user_ctx, (void **)ctx));
+  } else {
+    *(void **)ctx = NULL;
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 /**
@@ -1655,8 +1668,11 @@ PetscErrorCode MatMult_Ceed(Mat A, Vec X, Vec Y) {
     PetscCall(PetscLogGpuTimeBegin());
     PetscCallCeed(ctx->ceed, CeedOperatorApplyAdd(ctx->op_mult, ctx->x_loc, ctx->y_loc, CEED_REQUEST_IMMEDIATE));
     // Log flops
-    if (PetscMemTypeDevice(ctx->mem_type)) PetscCall(PetscLogGpuFlops(ctx->flops_mult));
-    else PetscCall(PetscLogFlops(ctx->flops_mult));
+    if (PetscMemTypeDevice(ctx->mem_type)) {
+      PetscCall(PetscLogGpuFlops(ctx->flops_mult));
+    } else {
+      PetscCall(PetscLogFlops(ctx->flops_mult));
+    }
     PetscCall(PetscLogGpuTimeEnd());
     PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult, A, X, Y, NULL));
 
@@ -1716,8 +1732,11 @@ PetscErrorCode MatMultTranspose_Ceed(Mat A, Vec Y, Vec X) {
     PetscCall(PetscLogGpuTimeBegin());
     PetscCallCeed(ctx->ceed, CeedOperatorApplyAdd(ctx->op_mult_transpose, ctx->y_loc, ctx->x_loc, CEED_REQUEST_IMMEDIATE));
     // Log flops
-    if (PetscMemTypeDevice(ctx->mem_type)) PetscCall(PetscLogGpuFlops(ctx->flops_mult_transpose));
-    else PetscCall(PetscLogFlops(ctx->flops_mult_transpose));
+    if (PetscMemTypeDevice(ctx->mem_type)) {
+      PetscCall(PetscLogGpuFlops(ctx->flops_mult_transpose));
+    } else {
+      PetscCall(PetscLogFlops(ctx->flops_mult_transpose));
+    }
     PetscCall(PetscLogGpuTimeEnd());
     PetscCall(PetscLogEventEnd(ctx->log_event_ceed_mult_transpose, A, Y, X, NULL));
 

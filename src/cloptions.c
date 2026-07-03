@@ -4,11 +4,12 @@
 /// @file
 /// Command line option processing for HONEE
 
-#include <ctype.h>
+#include <navierstokes.h>
+
 #include <petscdevice.h>
 #include <petscsys.h>
 
-#include <navierstokes.h>
+#include <ctype.h>
 
 // Register problems to be available on the command line
 static PetscErrorCode RegisterProblems_NS(AppCtx app_ctx) {
@@ -210,8 +211,9 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
                                  "Time before max_wall_time_duration when TSSolve should be stopped and checkpoint files written", NULL, buffer,
                                  buffer, sizeof(buffer), NULL));
     PetscCall(ISO8601TimeDurationToSeconds(comm, buffer, &max_wall_time_buffer));
-    if (max_wall_time_duration == 0) honee->max_wall_time = -1;
-    else {
+    if (max_wall_time_duration == 0) {
+      honee->max_wall_time = -1;
+    } else {
       honee->set_poststep  = PETSC_TRUE;
       honee->max_wall_time = honee->start_time + max_wall_time_duration - max_wall_time_buffer;
     }
@@ -225,10 +227,10 @@ PetscErrorCode ProcessCommandLineOptions(Honee honee) {
   {
     Units units = honee->units;
     *units      = (struct Units_private){
-        .meter    = 1.0,
-        .second   = 1.0,
-        .kilogram = 1.0,
-        .Kelvin   = 1.0,
+      .meter    = 1.0,
+      .second   = 1.0,
+      .kilogram = 1.0,
+      .Kelvin   = 1.0,
     };
 
     PetscCall(PetscOptionsScalar("-units_meter", "1 meter in scaled length units", NULL, units->meter, &units->meter, NULL));

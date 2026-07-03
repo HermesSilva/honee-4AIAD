@@ -3,11 +3,12 @@
 
 #include "../qfunctions/strong_boundary_conditions.h"
 
-#include <ceed.h>
+#include "../problems/stg_shur14.h"
+#include <navierstokes.h>
+
 #include <petscdmplex.h>
 
-#include <navierstokes.h>
-#include "../problems/stg_shur14.h"
+#include <ceed.h>
 
 PetscErrorCode SetupStrongSTG_Ceed(Ceed ceed, Honee honee, DM dm, ProblemData problem, Physics phys, CeedOperator op_strong_bc) {
   CeedInt             num_comp_x, num_comp_q = 5, stg_data_size = 1, dXdx_size;

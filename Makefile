@@ -189,8 +189,8 @@ quiet ?= $($(1))
 GIT_DESCRIBE := $(shell git -c safe.directory=$PWD describe --always --dirty 2>/dev/null || printf "unknown\n")
 
 $(OBJDIR)/src/honee-config.o: Makefile
-$(OBJDIR)/src/honee-config.o src/honee-config.c.tidy: CONFIGFLAGS += -DHONEE_GIT_VERSION="\"$(GIT_DESCRIBE)\""
-$(OBJDIR)/src/honee-config.o src/honee-config.c.tidy: CONFIGFLAGS += -DHONEE_BUILD_CONFIGURATION="\"// Build Configuration:$(foreach v,$(CONFIG_VARS),\n$(v) = $($(v)))\""
+$(OBJDIR)/src/honee-config.o src/honee-config.c.tidy src/honee-config.c.tidy-fix: CONFIGFLAGS += -DHONEE_GIT_VERSION="\"$(GIT_DESCRIBE)\""
+$(OBJDIR)/src/honee-config.o src/honee-config.c.tidy src/honee-config.c.tidy-fix: CONFIGFLAGS += -DHONEE_BUILD_CONFIGURATION="\"// Build Configuration:$(foreach v,$(CONFIG_VARS),\n$(v) = $($(v)))\""
 
 $(OBJDIR)/%.o : %.c | $$(@D)/.DIR
 	$(call quiet,CC) $(CPPFLAGS) $(CFLAGS) $(CONFIGFLAGS) -c -o $@ $(abspath $<)
@@ -256,10 +256,14 @@ doc : doc-html
 doc-clean:
 	$(RM) -r doc/html doc/build
 
+## When using mpicc, get the explicit include flag ("-I/home/jrwrigh/.../include") where the mpi.h file is held
+# This is primarily a problem for clang-format and clang-tidy, which substitute the compiler and do not know of the compile statements baked into the `mpicc` command
+CC_MPI_INCLUDE := $(shell ${CC} -show-compile-info --showme:compile 2>/dev/null || printf "")
+
 # Tidy
 CLANG_TIDY     ?= clang-tidy
-TIDY_OPTS      ?= --quiet
-TIDY_FILE_OPTS += $(CPPFLAGS) $(CONFIGFLAGS) --std=c99
+TIDY_OPTS      ?= --quiet --header-filter='$(abspath ./include)/.*' --format-style=file
+TIDY_FILE_OPTS += $(CPPFLAGS) $(CONFIGFLAGS) $(CC_MPI_INCLUDE) --std=c99
 
 %.c.tidy : %.c
 	$(call quiet,CLANG_TIDY) $(TIDY_OPTS) $^ -- $(TIDY_FILE_OPTS)
@@ -267,6 +271,20 @@ TIDY_FILE_OPTS += $(CPPFLAGS) $(CONFIGFLAGS) --std=c99
 tidy-c   : $(src.c:%=%.tidy)
 
 tidy     : tidy-c
+
+# Tidy-fix for hard to handle formatting fixes
+TIDY_FIX_OPTS   ?= --quiet --header-filter='$(abspath ./include)/.*' --config-file=.clang-tidy-fix --format-style=file --fix
+tidy-fix.h      := $(shell git ls-files '*.hpp' '*.h' 2> /dev/null)
+tidy-fix.c      := $(src.c)
+
+%.tidy-fix : %
+	$(call quiet,CLANG_TIDY) $(TIDY_FIX_OPTS) $^ -- $(TIDY_FILE_OPTS) 2>&1 1>/dev/null
+
+tidy-fix-h   : $(tidy-fix.h:%=%.tidy-fix)
+tidy-fix-c   : $(tidy-fix.c:%=%.tidy-fix)
+
+# note, headers need to be done first
+tidy-fix : tidy-fix-h tidy-fix-c
 
 # Style
 CLANG_FORMAT  ?= clang-format
@@ -284,6 +302,7 @@ format.ot := $(shell git ls-files '*.md')
 
 format-c  :
 	$(call quiet,CLANG_FORMAT) $(FORMAT_OPTS) $(format.ch)
+	@$(MAKE) -j1 --no-print-directory --no-keep-going tidy-fix
 
 format-py :
 	$(call quiet,AUTOPEP8) $(AUTOPEP8_OPTS) $(format.py)

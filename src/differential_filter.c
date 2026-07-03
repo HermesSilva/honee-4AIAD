@@ -4,10 +4,14 @@
 /// Functions for setting up and performing differential filtering
 
 #include "../qfunctions/differential_filter.h"
-#include <ceed.h>
-#include <differential_filter.h>
+
 #include <navierstokes.h>
+
 #include <petscdmplex.h>
+
+#include <ceed.h>
+
+#include <differential_filter.h>
 
 const char *const DifferentialFilterDampingFunctions[] = {"NONE", "VAN_DRIEST", "MMS", "DifferentialFilterDampingFunction", "DIFF_FILTER_DAMP_",
                                                           NULL};
@@ -253,12 +257,12 @@ PetscErrorCode DifferentialFilterSetup(Honee honee, DiffFilterData *diff_filter)
 
   PetscCall(PetscNew(&diff_filter_ctx));
   *diff_filter_ctx = (struct DifferentialFilterContext_){
-      .grid_based_width = false,
-      .width_scaling    = {1, 1, 1},
-      .kernel_scaling   = 0.1,
-      .damping_function = DIFF_FILTER_DAMP_NONE,
-      .friction_length  = 0,
-      .damping_constant = 25,
+    .grid_based_width = false,
+    .width_scaling    = {1, 1, 1},
+    .kernel_scaling   = 0.1,
+    .damping_function = DIFF_FILTER_DAMP_NONE,
+    .friction_length  = 0,
+    .damping_constant = 25,
   };
 
   PetscOptionsBegin(comm, NULL, "Differential Filtering Options", NULL);
@@ -377,9 +381,9 @@ PetscErrorCode DifferentialFilterDataDestroy(DiffFilterData *diff_filter) {
 PetscErrorCode DifferentialFilterMmsICSetup(Honee honee) {
   PetscFunctionBeginUser;
   honee->problem_data->ics = (HoneeQFSpec){
-      .qf_func_ptr = DifferentialFilter_MMS_IC,
-      .qf_loc      = DifferentialFilter_MMS_IC_loc,
-      .qfctx       = honee->problem_data->ics.qfctx,
+    .qf_func_ptr = DifferentialFilter_MMS_IC,
+    .qf_loc      = DifferentialFilter_MMS_IC_loc,
+    .qfctx       = honee->problem_data->ics.qfctx,
   };
   PetscFunctionReturn(PETSC_SUCCESS);
 }

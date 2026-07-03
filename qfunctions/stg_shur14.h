@@ -459,8 +459,9 @@ CEED_QFUNCTION(StgShur14Inflow_Jacobian)(void *ctx, CeedInt Q, const CeedScalar 
     v[4][i] = wdetJb * u_normal * (dE + dP);
 
     // if called from RHS function (explicit) negate for PETSc/libCEED convention
-    if (!is_implicit)
+    if (!is_implicit) {
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
+    }
   }
   return 0;
 }

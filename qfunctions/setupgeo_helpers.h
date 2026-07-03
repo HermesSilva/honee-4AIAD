@@ -5,8 +5,9 @@
 /// Geometric factors (3D) for HONEE
 #pragma once
 
-#include <ceed/types.h>
 #include "utils.h"
+
+#include <ceed/types.h>
 
 /**
  * @brief Calculate dXdx from dxdX for 3D elements

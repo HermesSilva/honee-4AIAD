@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 #include <honee.h>
+
 #include <petscdmplex.h>
 
 #ifndef M_PI

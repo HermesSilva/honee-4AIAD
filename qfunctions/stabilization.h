@@ -3,9 +3,9 @@
 
 /// @file
 /// Helper functions for computing stabilization terms of a newtonian simulation
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
+
+#include <ceed/types.h>
 
 // *****************************************************************************
 // Helper function for computing the variation in primitive variables, given Tau_d

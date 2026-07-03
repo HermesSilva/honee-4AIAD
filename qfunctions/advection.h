@@ -3,13 +3,13 @@
 
 /// @file
 /// Advection initial condition and operator for HONEE
-#include <ceed/types.h>
-
 #include "advection_types.h"
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "stabilization_types.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 // *****************************************************************************
 // This QFunction sets the initial conditions and the boundary conditions
@@ -164,8 +164,11 @@ CEED_QFUNCTION_HELPER int Exact_AdvectionGeneric(CeedInt dim, CeedScalar time, c
         q[4] = 0;  // lower wall
       } else {     // interior and outflow boundary
         CeedScalar bl_height = ly * context->bl_height_factor;
-        if (y > bl_height) q[4] = 1;
-        else q[4] = y / bl_height;
+        if (y > bl_height) {
+          q[4] = 1;
+        } else {
+          q[4] = y / bl_height;
+        }
       }
     } break;
   }
@@ -524,8 +527,9 @@ CEED_QFUNCTION_HELPER int Advection_InOutFlowGeneric(void *ctx, CeedInt Q, const
     }
 
     // if called from RHS function (explicit) negate for PETSc/libCEED convention
-    if (!is_implicit)
+    if (!is_implicit) {
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
+    }
   }
   return 0;
 }

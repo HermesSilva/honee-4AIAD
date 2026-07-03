@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #include "../qfunctions/monitor_totalkineticenergy.h"
+
 #include <honee.h>
 #include <navierstokes.h>
+
 #include <time.h>
 
 typedef struct {
@@ -153,11 +155,15 @@ PetscErrorCode TSMonitor_TotalKineticEnergy(TS ts, PetscInt step, PetscReal solu
     PetscCall(VecStrideSum(monitor_ctx->values, i, &monitor_ctx->sum_values[i]));
   }
 
-  if (rank == 0) PetscCallMPI(MPI_Reduce(MPI_IN_PLACE, monitor_ctx->sum_values, monitor_ctx->num_comps, MPIU_SCALAR, MPI_SUM, 0, comm));
-  else PetscCallMPI(MPI_Reduce(monitor_ctx->sum_values, monitor_ctx->sum_values, monitor_ctx->num_comps, MPIU_SCALAR, MPI_SUM, 0, comm));
+  if (rank == 0) {
+    PetscCallMPI(MPI_Reduce(MPI_IN_PLACE, monitor_ctx->sum_values, monitor_ctx->num_comps, MPIU_SCALAR, MPI_SUM, 0, comm));
+  } else {
+    PetscCallMPI(MPI_Reduce(monitor_ctx->sum_values, monitor_ctx->sum_values, monitor_ctx->num_comps, MPIU_SCALAR, MPI_SUM, 0, comm));
+  }
 
-  if (rank == 0)
+  if (rank == 0) {
     for (PetscInt i = 0; i < monitor_ctx->num_comps; i++) monitor_ctx->sum_values[i] /= monitor_ctx->volume;
+  }
 
   if (ctx->format == PETSC_VIEWER_ASCII_CSV) {
     if (!monitor_ctx->is_header_written) {

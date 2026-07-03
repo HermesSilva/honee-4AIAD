@@ -6,11 +6,12 @@
 
 #include "../qfunctions/channel.h"
 
-#include <ceed.h>
-#include <ceed/backend.h>
+#include <navierstokes.h>
+
 #include <petscdm.h>
 
-#include <navierstokes.h>
+#include <ceed.h>
+#include <ceed/backend.h>
 
 static PetscErrorCode DivDiffFluxVerifyMesh(DM dm);
 

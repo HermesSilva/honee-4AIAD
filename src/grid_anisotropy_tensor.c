@@ -3,9 +3,9 @@
 
 #include "../qfunctions/grid_anisotropy_tensor.h"
 
-#include <petscdmplex.h>
-
 #include <navierstokes.h>
+
+#include <petscdmplex.h>
 
 PetscErrorCode GridAnisotropyTensorProjectionSetupApply(Ceed ceed, Honee honee, CeedElemRestriction *elem_restr_grid_aniso,
                                                         CeedVector *grid_aniso_vector) {

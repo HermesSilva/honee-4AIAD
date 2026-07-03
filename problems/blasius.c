@@ -6,14 +6,16 @@
 
 #include "../qfunctions/blasius.h"
 
-#include <ceed.h>
-#include <ceed/backend.h>
+#include "stg_shur14.h"
+#include <navierstokes.h>
+
 #include <petscdm.h>
 #include <petscdt.h>
 
+#include <ceed.h>
+#include <ceed/backend.h>
+
 #include <differential_filter.h>
-#include <navierstokes.h>
-#include "stg_shur14.h"
 
 PetscErrorCode CompressibleBlasiusResidual(SNES snes, Vec X, Vec R, void *ctx) {
   const BlasiusContext  blasius = (BlasiusContext)ctx;
@@ -50,8 +52,8 @@ PetscErrorCode CompressibleBlasiusResidual(SNES snes, Vec X, Vec R, void *ctx) {
     const PetscScalar mu_tilde[2]     = {1, 0};
     const PetscScalar rho_tilde[2]    = {1 / h[0], -h[1] / PetscSqr(h[0])};
     const PetscScalar mu_rho_tilde[2] = {
-        mu_tilde[0] * rho_tilde[0],
-        mu_tilde[1] * rho_tilde[0] + mu_tilde[0] * rho_tilde[1],
+      mu_tilde[0] * rho_tilde[0],
+      mu_tilde[1] * rho_tilde[0] + mu_tilde[0] * rho_tilde[1],
     };
     r[3 + i]     = 2 * (mu_rho_tilde[0] * f[3] + mu_rho_tilde[1] * f[2]) + f[2] * f[0];
     r[N + 2 + i] = (mu_rho_tilde[0] * h[2] + mu_rho_tilde[1] * h[1]) + Pr * f[0] * h[1] + Pr * (gamma - 1) * mu_rho_tilde[0] * PetscSqr(Ma * f[2]);
@@ -202,8 +204,8 @@ PetscErrorCode NS_BLASIUS(ProblemData problem, DM dm, void *ctx) {
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->apply_vol_rhs.qfctx, CEED_MEM_HOST, &newtonian_ig_ctx));
 
   StatePrimitive Y_inf = {
-      .pressure = P_inf, .velocity = {U_inf, 0, 0},
-           .temperature = T_inf
+    .pressure = P_inf, .velocity = {U_inf, 0, 0},
+         .temperature = T_inf
   };
   State S_infty = StateFromPrimitive(newtonian_ig_ctx->gas, Y_inf);
 

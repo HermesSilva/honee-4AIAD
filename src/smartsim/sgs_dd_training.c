@@ -3,9 +3,11 @@
 
 #include "../../qfunctions/sgs_dd_training.h"
 
-#include <differential_filter.h>
 #include <navierstokes.h>
+
 #include <petscdmplex.h>
+
+#include <differential_filter.h>
 #include <smartsim-impl.h>
 
 typedef struct SGS_DD_TrainingData_ *SGS_DD_TrainingData;
@@ -179,9 +181,9 @@ PetscErrorCode SGS_DD_TrainingSetup(Ceed ceed, Honee honee) {
   PetscCall(PetscNew(&sgs_dd_train_setup_data));
   PetscCall(PetscNew(&sgs_dd_train));
   *sgs_dd_train = (struct SGS_DD_TrainingData_){
-      .overwrite_training_data = PETSC_TRUE,
-      .write_data_interval     = 1,
-      .num_filter_widths       = sizeof(sgs_dd_train->filter_widths) / sizeof(sgs_dd_train->filter_widths[0]),
+    .overwrite_training_data = PETSC_TRUE,
+    .write_data_interval     = 1,
+    .num_filter_widths       = sizeof(sgs_dd_train->filter_widths) / sizeof(sgs_dd_train->filter_widths[0]),
   };
   PetscCall(HoneeSetContainer(honee, SGS_DD_TRAIN_KEY, sgs_dd_train, (PetscCtxDestroyFn *)SGS_DD_TrainingDataDestroy));
   PetscCall(DifferentialFilterSetup(honee, &sgs_dd_train->diff_filter));

@@ -13,11 +13,12 @@ const char help[] =
     "HONEE documentation may be found at https://honee.phypid.org\n";
 
 #include <navierstokes.h>
-#include <petscdevice.h>
 
-#include <ceed.h>
+#include <petscdevice.h>
 #include <petscdmplex.h>
 #include <petscts.h>
+
+#include <ceed.h>
 
 int main(int argc, char **argv) {
   Honee     honee;
@@ -91,15 +92,24 @@ int main(int argc, char **argv) {
       case CEED_MEM_DEVICE: {
         const char *resource;
         PetscCallCeed(ceed, CeedGetResource(ceed, &resource));
-        if (strstr(resource, "/gpu/cuda")) vec_type = VECCUDA;
-        else if (strstr(resource, "/gpu/hip")) vec_type = VECKOKKOS;
-        else if (strstr(resource, "/gpu/sycl")) vec_type = VECKOKKOS;
-        else vec_type = VECSTANDARD;
+        if (strstr(resource, "/gpu/cuda")) {
+          vec_type = VECCUDA;
+        } else if (strstr(resource, "/gpu/hip")) {
+          vec_type = VECKOKKOS;
+        } else if (strstr(resource, "/gpu/sycl")) {
+          vec_type = VECKOKKOS;
+        } else {
+          vec_type = VECSTANDARD;
+        }
       }
     }
-    if (strstr(vec_type, VECCUDA)) mat_type = MATAIJCUSPARSE;
-    else if (strstr(vec_type, VECKOKKOS)) mat_type = MATAIJKOKKOS;
-    else mat_type = MATAIJ;
+    if (strstr(vec_type, VECCUDA)) {
+      mat_type = MATAIJCUSPARSE;
+    } else if (strstr(vec_type, VECKOKKOS)) {
+      mat_type = MATAIJKOKKOS;
+    } else {
+      mat_type = MATAIJ;
+    }
 
     PetscCall(CreateDM(honee, problem, mat_type, vec_type, &dm));
     honee->dm = dm;
@@ -192,9 +202,10 @@ int main(int argc, char **argv) {
 
     PetscCall(PetscOptionsLeftGet(NULL, &num_options_left, NULL, NULL));
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-options_left", &options_left, NULL));
-    if (options_left)
+    if (options_left) {
       PetscCheck(num_options_left == 0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
                  "There are unused options. This is not allowed. See error message for the unused options (or use -options_left directly)");
+    }
     PetscCheck(honee->app_ctx->has_test_run, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "HONEE was run with test mode, but no test was done.");
   }
 

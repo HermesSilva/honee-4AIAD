@@ -4,12 +4,14 @@
 /// @file
 /// Time-stepping functions for HONEE
 
-#include <ceed.h>
+#include <navierstokes.h>
+
 #include <petscdmplex.h>
 #include <petscts.h>
 
+#include <ceed.h>
+
 #include <differential_filter.h>
-#include <navierstokes.h>
 #include <smartsim.h>
 #include <spanstats.h>
 
@@ -36,11 +38,13 @@ PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
   PetscFunctionBeginUser;
   // Update time dependent data
   PetscCall(UpdateBoundaryValues(honee, Q_loc, t));
-  if (honee->phys->solution_time_label)
+  if (honee->phys->solution_time_label) {
     PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_rhs_ctx->op, honee->phys->solution_time_label, &t));
+  }
   PetscCall(TSGetTimeStep(ts, &dt));
-  if (honee->phys->timestep_size_label)
+  if (honee->phys->timestep_size_label) {
     PetscCallCeed(ceed, CeedOperatorSetContextDouble(honee->op_rhs_ctx->op, honee->phys->timestep_size_label, &dt));
+  }
 
   PetscCall(DMGetNamedGlobalVector(honee->dm, "RHS Residual", &R));
   PetscCall(DMGlobalToLocal(honee->dm, Q, INSERT_VALUES, Q_loc));
@@ -58,8 +62,11 @@ PetscErrorCode RHS_NS(TS ts, PetscReal t, Vec Q, Vec G, void *user_data) {
     PetscCall(KSPGetPC(honee->mass_ksp, &pc));
     PetscCall(PetscObjectTypeCompare((PetscObject)honee->mass_ksp, KSPPREONLY, &ispreonly));
     PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCJACOBI, &isjacobi));
-    if (ispreonly && isjacobi) PetscCall(PCApply(pc, R, G));
-    else PetscCall(KSPSolve(honee->mass_ksp, R, G));
+    if (ispreonly && isjacobi) {
+      PetscCall(PCApply(pc, R, G));
+    } else {
+      PetscCall(KSPSolve(honee->mass_ksp, R, G));
+    }
   }
   PetscCall(VecReadCeedToPetsc(honee->q_ceed, q_mem_type, Q_loc));
 
@@ -136,7 +143,9 @@ PetscErrorCode FormIJacobian_NS(TS ts, PetscReal t, Vec Q, Vec Q_dot, PetscReal 
   if (J_is_matceed || J_is_mffd) {
     PetscCall(MatAssemblyBegin(J, MAT_FINAL_ASSEMBLY));
     PetscCall(MatAssemblyEnd(J, MAT_FINAL_ASSEMBLY));
-  } else PetscCall(MatCeedAssembleCOO(honee->mat_ijacobian, J));
+  } else {
+    PetscCall(MatCeedAssembleCOO(honee->mat_ijacobian, J));
+  }
 
   if (J_pre_is_matceed && J != J_pre) {
     PetscCall(MatAssemblyBegin(J_pre, MAT_FINAL_ASSEMBLY));

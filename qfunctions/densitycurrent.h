@@ -7,11 +7,11 @@
 // Model from:
 //   Semi-Implicit Formulations of the Navier-Stokes Equations: Application to
 //   Nonhydrostatic Atmospheric Modeling, Giraldo, Restelli, and Lauter (2010).
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 typedef struct DensityCurrentContext_ *DensityCurrentContext;
 struct DensityCurrentContext_ {

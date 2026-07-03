@@ -3,11 +3,11 @@
 
 /// @file
 /// Newtonian initial condition using wall-distance-based linear boundary layer profile
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 CEED_QFUNCTION_HELPER CeedScalar BlendWallToReference(CeedScalar wall, CeedScalar reference, CeedScalar alpha) {
   return wall + alpha * (reference - wall);

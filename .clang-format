@@ -1,19 +1,38 @@
 BasedOnStyle: "Google"
 
-AlignAfterOpenBracket:        Align
-AlignArrayOfStructures:       Left
-AlignConsecutiveAssignments:  Consecutive
-AlignConsecutiveDeclarations: Consecutive
-AlignEscapedNewlines:         true
-AlignOperands:                Align
-AllowShortIfStatementsOnASingleLine: AllIfsAndElse
-ColumnLimit:                  150
-PenaltyBreakOpenParenthesis: 100
-ReflowComments:               false
-CommentPragmas:               'TESTARGS'
-DerivePointerAlignment:       false
-IncludeBlocks:                Preserve
-PointerAlignment:             Right
-TabWidth:                     4
-UseTab:                       Never
-StatementMacros:              [CeedPragmaOptimizeOn, CeedPragmaOptimizeOff]
+AlignAfterOpenBracket:               true
+BreakAfterOpenBracketBracedList:     true
+BreakBeforeCloseBracketBracedList:   true
+AlignArrayOfStructures:              Left
+AlignConsecutiveAssignments:         Consecutive
+AlignConsecutiveDeclarations:        Consecutive
+AlignEscapedNewlines:                true
+AlignOperands:                       Align
+AlignTrailingComments:               true
+AllowShortIfStatementsOnASingleLine: WithoutElse
+ColumnLimit:                         150
+PenaltyBreakOpenParenthesis:         100
+ReflowComments:                      false
+CommentPragmas:                      'TESTARGS'
+IndentWidth:                         2
+UseTab:                              Never
+PointerAlignment:                    Right
+BracedInitializerIndentWidth:        2
+IncludeBlocks:                       Regroup
+IncludeCategories:
+  # HONEE headers
+  - Regex:        '^(((<|")((honee)(\.|-|/)|navierstokes|petsc_ops|mat-ceed|petsc-ceed\.h|petsc-ceed-utils\.h)|(")))'
+    Priority:     1
+    SortPriority: 1
+  # PETSc headers
+  - Regex:        '^(<(petsc))'
+    Priority:     2
+    SortPriority: 2
+  # CEED header
+  - Regex:        '^(<(ceed)(/|\.))'
+    Priority:     3
+    SortPriority: 3
+  # System headers
+  - Regex:        '^(<((std[A-z]*\.h)|math|time|ctype\.h))'
+    Priority:     4
+    SortPriority: 4

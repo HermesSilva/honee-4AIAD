@@ -22,11 +22,11 @@ PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscNew(&taylorgreen_ctx));
   PetscCallCeed(ceed, CeedQFunctionContextGetData(problem->ics.qfctx, CEED_MEM_HOST, &setup_ctx));
   *taylorgreen_ctx = (struct TaylorGreenContext_){
-      .reference = setup_ctx->reference,
-      .newt_ctx  = setup_ctx->newt_ctx,
-      .lx        = setup_ctx->lx,
-      .ly        = setup_ctx->ly,
-      .lz        = setup_ctx->lz,
+    .reference = setup_ctx->reference,
+    .newt_ctx  = setup_ctx->newt_ctx,
+    .lx        = setup_ctx->lx,
+    .ly        = setup_ctx->ly,
+    .lz        = setup_ctx->lz,
   };
   PetscCallCeed(ceed, CeedQFunctionContextRestoreData(problem->ics.qfctx, &setup_ctx));
 
@@ -47,9 +47,9 @@ PetscErrorCode NS_TAYLOR_GREEN(ProblemData problem, DM dm, void *ctx) {
 
   PetscCallCeed(ceed, CeedQFunctionContextDestroy(&problem->ics.qfctx));
   problem->ics = (HoneeQFSpec){
-      .qf_func_ptr = ICsTaylorGreen,
-      .qf_loc      = ICsTaylorGreen_loc,
-      .qfctx       = taylorgreen_qfctx,
+    .qf_func_ptr = ICsTaylorGreen,
+    .qf_loc      = ICsTaylorGreen_loc,
+    .qfctx       = taylorgreen_qfctx,
   };
   PetscFunctionReturn(PETSC_SUCCESS);
 }

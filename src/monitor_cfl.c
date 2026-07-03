@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 #include "../qfunctions/monitor_cfl.h"
+
 #include <navierstokes.h>
 
 typedef struct {

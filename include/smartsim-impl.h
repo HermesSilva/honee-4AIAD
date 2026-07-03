@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
+#include <honee.h>
+
+#include <petscsys.h>
+
 #include <c_client.h>
 #include <c_dataset.h>
-#include <honee.h>
-#include <petscsys.h>
 #include <smartsim.h>
 #include <sr_enums.h>
 

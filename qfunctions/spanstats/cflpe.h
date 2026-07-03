@@ -1,10 +1,10 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2025, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
-#include <ceed/types.h>
-
 #include "../newtonian_state.h"
 #include "../numerics.h"
 #include "../utils.h"
+
+#include <ceed/types.h>
 
 typedef struct CflPe_SpanStatsContext_ *CflPe_SpanStatsContext;
 struct CflPe_SpanStatsContext_ {

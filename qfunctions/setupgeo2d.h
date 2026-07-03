@@ -3,9 +3,10 @@
 
 /// @file
 /// Geometric factors (2D) for HONEE
-#include <ceed/types.h>
 #include "setupgeo_helpers.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 // *****************************************************************************
 // This QFunction sets up the geometric factors required for integration and coordinate transformations

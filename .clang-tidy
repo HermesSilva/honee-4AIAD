@@ -1,3 +1,6 @@
-Checks: "clang-diagnostic-*,clang-analyzer-*,readability-inconsistent-declaration-parameter-name,bugprone-too-small-loop-variable"
+Checks: "clang-diagnostic-*,clang-analyzer-*,-clang-analyzer-optin.performance.Padding,readability-inconsistent-declaration-parameter-name,readability-braces-around-statements,bugprone-too-small-loop-variable"
 HeaderFilterRegex: .*
-WarningsAsErrors: "clang-diagnostic-*,clang-analyzer-*,readability-inconsistent-declaration-parameter-name"
+WarningsAsErrors: "clang-diagnostic-*,clang-analyzer-*,-clang-analyzer-optin.performance.Padding,readability-inconsistent-declaration-parameter-name,readability-braces-around-statements,bugprone-too-small-loop-variable"
+CheckOptions:
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '1'

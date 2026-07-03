@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 // Based on the instructions from https://www.craylabs.org/docs/sr_integration.html and PHASTA implementation
 
-#include <smartsim-impl.h>
-
 #include <navierstokes.h>
+
+#include <smartsim-impl.h>
 
 #define SMARTSIM_KEY "SmartSimData"
 

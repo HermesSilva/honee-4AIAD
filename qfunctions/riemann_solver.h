@@ -58,9 +58,9 @@ CEED_QFUNCTION_HELPER StateConservative Flux_HLL(State left, State right, StateC
     F_hll[i] = (s_right * F_left[i] - s_left * F_right[i] + s_left * s_right * (U_right[i] - U_left[i])) / (s_right - s_left);
   }
   StateConservative F = {
-      F_hll[0],
-      {F_hll[1], F_hll[2], F_hll[3]},
-      F_hll[4],
+    F_hll[0],
+    {F_hll[1], F_hll[2], F_hll[3]},
+    F_hll[4],
   };
   return F;
 }
@@ -87,9 +87,9 @@ CEED_QFUNCTION_HELPER StateConservative Flux_HLL_fwd(State left, State right, St
     dF_hll[i] += (S_r * dF_l[i] - S_l * dF_r[i] + S_r * S_l * (dU_r[i] - dU_l[i])) / S_diff;
   }
   StateConservative dF = {
-      dF_hll[0],
-      {dF_hll[1], dF_hll[2], dF_hll[3]},
-      dF_hll[4],
+    dF_hll[0],
+    {dF_hll[1], dF_hll[2], dF_hll[3]},
+    dF_hll[4],
   };
   return dF;
 }
@@ -218,14 +218,14 @@ CEED_QFUNCTION_HELPER StateConservative RiemannFlux_HLLC_Star(NewtonianIGPropert
   CeedScalar denom = side.U.density * (s_side - u_side);
   // U_* = fact * star
   StateConservative star = {
-      1.0,
-      {
-        side.Y.velocity[0] + (s_star - u_side) * normal[0],
-        side.Y.velocity[1] + (s_star - u_side) * normal[1],
-        side.Y.velocity[2] + (s_star - u_side) * normal[2],
-        },
-      side.U.E_total / side.U.density  //
-          + (s_star - u_side) * (s_star + side.Y.pressure / denom)
+    1.0,
+    {
+      side.Y.velocity[0] + (s_star - u_side) * normal[0],
+      side.Y.velocity[1] + (s_star - u_side) * normal[1],
+      side.Y.velocity[2] + (s_star - u_side) * normal[2],
+      },
+    side.U.E_total / side.U.density  //
+        + (s_star - u_side) * (s_star + side.Y.pressure / denom)
   };
   return StateConservativeAXPBYPCZ(1, F_side, s_side * fact, star, -s_side, side.U);
 }
@@ -241,25 +241,25 @@ CEED_QFUNCTION_HELPER StateConservative RiemannFlux_HLLC_Star_fwd(NewtonianIGPro
   CeedScalar ddenom = side.U.density * (ds_side - du_side) + dside.U.density * (s_side - u_side);
 
   StateConservative star = {
-      1.0,
-      {
-        side.Y.velocity[0] + (s_star - u_side) * normal[0],
-        side.Y.velocity[1] + (s_star - u_side) * normal[1],
-        side.Y.velocity[2] + (s_star - u_side) * normal[2],
-        },
-      side.U.E_total / side.U.density  //
-          + (s_star - u_side) * (s_star + side.Y.pressure / denom)
+    1.0,
+    {
+      side.Y.velocity[0] + (s_star - u_side) * normal[0],
+      side.Y.velocity[1] + (s_star - u_side) * normal[1],
+      side.Y.velocity[2] + (s_star - u_side) * normal[2],
+      },
+    side.U.E_total / side.U.density  //
+        + (s_star - u_side) * (s_star + side.Y.pressure / denom)
   };
   StateConservative dstar = {
-      0.,
-      {
-        dside.Y.velocity[0] + (ds_star - du_side) * normal[0],
-        dside.Y.velocity[1] + (ds_star - du_side) * normal[1],
-        dside.Y.velocity[2] + (ds_star - du_side) * normal[2],
-        },
-      dside.U.E_total / side.U.density - side.U.E_total / Square(side.U.density) * dside.U.density  //
-          + (ds_star - du_side) * (s_star + side.Y.pressure / denom)  //
-          + (s_star - u_side) * (ds_star + dside.Y.pressure / denom - side.Y.pressure / Square(denom) * ddenom)  //
+    0.,
+    {
+      dside.Y.velocity[0] + (ds_star - du_side) * normal[0],
+      dside.Y.velocity[1] + (ds_star - du_side) * normal[1],
+      dside.Y.velocity[2] + (ds_star - du_side) * normal[2],
+      },
+    dside.U.E_total / side.U.density - side.U.E_total / Square(side.U.density) * dside.U.density  //
+        + (ds_star - du_side) * (s_star + side.Y.pressure / denom)  //
+        + (s_star - u_side) * (ds_star + dside.Y.pressure / denom - side.Y.pressure / Square(denom) * ddenom)  //
   };
 
   const CeedScalar        a[] = {1, ds_side * fact + s_side * dfact, s_side * fact, -ds_side, -s_side};
