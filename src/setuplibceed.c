@@ -105,7 +105,7 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
   CeedElemRestriction elem_restr_diff_flux = NULL;
   CeedVector          div_diff_flux_ceed   = NULL;
   CeedBasis           basis_diff_flux      = NULL;
-  CeedEvalMode        eval_mode_diff_flux  = -1;
+  CeedEvalMode        eval_mode_diff_flux;
   {  // Create bases and element restrictions
     PetscInt dm_field = 0;
     DM       dm_coord;

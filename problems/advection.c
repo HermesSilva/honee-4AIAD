@@ -408,24 +408,24 @@ static PetscErrorCode BCDefinitionNaturalSetup_Advection(BCDefinition bc_def, vo
 static const char *const component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
 
 PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
-  AdvDifWindType             wind_type;
-  AdvDifICType               advectionic_type;
-  AdvDifBubbleContinuityType bubble_continuity_type = -1;
-  StabilizationType          stab;
-  StabilizationTauType       stab_tau;
-  SetupContextAdv            setup_context;
-  Honee                      honee = *(Honee *)ctx;
-  MPI_Comm                   comm  = honee->comm;
-  Ceed                       ceed  = honee->ceed;
-  PetscBool                  implicit;
-  AdvectionContext           advection_ctx;
-  CeedQFunctionContext       advection_qfctx, ics_qfctx;
-  PetscInt                   dim;
+  AdvDifWindType       wind_type;
+  AdvDifICType         advectionic_type;
+  StabilizationType    stab;
+  StabilizationTauType stab_tau;
+  SetupContextAdv      setup_context;
+  Honee                honee = *(Honee *)ctx;
+  MPI_Comm             comm  = honee->comm;
+  Ceed                 ceed  = honee->ceed;
+  PetscBool            implicit;
+  AdvectionContext     advection_ctx;
+  CeedQFunctionContext advection_qfctx, ics_qfctx;
+  PetscInt             dim;
 
   PetscFunctionBeginUser;
   PetscCall(PetscNew(&setup_context));
   PetscCall(PetscNew(&advection_ctx));
   PetscCall(DMGetDimension(dm, &dim));
+  AdvDifBubbleContinuityType bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
 
   // ------------------------------------------------------
   //             Create the QFunction context
@@ -441,7 +441,7 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
   CeedScalar     diffusion_coeff  = 0.;
   CeedScalar     wave_frequency   = 2 * M_PI;
   CeedScalar     wave_phase       = 0;
-  AdvDifWaveType wave_type        = -1;
+  AdvDifWaveType wave_type        = ADVDIF_WAVE_SINE;
   PetscScalar    bl_height_factor = 1.;
   PetscReal      domain_min[3], domain_max[3], domain_size[3] = {0.};
   PetscCall(DMGetBoundingBox(dm, domain_min, domain_max));
@@ -478,8 +478,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscOptionsDeprecated("-wave_type", "-advection_ic_wave_type", "HONEE 0.0", NULL));
       PetscCall(PetscOptionsDeprecated("-wave_frequency", "-advection_ic_wave_frequency", "HONEE 0.0", NULL));
       PetscCall(PetscOptionsDeprecated("-wave_phase", "-advection_ic_wave_phase", "HONEE 0.0", NULL));
-      PetscCall(PetscOptionsEnum("-advection_ic_wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)(wave_type = ADVDIF_WAVE_SINE),
-                                 (PetscEnum *)&wave_type, NULL));
+      PetscCall(PetscOptionsEnum("-advection_ic_wave_type", "Type of wave", NULL, AdvDifWaveTypes, (PetscEnum)wave_type, (PetscEnum *)&wave_type,
+                                 NULL));
       PetscCall(PetscOptionsScalar("-advection_ic_wave_frequency", "Frequency of sine wave", NULL, wave_frequency, &wave_frequency, NULL));
       PetscCall(PetscOptionsScalar("-advection_ic_wave_phase", "Length correction", NULL, wave_phase, &wave_phase, NULL));
       break;
@@ -492,9 +492,8 @@ PetscErrorCode NS_ADVECTION(ProblemData problem, DM dm, void *ctx) {
       PetscCall(PetscOptionsDeprecated("-rc", "-advection_ic_bubble_rc", "HONEE 0.0", NULL));
       PetscCall(PetscOptionsDeprecated("-bubble_continuity", "-advection_ic_bubble_continuity", "HONEE 0.0", NULL));
       PetscCall(PetscOptionsScalar("-advection_ic_bubble_rc", "Characteristic radius of thermal bubble", NULL, rc, &rc, NULL));
-      bubble_continuity_type = dim == 3 ? ADVDIF_BUBBLE_CONTINUITY_SMOOTH : ADVDIF_BUBBLE_CONTINUITY_COSINE;
       PetscCall(PetscOptionsEnum("-advection_ic_bubble_continuity", "Smooth, back_sharp, or thick", NULL, AdvDifBubbleContinuityTypes,
-                                 (PetscEnum)bubble_continuity_type, (PetscEnum *)&bubble_continuity_type, NULL));
+                                 (PetscEnum)bubble_continuity_type, (PetscEnum *)&bubble_continuity_type, NULL));  // NOLINT
       break;
     case ADVDIF_IC_SKEW:
     case ADVDIF_IC_COSINE_HILL:

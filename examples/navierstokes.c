@@ -193,9 +193,9 @@ int main(int argc, char **argv) {
     PetscCall(PetscOptionsLeftGet(NULL, &num_options_left, NULL, NULL));
     PetscCall(PetscOptionsGetBool(NULL, NULL, "-options_left", &options_left, NULL));
     if (options_left)
-      PetscCheck(num_options_left == 0, PETSC_COMM_WORLD, -1,
+      PetscCheck(num_options_left == 0, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT,
                  "There are unused options. This is not allowed. See error message for the unused options (or use -options_left directly)");
-    PetscCheck(honee->app_ctx->has_test_run, PETSC_COMM_WORLD, -1, "HONEE was run with test mode, but no test was done.");
+    PetscCheck(honee->app_ctx->has_test_run, PETSC_COMM_WORLD, PETSC_ERR_USER_INPUT, "HONEE was run with test mode, but no test was done.");
   }
 
   PetscCall(HoneeDestroy(&honee));
