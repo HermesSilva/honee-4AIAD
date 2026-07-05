@@ -228,9 +228,9 @@ CEED_QFUNCTION(EulerShockTube)(void *ctx, CeedInt Q, const CeedScalar *const *in
     const CeedScalar E        = q[4][i];
     const CeedScalar drho[3]  = {dq[0][0][i], dq[1][0][i], dq[2][0][i]};
     const CeedScalar dU[3][3] = {
-        {dq[0][1][i], dq[1][1][i], dq[2][1][i]},
-        {dq[0][2][i], dq[1][2][i], dq[2][2][i]},
-        {dq[0][3][i], dq[1][3][i], dq[2][3][i]}
+      {dq[0][1][i], dq[1][1][i], dq[2][1][i]},
+      {dq[0][2][i], dq[1][2][i], dq[2][2][i]},
+      {dq[0][3][i], dq[1][3][i], dq[2][3][i]}
     };
     const CeedScalar dE[3] = {dq[0][4][i], dq[1][4][i], dq[2][4][i]};
     CeedScalar       wdetJ, dXdx[3][3];

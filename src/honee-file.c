@@ -6,6 +6,7 @@
 
 #include <honee-file.h>
 #include <honee.h>
+
 #include <time.h>
 
 /**
@@ -25,8 +26,11 @@ PetscErrorCode HoneeCheckFilenameExtension(MPI_Comm comm, const char filename[],
   PetscCall(PetscStrlen(filename, &len));
   PetscCall(PetscStrlen(extension, &ext_len));
   PetscCheck(ext_len, comm, PETSC_ERR_ARG_WRONG, "Zero-size extension: %s", extension);
-  if (len < ext_len) *is_extension = PETSC_FALSE;
-  else PetscCall(PetscStrncmp(filename + len - ext_len, extension, ext_len, is_extension));
+  if (len < ext_len) {
+    *is_extension = PETSC_FALSE;
+  } else {
+    PetscCall(PetscStrncmp(filename + len - ext_len, extension, ext_len, is_extension));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -111,7 +115,9 @@ PetscErrorCode HoneeLoadInitialCondition(const char filename[], PetscInt *soluti
 #else
     SETERRQ(comm, PETSC_ERR_SUP, "Loading initial condition from CGNS requires PETSc to be built with support. Reconfigure using --with-cgns-dir");
 #endif
-  } else SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "File does not have a valid extension, recieved '%s'", filename);
+  } else {
+    SETERRQ(PETSC_COMM_WORLD, PETSC_ERR_SUP, "File does not have a valid extension, recieved '%s'", filename);
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -140,8 +146,11 @@ PetscErrorCode HoneeLoadBinaryVec(PetscViewer viewer, Vec Q, PetscReal *time, Pe
   if (token == HONEE_FILE_TOKEN_32 || token == HONEE_FILE_TOKEN_64 || token == HONEE_FILE_TOKEN) {
     // HONEE formatted file; we're reading a file with step number and time in the header
     PetscDataType file_type = PETSC_INT32;
-    if (token == HONEE_FILE_TOKEN_32) file_type = PETSC_INT32;
-    else if (token == HONEE_FILE_TOKEN_64) file_type = PETSC_INT64;
+    if (token == HONEE_FILE_TOKEN_32) {
+      file_type = PETSC_INT32;
+    } else if (token == HONEE_FILE_TOKEN_64) {
+      file_type = PETSC_INT64;
+    }
     PetscCall(BinaryReadIntoInt(viewer, &file_step_number, file_type));
     PetscCall(PetscViewerBinaryRead(viewer, &file_time, 1, NULL, PETSC_REAL));
   } else {

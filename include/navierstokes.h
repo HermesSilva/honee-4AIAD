@@ -2,22 +2,24 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <bc_definition.h>
-#include <ceed.h>
-#include <dm-utils.h>
+#include "../qfunctions/newtonian_types.h"
 #include <honee-file.h>
 #include <honee.h>
-#include <log_events.h>
 #include <mat-ceed.h>
 #include <petsc-ceed-utils.h>
+#include <petsc_ops.h>
+
 #include <petscts.h>
+
+#include <ceed.h>
+
 #include <stdbool.h>
 #include <time.h>
 
+#include <bc_definition.h>
+#include <dm-utils.h>
+#include <log_events.h>
 #include <nodal_projection.h>
-
-#include <petsc_ops.h>
-#include "../qfunctions/newtonian_types.h"
 
 #if PETSC_VERSION_LT(3, 24, 0)
 #error "PETSc latest main branch or v3.24 is required"

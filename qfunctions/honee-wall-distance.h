@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2025, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
-#include <ceed/types.h>
 #include "utils.h"
+
+#include <ceed/types.h>
 
 #ifndef CEED_RUNNING_JIT_PASS
 #include <math.h>

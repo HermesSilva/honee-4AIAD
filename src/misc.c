@@ -4,12 +4,13 @@
 /// @file
 /// Miscellaneous utility functions
 
-#include <ceed.h>
+#include <navierstokes.h>
+
 #include <petscdm.h>
 #include <petscsf.h>
 #include <petscts.h>
 
-#include <navierstokes.h>
+#include <ceed.h>
 
 PetscErrorCode ICs_FixMultiplicity(DM dm, Honee honee, Vec Q_loc, Vec Q, CeedScalar time) {
   Ceed                ceed = honee->ceed;

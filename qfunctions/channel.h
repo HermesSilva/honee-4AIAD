@@ -3,11 +3,11 @@
 
 /// @file
 /// Operator for HONEE
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 typedef struct ChannelContext_ *ChannelContext;
 struct ChannelContext_ {
@@ -131,8 +131,9 @@ CEED_QFUNCTION(Channel_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     v[4][i] += wdetJb * u_normal * (E + P);
 
     // if called from RHS function (explicit) negate for PETSc/libCEED convention
-    if (!is_implicit)
+    if (!is_implicit) {
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
+    }
   }
   return 0;
 }
@@ -174,8 +175,9 @@ CEED_QFUNCTION(Channel_Outflow)(void *ctx, CeedInt Q, const CeedScalar *const *i
     v[4][i] += wdetJb * u_normal * (E + P);
 
     // if called from RHS function (explicit) negate for PETSc/libCEED convention
-    if (!is_implicit)
+    if (!is_implicit) {
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
+    }
   }
   return 0;
 }

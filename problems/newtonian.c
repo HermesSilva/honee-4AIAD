@@ -5,13 +5,14 @@
 /// Utility functions for setting up problems using the Newtonian Qfunction
 
 #include "../qfunctions/newtonian.h"
+
 #include "../qfunctions/ic_boundary_layer.h"
+#include <navierstokes.h>
+
+#include <petscdm.h>
 
 #include <ceed.h>
 #include <ceed/backend.h>
-#include <petscdm.h>
-
-#include <navierstokes.h>
 
 const char *const StateVariables[]     = {"CONSERVATIVE", "PRIMITIVE", "ENTROPY", "StateVariable", "STATEVAR_", NULL};
 const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationType", "STAB_", NULL};
@@ -44,8 +45,8 @@ static PetscErrorCode SetupNewtonianICBoundaryLayerFromOptions(Honee honee, Prob
   PetscFunctionBeginUser;
   problem->ics_use_wall_distance = PETSC_FALSE;
   *ic_boundary_layer             = (ICBoundaryLayer){
-      .wall   = reference,
-      .height = 0,
+    .wall   = reference,
+    .height = 0,
   };
 
   PetscOptionsBegin(honee->comm, NULL, "Options for Newtonian initial-condition boundary layer", NULL);
@@ -472,26 +473,26 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   CeedScalar       idl_decay_time = -1;
   PetscCall(PetscNew(&newtonian_ig_ctx));
   *newtonian_ig_ctx = (struct NewtonianIdealGasContext_){
-      .gas =
-          {
-                .cv     = 717.,
-                .cp     = 1004.,
-                .lambda = -2. / 3.,
-                .mu     = 1.8e-5,
-                .k      = 0.02638,
-                },
-      .tau_coeffs =
-          {
-                .Ctau_t = 1.0,
-                .Ctau_v = Cv_func[(CeedInt)Min(3, degree) - 1],
-                .Ctau_C = 0.25 / degree,
-                .Ctau_M = 0.25 / degree,
-                .Ctau_E = 0.125,
-                },
-      .g          = {0, 0, 0}, // m/s^2
-      .idl_start  = 0,
-      .idl_length = 0,
-      .idl_enable = PETSC_FALSE,
+    .gas =
+        {
+              .cv     = 717.,
+              .cp     = 1004.,
+              .lambda = -2. / 3.,
+              .mu     = 1.8e-5,
+              .k      = 0.02638,
+              },
+    .tau_coeffs =
+        {
+              .Ctau_t = 1.0,
+              .Ctau_v = Cv_func[(CeedInt)Min(3, degree) - 1],
+              .Ctau_C = 0.25 / degree,
+              .Ctau_M = 0.25 / degree,
+              .Ctau_E = 0.125,
+              },
+    .g          = {0, 0, 0}, // m/s^2
+    .idl_start  = 0,
+    .idl_length = 0,
+    .idl_enable = PETSC_FALSE,
   };
 
   PetscOptionsBegin(comm, NULL, "Options for Newtonian Ideal Gas based problem", NULL);
@@ -560,14 +561,14 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCall(SetupNewtonianICBoundaryLayerFromOptions(honee, problem, reference, &ic_boundary_layer));
   {
     static const HoneeQFSpec newtonian_ig_ic_specs[] = {
-        {.qf_func_ptr = ICsNewtonianIG_Conserv, .qf_loc = ICsNewtonianIG_Conserv_loc},
-        {.qf_func_ptr = ICsNewtonianIG_Prim,    .qf_loc = ICsNewtonianIG_Prim_loc   },
-        {.qf_func_ptr = ICsNewtonianIG_Entropy, .qf_loc = ICsNewtonianIG_Entropy_loc},
+      {.qf_func_ptr = ICsNewtonianIG_Conserv, .qf_loc = ICsNewtonianIG_Conserv_loc},
+      {.qf_func_ptr = ICsNewtonianIG_Prim,    .qf_loc = ICsNewtonianIG_Prim_loc   },
+      {.qf_func_ptr = ICsNewtonianIG_Entropy, .qf_loc = ICsNewtonianIG_Entropy_loc},
     };
     static const HoneeQFSpec newtonian_bl_ic_specs[] = {
-        {.qf_func_ptr = ICsBoundaryLayerNewtonian_Conserv, .qf_loc = ICsBoundaryLayerNewtonian_Conserv_loc},
-        {.qf_func_ptr = ICsBoundaryLayerNewtonian_Prim,    .qf_loc = ICsBoundaryLayerNewtonian_Prim_loc   },
-        {.qf_func_ptr = ICsBoundaryLayerNewtonian_Entropy, .qf_loc = ICsBoundaryLayerNewtonian_Entropy_loc},
+      {.qf_func_ptr = ICsBoundaryLayerNewtonian_Conserv, .qf_loc = ICsBoundaryLayerNewtonian_Conserv_loc},
+      {.qf_func_ptr = ICsBoundaryLayerNewtonian_Prim,    .qf_loc = ICsBoundaryLayerNewtonian_Prim_loc   },
+      {.qf_func_ptr = ICsBoundaryLayerNewtonian_Entropy, .qf_loc = ICsBoundaryLayerNewtonian_Entropy_loc},
     };
 
     problem->ics = problem->ics_use_wall_distance ? newtonian_bl_ic_specs[state_var] : newtonian_ig_ic_specs[state_var];
@@ -606,13 +607,13 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   // -- Setup Context
   PetscCall(PetscNew(&setup_context));
   *setup_context = (struct SetupContext_){
-      .reference         = reference,
-      .ic_boundary_layer = ic_boundary_layer,
-      .newt_ctx          = *newtonian_ig_ctx,
-      .lx                = domain_size[0],
-      .ly                = domain_size[1],
-      .lz                = domain_size[2],
-      .time              = 0,
+    .reference         = reference,
+    .ic_boundary_layer = ic_boundary_layer,
+    .newt_ctx          = *newtonian_ig_ctx,
+    .lx                = domain_size[0],
+    .ly                = domain_size[1],
+    .lz                = domain_size[2],
+    .time              = 0,
   };
 
   CeedQFunctionContext ics_qfctx, newtonian_ig_qfctx;
@@ -643,8 +644,9 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
   static const char *const conserv_component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
   static const char *const prim_component_names[]    = {"Pressure", "VelocityX", "VelocityY", "VelocityZ", "Temperature"};
-  static const char *const entropy_component_names[] = {"EntropyDensity", "EntropyMomentumX", "EntropyMomentumY", "EntropyMomentumZ",
-                                                        "EntropyTotalEnergy"};
+  static const char *const entropy_component_names[] = {
+    "EntropyDensity", "EntropyMomentumX", "EntropyMomentumY", "EntropyMomentumZ", "EntropyTotalEnergy"
+  };
 
   switch (state_var) {
     case STATEVAR_CONSERVATIVE:
@@ -842,8 +844,9 @@ static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIGProperties gas
   const CeedScalar rho_div_p  = rho / P;
   const CeedScalar Y0[5]      = {P, u[0], u[1], u[2], T};
   const CeedScalar U0[5]      = {rho, rho * u[0], rho * u[1], rho * u[2], rho * e_total};
-  const CeedScalar V0[5]      = {(gamma - entropy) / (gamma - 1) - rho_div_p * (e_kinetic), rho_div_p * u[0], rho_div_p * u[1], rho_div_p * u[2],
-                                 -rho_div_p};
+  const CeedScalar V0[5]      = {
+    (gamma - entropy) / (gamma - 1) - rho_div_p * (e_kinetic), rho_div_p * u[0], rho_div_p * u[1], rho_div_p * u[2], -rho_div_p
+  };
 
   rtol = 20 * CEED_EPSILON;
   PetscCall(TestState(comm, STATEVAR_PRIMITIVE, STATEVAR_CONSERVATIVE, gas, Y0, rtol, rtol, rtol));

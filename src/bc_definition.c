@@ -1,10 +1,12 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
+#include <petsc-ceed.h>
+
+#include <petsc/private/petscimpl.h>
+
 #include <bc_definition.h>
 #include <dm-utils.h>
-#include <petsc-ceed.h>
-#include <petsc/private/petscimpl.h>
 
 PetscClassId BC_DEFINITION_CLASSID;
 
@@ -218,10 +220,12 @@ PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essent
   PetscValidLogicalCollectiveInt(bc_def, num_essential_comps, 2);
   PetscCheck(num_essential_comps > 0, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
              "Number of essential components must be non-negative. Received %" PetscInt_FMT " for bc_def \"%s\"", num_essential_comps, bc_def->name);
-  if (num_essential_comps) PetscAssertPointer(essential_comps, 3);
-  else
+  if (num_essential_comps) {
+    PetscAssertPointer(essential_comps, 3);
+  } else {
     PetscCheck(essential_comps == NULL, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
                "essential_comps must be NULL if num_essential_comps == 0. Failed for bc_def %s", bc_def->name);
+  }
   bc_def->num_essential_comps = num_essential_comps;
   PetscCall(PetscMalloc1(num_essential_comps, &bc_def->essential_comps));
   PetscCall(PetscArraycpy(bc_def->essential_comps, essential_comps, num_essential_comps));

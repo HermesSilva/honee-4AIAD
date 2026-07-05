@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
-#include <ceed/types.h>
-
 #include "utils.h"
+
+#include <ceed/types.h>
 
 // @brief QFunction to calculate the divergence of the diffusive flux
 CEED_QFUNCTION_HELPER int ComputeDivDiffusiveFluxGeneric(void *ctx, CeedInt Q, const CeedScalar *const *in, CeedScalar *const *out, const CeedInt dim,

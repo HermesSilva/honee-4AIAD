@@ -6,11 +6,12 @@
 
 #include "../qfunctions/bc_slip.h"
 
-#include <ceed.h>
+#include "../qfunctions/newtonian_types.h"
+#include <navierstokes.h>
+
 #include <petscdm.h>
 
-#include <navierstokes.h>
-#include "../qfunctions/newtonian_types.h"
+#include <ceed.h>
 
 static PetscErrorCode SlipBCSetup_CreateIFunctionQF(BCDefinition bc_def, CeedQFunction *qf) {
   Honee         honee;

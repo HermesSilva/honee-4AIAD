@@ -6,11 +6,12 @@
 
 #include "../qfunctions/eulervortex.h"
 
-#include <ceed.h>
-#include <ceed/backend.h>
+#include <navierstokes.h>
+
 #include <petscdm.h>
 
-#include <navierstokes.h>
+#include <ceed.h>
+#include <ceed/backend.h>
 
 static PetscErrorCode PRINT_EULER_VORTEX(Honee honee, ProblemData problem, AppCtx app_ctx) {
   MPI_Comm     comm = honee->comm;

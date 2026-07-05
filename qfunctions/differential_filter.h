@@ -3,12 +3,12 @@
 //
 /// @file
 /// Implementation of differential filtering
-#include <ceed/types.h>
-
 #include "differential_filter_enums.h"
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 enum DifferentialFilterDampingFunction { DIFF_FILTER_DAMP_NONE, DIFF_FILTER_DAMP_VAN_DRIEST, DIFF_FILTER_DAMP_MMS };
 #ifndef CEED_RUNNING_JIT_PASS

@@ -2,10 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed.h>
 #include <petsc-ceed.h>
+
 #include <petscdm.h>
 #include <petscmat.h>
+
+#include <ceed.h>
 
 #define MATCEED "ceed"
 

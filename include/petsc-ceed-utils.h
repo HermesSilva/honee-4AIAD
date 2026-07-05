@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed.h>
 #include <petsc-ceed.h>
+
 #include <petscdm.h>
+
+#include <ceed.h>
 
 /**
   @brief Copy the reference to a `Vec`.
@@ -277,10 +279,15 @@ static inline CeedElemTopology PolytopeTypePetscToCeed(DMPolytopeType cell_type)
 **/
 static inline PetscErrorCode DefaultMatTypeFromVecType(VecType vec_type, MatType *mat_type) {
   PetscFunctionBeginUser;
-  if (strstr(vec_type, VECCUDA)) *mat_type = MATAIJCUSPARSE;
-  else if (strstr(vec_type, VECHIP)) *mat_type = MATAIJHIPSPARSE;
-  else if (strstr(vec_type, VECKOKKOS)) *mat_type = MATAIJKOKKOS;
-  else *mat_type = MATAIJ;
+  if (strstr(vec_type, VECCUDA)) {
+    *mat_type = MATAIJCUSPARSE;
+  } else if (strstr(vec_type, VECHIP)) {
+    *mat_type = MATAIJHIPSPARSE;
+  } else if (strstr(vec_type, VECKOKKOS)) {
+    *mat_type = MATAIJKOKKOS;
+  } else {
+    *mat_type = MATAIJ;
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -304,9 +311,13 @@ static inline PetscErrorCode MatGetMemTypeFromVecType(Mat mat, PetscMemType *mem
     VecType vec_type;
 
     PetscCall(MatGetVecType(mat, &vec_type));
-    if (strstr(vec_type, VECCUDA)) *mem_type = PETSC_MEMTYPE_CUDA;
-    else if (strstr(vec_type, VECHIP)) *mem_type = PETSC_MEMTYPE_HIP;
-    else if (strstr(vec_type, VECKOKKOS)) *mem_type = PETSC_MEMTYPE_KOKKOS;
+    if (strstr(vec_type, VECCUDA)) {
+      *mem_type = PETSC_MEMTYPE_CUDA;
+    } else if (strstr(vec_type, VECHIP)) {
+      *mem_type = PETSC_MEMTYPE_HIP;
+    } else if (strstr(vec_type, VECKOKKOS)) {
+      *mem_type = PETSC_MEMTYPE_KOKKOS;
+    }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

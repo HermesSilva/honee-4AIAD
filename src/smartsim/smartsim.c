@@ -2,9 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 // Based on the instructions from https://www.craylabs.org/docs/sr_integration.html and PHASTA implementation
 
-#include <smartsim-impl.h>
-
 #include <navierstokes.h>
+
+#include <smartsim-impl.h>
 
 #define SMARTSIM_KEY "SmartSimData"
 
@@ -102,7 +102,7 @@ PetscErrorCode SmartRedisVerifyPutTensor(void *c_client, const char *name, const
   PetscFunctionBeginUser;
   PetscCall(PetscLogEventBegin(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscCallSmartRedis(tensor_exists(c_client, name, name_length, &does_exist));
-  PetscCheck(does_exist, PETSC_COMM_SELF, -1, "Tensor of name '%s' was not written to the database successfully", name);
+  PetscCheck(does_exist, PETSC_COMM_SELF, PETSC_ERR_LIB, "Tensor of name '%s' was not written to the database successfully", name);
   PetscCall(PetscLogEventEnd(HONEE_SmartRedis_Meta, 0, 0, 0, 0));
   PetscFunctionReturn(PETSC_SUCCESS);
 }

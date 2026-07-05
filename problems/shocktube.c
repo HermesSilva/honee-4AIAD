@@ -6,10 +6,11 @@
 
 #include "../qfunctions/shocktube.h"
 
-#include <ceed.h>
+#include <navierstokes.h>
+
 #include <petscdm.h>
 
-#include <navierstokes.h>
+#include <ceed.h>
 
 static PetscErrorCode PRINT_SHOCKTUBE(Honee honee, ProblemData problem, AppCtx app_ctx) {
   MPI_Comm comm = honee->comm;

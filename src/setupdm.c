@@ -4,12 +4,13 @@
 /// @file
 /// Setup DM for HONEE
 
-#include <ceed.h>
+#include "../problems/stg_shur14.h"
+#include <navierstokes.h>
+
 #include <petscdmplex.h>
 #include <petscds.h>
 
-#include <navierstokes.h>
-#include "../problems/stg_shur14.h"
+#include <ceed.h>
 
 // Create mesh
 PetscErrorCode CreateDM(Honee honee, ProblemData problem, MatType mat_type, VecType vec_type, DM *dm) {
@@ -141,8 +142,9 @@ PetscErrorCode VizRefineDM(DM dm, Honee honee, ProblemData problem, Physics phys
     PetscCall(DMSetVecType(dm_hierarchy[i + 1], vec_type));
     PetscCall(SetUpDM(dm_hierarchy[i + 1], problem, d, q_order, phys));
     PetscCall(DMCreateInterpolation(dm_hierarchy[i], dm_hierarchy[i + 1], &interp_next, NULL));
-    if (!i) honee->interp_viz = interp_next;
-    else {
+    if (!i) {
+      honee->interp_viz = interp_next;
+    } else {
       Mat C;
       PetscCall(MatMatMult(interp_next, honee->interp_viz, MAT_INITIAL_MATRIX, PETSC_DECIDE, &C));
       PetscCall(MatDestroy(&interp_next));

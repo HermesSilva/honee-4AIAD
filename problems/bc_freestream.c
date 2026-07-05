@@ -6,11 +6,12 @@
 
 #include "../qfunctions/bc_freestream.h"
 
-#include <ceed.h>
+#include "../qfunctions/newtonian_types.h"
+#include <navierstokes.h>
+
 #include <petscdm.h>
 
-#include <navierstokes.h>
-#include "../qfunctions/newtonian_types.h"
+#include <ceed.h>
 
 static const char *const RiemannSolverTypes[] = {"HLL", "HLLC", "RiemannSolverTypes", "RIEMANN_", NULL};
 
@@ -158,8 +159,8 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   // -- Set freestream_ctx struct values
   PetscCall(PetscNew(&freestream_ctx));
   *freestream_ctx = (struct FreestreamContext_){
-      .newt_ctx = *newtonian_ig_ctx,
-      .S_infty  = S_infty,
+    .newt_ctx = *newtonian_ig_ctx,
+    .S_infty  = S_infty,
   };
   PetscCallCeed(ceed, CeedQFunctionContextCreate(honee->ceed, &freestream_qfctx));
   PetscCallCeed(ceed, CeedQFunctionContextSetData(freestream_qfctx, CEED_MEM_HOST, CEED_USE_POINTER, sizeof(*freestream_ctx), freestream_ctx));
@@ -168,11 +169,11 @@ PetscErrorCode BCDefinitionNaturalSetup_Freestream(BCDefinition bc_def, void *ct
   PetscCall(PetscNew(&freestream_honee_bc));
   freestream_honee_bc->flux_type = flux_type;
   *honee_bc                      = (struct HoneeBCStruct_){
-      .ctx                = freestream_honee_bc,
-      .DestroyCtx         = PetscCtxDestroyDefault,
-      .honee              = honee,
-      .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
-      .qfctx              = freestream_qfctx,
+    .ctx                = freestream_honee_bc,
+    .DestroyCtx         = PetscCtxDestroyDefault,
+    .honee              = honee,
+    .num_comps_jac_data = honee->phys->implicit ? 5 : 0,
+    .qfctx              = freestream_qfctx,
   };
 
   PetscCall(BCDefinitionSetIFunction(bc_def, FreestreamBCSetup_CreateIFunctionQF, HoneeBCAddIFunctionOp));
@@ -419,10 +420,12 @@ static PetscErrorCode TestComputeHLLSpeeds_Roe_fwd(MPI_Comm comm, NewtonianIGPro
 
       ds_left_err  = RelativeError(ds_left_fd, ds_left, ds_left_fd, divisor_threshold);
       ds_right_err = RelativeError(ds_right_fd, ds_right, ds_right_fd, divisor_threshold);
-      if (fabs(ds_left_err) >= rtol)
+      if (fabs(ds_left_err) >= rtol) {
         PetscCall(PetscPrintf(comm, "%s ds_left error %g (expected %.10e, got %.10e)\n", buf, ds_left_err, ds_left_fd, ds_left));
-      if (fabs(ds_right_err) >= rtol)
+      }
+      if (fabs(ds_right_err) >= rtol) {
         PetscCall(PetscPrintf(comm, "%s ds_right error %g (expected %.10e, got %.10e)\n", buf, ds_right_err, ds_right_fd, ds_right));
+      }
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);
@@ -509,10 +512,12 @@ static PetscErrorCode TestRowSetup_fwd(MPI_Comm comm, NewtonianIGProperties gas,
 
       dR_err.left  = RelativeError(dR_fd.left, dR.left, dR_fd.left, divisor_threshold);
       dR_err.right = RelativeError(dR_fd.right, dR.right, dR_fd.right, divisor_threshold);
-      if (fabs(dR_err.left) >= rtol)
+      if (fabs(dR_err.left) >= rtol) {
         PetscCall(PetscPrintf(comm, "%s dR.left error %g (expected %.10e, got %.10e)\n", buf, dR_err.left, dR_fd.left, dR.left));
-      if (fabs(dR_err.right) >= rtol)
+      }
+      if (fabs(dR_err.right) >= rtol) {
         PetscCall(PetscPrintf(comm, "%s dR.right error %g (expected %.10e, got %.10e)\n", buf, dR_err.right, dR_fd.right, dR.right));
+      }
     }
   }
   PetscFunctionReturn(PETSC_SUCCESS);

@@ -3,11 +3,11 @@
 
 /// @file
 /// Operator for HONEE
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 #define BLASIUS_MAX_N_CHEBYSHEV 50
 
@@ -34,10 +34,10 @@ CEED_QFUNCTION_HELPER void ChebyshevEval(int N, const double *Tf, double x, doub
   double dX_deta = 2 / eta_max;
   // Chebyshev polynomials T_0, T_1, T_2 of the first kind in (-1,1)
   double table[4][3] = {
-      {1, x, 2 * x * x - 1},
-      {0, 1, 4 * x        },
-      {0, 0, 4            },
-      {0, 0, 0            }
+    {1, x, 2 * x * x - 1},
+    {0, 1, 4 * x        },
+    {0, 0, 4            },
+    {0, 0, 0            }
   };
   for (int i = 0; i < 4; i++) {
     // i-th derivative of f
@@ -160,9 +160,9 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     FluxInviscid(gas, s, Flux_inviscid);
 
     const CeedScalar stress[3][3] = {
-        {0,   t12, 0},
-        {t12, 0,   0},
-        {0,   0,   0}
+      {0,   t12, 0},
+      {t12, 0,   0},
+      {0,   0,   0}
     };
     const CeedScalar Fe[3] = {0};  // TODO: viscous energy flux needs grad temperature
     CeedScalar       Flux[5];
@@ -170,8 +170,9 @@ CEED_QFUNCTION(Blasius_Inflow)(void *ctx, CeedInt Q, const CeedScalar *const *in
     for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJb * Flux[j];
 
     // if called from RHS function (explicit) negate for PETSc/libCEED convention
-    if (!is_implicit)
+    if (!is_implicit) {
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1.;
+    }
   }
   return 0;
 }

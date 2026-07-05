@@ -1,12 +1,13 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
-#include <navierstokes.h>
-
-#include <dm-utils.h>
-#include <petscsection.h>
 #include "../qfunctions/setupgeo.h"
 #include "../qfunctions/setupgeo2d.h"
+#include <navierstokes.h>
+
+#include <petscsection.h>
+
+#include <dm-utils.h>
 
 static CeedVector          *q_data_vecs;
 static CeedElemRestriction *q_data_restrictions;
@@ -42,7 +43,7 @@ static PetscErrorCode QDataGetStored(CeedVector q_data_created, CeedElemRestrict
     PetscCallCeed(ceed, CeedVectorCopy(q_data_vecs[i], difference_cvec));
     PetscCallCeed(ceed, CeedVectorAXPY(difference_cvec, -1, q_data_created));
     PetscCallCeed(ceed, CeedVectorNorm(difference_cvec, CEED_NORM_MAX, &max_difference));
-    //TODO Need to reduce across ranks to ensure all ranks are consistent (not a race condition though since the data is purely local)
+    // TODO Need to reduce across ranks to ensure all ranks are consistent (not a race condition though since the data is purely local)
     PetscCallCeed(ceed, CeedVectorDestroy(&difference_cvec));
     if (max_difference < 100 * CEED_EPSILON) {
       q_data_stored_index = i;

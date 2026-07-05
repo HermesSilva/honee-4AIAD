@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed.h>
 #include <petsc/private/petscimpl.h>
 #include <petscdm.h>
+
+#include <ceed.h>
 
 typedef struct _p_BCDefinition *BCDefinition;
 

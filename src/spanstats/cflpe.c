@@ -4,15 +4,17 @@
 /// Functions for setting up and performing spanwise-statistics collection of CFL and Peclet number
 
 #include "../qfunctions/spanstats/cflpe.h"
+
 #include "../qfunctions/advection_types.h"
-
-#include <ceed.h>
-#include <petscdmplex.h>
-#include <petscsf.h>
-#include <spanstats.h>
-
 #include <navierstokes.h>
 #include <petsc_ops.h>
+
+#include <petscdmplex.h>
+#include <petscsf.h>
+
+#include <ceed.h>
+
+#include <spanstats.h>
 
 // @brief Create CeedOperator for statistics collection
 static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data, ProblemData problem) {

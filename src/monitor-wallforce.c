@@ -4,9 +4,9 @@
 /// @file
 /// Monitor wall forces
 
+#include "../qfunctions/newtonian_state.h"
 #include <honee.h>
 #include <navierstokes.h>
-#include "../qfunctions/newtonian_state.h"
 
 typedef struct {
   PetscInt     num_walls;
@@ -143,8 +143,9 @@ PetscErrorCode TSMonitor_WallForce(TS ts, PetscInt step_no, PetscReal time, Vec 
   PetscCall(TSGetApplicationContext(ts, &honee));
   PetscCall(DMGetNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
   PetscCall(HoneeGetContainer(honee, CALCWALLFORCE_KEY, &wallforce));
-  if (wallforce->num_walls <= 0)
+  if (wallforce->num_walls <= 0) {
     PetscCall(PetscPrintf(PetscObjectComm((PetscObject)ts), "WARNING: Wall forces requested, but no boundaries are labeled as wall."));
+  }
   PetscCall(ComputeSurfaceForces(honee->dm, G_loc, wallforce->num_walls, wallforce->walls, wallforce->reaction_forces));
   PetscCall(DMRestoreNamedLocalVector(honee->dm, "ResidualLocal", &G_loc));
 

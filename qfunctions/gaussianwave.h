@@ -3,10 +3,10 @@
 
 /// @file
 /// Thermodynamic wave propogation for testing freestream/non-reflecting boundary conditions. Proposed in Mengaldo et. al. 2014
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 typedef struct GaussianWaveContext_ *GaussianWaveContext;
 struct GaussianWaveContext_ {

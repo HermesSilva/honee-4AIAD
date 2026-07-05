@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 #include "../qfunctions/honee-wall-distance.h"
+
 #include <honee.h>
 #include <navierstokes.h>
 
@@ -62,10 +63,11 @@ PetscErrorCode HoneeWallDistanceSetup(Honee honee, PetscInt num_label_values, co
     for (PetscInt p = 0; p < walldist_ctx->num_p_values; p++) {
       PetscCheck(walldist_ctx->p_values[p] >= 2, PetscObjectComm((PetscObject)honee), PETSC_ERR_USER_INPUT,
                  "p-Laplacian value should be greater or equal to two, received %g", walldist_ctx->p_values[p]);
-      if (p != 0)
+      if (p != 0) {
         PetscCheck(walldist_ctx->p_values[p] > walldist_ctx->p_values[p - 1], PetscObjectComm((PetscObject)honee), PETSC_ERR_USER_INPUT,
                    "Sequence of p-Laplacian values should be strictly increasing, received %g followed by %g", walldist_ctx->p_values[p - 1],
                    walldist_ctx->p_values[p]);
+      }
     }
   }
   PetscOptionsEnd();
@@ -472,10 +474,12 @@ PetscErrorCode HoneeWallDistanceViewProjectedField(Honee honee, PetscBool error_
 
   PetscFunctionBeginUser;
   PetscCall(HoneeHasContainer(honee, WALLDIST_KEY, &has_walldist));
-  if (!has_walldist && error_if_not_setup)
+  if (!has_walldist && error_if_not_setup) {
     SETERRQ(PetscObjectComm((PetscObject)honee), PETSC_ERR_ARG_WRONGSTATE,
             "Wall distance context has not been setup, so cannot view the projected wall distance field.");
-  else if (!has_walldist) PetscFunctionReturn(PETSC_SUCCESS);
+  } else if (!has_walldist) {
+    PetscFunctionReturn(PETSC_SUCCESS);
+  }
   PetscCall(PetscOptionsHasName(NULL, NULL, "-" WALLDIST_PREFIX "projection_view", &has_projection_view_option));
   if (!has_projection_view_option) PetscFunctionReturn(PETSC_SUCCESS);
 

@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: Copyright (c) 2017-2024, HONEE contributors.
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
-#include <ceed.h>
 #include <honee.h>
 #include <petsc_ops.h>
+
 #include <petscsys.h>
+
+#include <ceed.h>
 
 typedef struct {
   DM                    dm;

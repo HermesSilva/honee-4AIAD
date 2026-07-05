@@ -4,11 +4,13 @@
 /// @file
 /// Setup libCEED Operators for HONEE
 
-#include <ceed.h>
-#include <petscdmplex.h>
-#include <smartsim.h>
-
 #include <navierstokes.h>
+
+#include <petscdmplex.h>
+
+#include <ceed.h>
+
+#include <smartsim.h>
 
 // @brief Create CeedOperator for unstabilized mass KSP for explicit timestepping
 static PetscErrorCode CreateKSPMassOperator_Unstabilized(Honee honee, CeedOperator *op_mass) {
@@ -57,8 +59,11 @@ static PetscErrorCode CreateKSPMass(Honee honee, ProblemData problem) {
   CeedOperator op_mass;
 
   PetscFunctionBeginUser;
-  if (problem->create_mass_operator) PetscCall(problem->create_mass_operator(honee, &op_mass));
-  else PetscCall(CreateKSPMassOperator_Unstabilized(honee, &op_mass));
+  if (problem->create_mass_operator) {
+    PetscCall(problem->create_mass_operator(honee, &op_mass));
+  } else {
+    PetscCall(CreateKSPMassOperator_Unstabilized(honee, &op_mass));
+  }
 
   {  // -- Setup KSP for mass operator
     Mat      mat_mass;
@@ -181,8 +186,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "Grad_q", num_comp_q * dim, CEED_EVAL_GRAD));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "x", num_comp_x, CEED_EVAL_INTERP));
-    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
       PetscCallCeed(ceed, CeedQFunctionAddInput(qf_rhs_vol, "div F_diff", honee->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
+    }
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_rhs_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
 
@@ -191,8 +197,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_q", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "x", elem_restr_x, basis_x, x_coord));
-    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
       PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "div F_diff", elem_restr_diff_flux, basis_diff_flux, div_diff_flux_ceed));
+    }
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_rhs_vol, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
 
@@ -211,8 +218,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "q dot", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "qdata", q_data_size_vol, CEED_EVAL_NONE));
     PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "x", num_comp_x, CEED_EVAL_INTERP));
-    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
       PetscCallCeed(ceed, CeedQFunctionAddInput(qf_ifunction_vol, "div F_diff", honee->diff_flux_proj->num_diff_flux_comps, eval_mode_diff_flux));
+    }
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "v", num_comp_q, CEED_EVAL_INTERP));
     PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "Grad_v", num_comp_q * dim, CEED_EVAL_GRAD));
     if (num_comps_jac_data) PetscCallCeed(ceed, CeedQFunctionAddOutput(qf_ifunction_vol, "jac_data", num_comps_jac_data, CEED_EVAL_NONE));
@@ -224,8 +232,9 @@ PetscErrorCode SetupLibceed(Ceed ceed, DM dm, Honee honee, AppCtx app_ctx, Probl
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "q dot", elem_restr_q, basis_q, honee->q_dot_ceed));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "x", elem_restr_x, basis_x, x_coord));
-    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE)
+    if (app_ctx->divFdiffproj_method != DIV_DIFF_FLUX_PROJ_NONE) {
       PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "div F_diff", elem_restr_diff_flux, basis_diff_flux, div_diff_flux_ceed));
+    }
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "Grad_v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
     if (num_comps_jac_data) PetscCallCeed(ceed, CeedOperatorSetField(op_ifunction_vol, "jac_data", elem_restr_jd_i, CEED_BASIS_NONE, jac_data));

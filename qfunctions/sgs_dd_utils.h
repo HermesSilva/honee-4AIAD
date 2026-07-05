@@ -7,12 +7,12 @@
 /// correction models for data-informed Reynolds stress closure' 2022
 #pragma once
 
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "utils.h"
 #include "utils_eigensolver_jacobi.h"
+
+#include <ceed/types.h>
 
 // @brief Calculate Frobenius norm of velocity gradient from eigenframe quantities
 CEED_QFUNCTION_HELPER CeedScalar VelocityGradientMagnitude(const CeedScalar strain_sframe[3], const CeedScalar vorticity_sframe[3]) {
@@ -115,9 +115,9 @@ CEED_QFUNCTION_HELPER void ComputeSgsDDOutputs(CeedScalar outputs[6], const Ceed
   {  // Rotate SGS Stress back to physical frame, SGS_physical = E^T SGS_sframe E
     CeedScalar       Evec_sgs[3][3]   = {{0.}};
     const CeedScalar sgs_sframe[3][3] = {
-        {outputs[0], outputs[3], outputs[4]},
-        {outputs[3], outputs[1], outputs[5]},
-        {outputs[4], outputs[5], outputs[2]},
+      {outputs[0], outputs[3], outputs[4]},
+      {outputs[3], outputs[1], outputs[5]},
+      {outputs[4], outputs[5], outputs[2]},
     };
     MatMat3(eigenvectors, sgs_sframe, CEED_TRANSPOSE, CEED_NOTRANSPOSE, Evec_sgs);
     MatMat3(Evec_sgs, eigenvectors, CEED_NOTRANSPOSE, CEED_NOTRANSPOSE, sgs_stress);

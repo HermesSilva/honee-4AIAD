@@ -29,8 +29,9 @@ typedef enum eSortCriteria {
 /// @returns   Index of absolute largest off-diagonal element in row i
 CEED_QFUNCTION_HELPER CeedInt MaxEntryRow(const CeedScalar *A, CeedInt N, CeedInt i) {
   CeedInt j_max = i + 1;
-  for (CeedInt j = i + 2; j < N; j++)
+  for (CeedInt j = i + 2; j < N; j++) {
     if (fabs(A[i * N + j]) > fabs(A[i * N + j_max])) j_max = j;
+  }
   return j_max;
 }
 
@@ -168,8 +169,11 @@ CEED_QFUNCTION_HELPER void ApplyRot(CeedScalar *A, CeedInt N, CeedInt i, CeedInt
   for (CeedInt w = 0; w < i; w++) {                                              // 0 <= w <  i  <  j < N
     A[i * N + w] = A[w * N + i];                                                 // backup the previous value. store below diagonal (i>w)
     A[w * N + i] = rotmat_cst[0] * A[w * N + i] - rotmat_cst[1] * A[w * N + j];  // A[w][i], A[w][j] from previous iteration
-    if (i == max_idx_row[w]) max_idx_row[w] = MaxEntryRow(A, N, w);
-    else if (fabs(A[w * N + i]) > fabs(A[w * N + max_idx_row[w]])) max_idx_row[w] = i;
+    if (i == max_idx_row[w]) {
+      max_idx_row[w] = MaxEntryRow(A, N, w);
+    } else if (fabs(A[w * N + i]) > fabs(A[w * N + max_idx_row[w]])) {
+      max_idx_row[w] = i;
+    }
   }
   for (CeedInt w = i + 1; w < j; w++) {                                          // 0 <= i <  w  <  j < N
     A[w * N + i] = A[i * N + w];                                                 // backup the previous value. store below diagonal (w>i)
@@ -186,13 +190,19 @@ CEED_QFUNCTION_HELPER void ApplyRot(CeedScalar *A, CeedInt N, CeedInt i, CeedInt
   // compute A[w][j] and A[j][w] for all w!=j,considering above-diagonal elements
   for (CeedInt w = 0; w < i; w++) {                                              // 0 <=  w  <  i <  j < N
     A[w * N + j] = rotmat_cst[1] * A[i * N + w] + rotmat_cst[0] * A[w * N + j];  // A[i][w], A[w][j] from previous iteration
-    if (j == max_idx_row[w]) max_idx_row[w] = MaxEntryRow(A, N, w);
-    else if (fabs(A[w * N + j]) > fabs(A[w * N + max_idx_row[w]])) max_idx_row[w] = j;
+    if (j == max_idx_row[w]) {
+      max_idx_row[w] = MaxEntryRow(A, N, w);
+    } else if (fabs(A[w * N + j]) > fabs(A[w * N + max_idx_row[w]])) {
+      max_idx_row[w] = j;
+    }
   }
   for (CeedInt w = i + 1; w < j; w++) {                                          // 0 <= i+1 <= w <  j < N
     A[w * N + j] = rotmat_cst[1] * A[w * N + i] + rotmat_cst[0] * A[w * N + j];  // A[w][i], A[w][j] from previous iteration
-    if (j == max_idx_row[w]) max_idx_row[w] = MaxEntryRow(A, N, w);
-    else if (fabs(A[w * N + j]) > fabs(A[w * N + max_idx_row[w]])) max_idx_row[w] = j;
+    if (j == max_idx_row[w]) {
+      max_idx_row[w] = MaxEntryRow(A, N, w);
+    } else if (fabs(A[w * N + j]) > fabs(A[w * N + max_idx_row[w]])) {
+      max_idx_row[w] = j;
+    }
   }
   for (CeedInt w = j + 1; w < N; w++) {                                          // 0 <=  i  <  j <  w < N
     A[j * N + w] = rotmat_cst[1] * A[w * N + i] + rotmat_cst[0] * A[j * N + w];  // A[w][i], A[j][w] from previous iteration
@@ -278,9 +288,11 @@ CEED_QFUNCTION_HELPER CeedInt Diagonalize(CeedScalar *A, CeedInt N, CeedScalar *
                                           SortCriteria sort_criteria, bool calc_evec, const CeedInt max_num_sweeps) {
   CeedScalar rotmat_cst[3] = {0.};  // cos(θ), sin(θ), and tan(θ),
 
-  if (calc_evec)
-    for (CeedInt i = 0; i < N; i++)
+  if (calc_evec) {
+    for (CeedInt i = 0; i < N; i++) {
       for (CeedInt j = 0; j < N; j++) evec[i * N + j] = (i == j) ? 1.0 : 0.0;  // Set evec equal to the identity matrix
+    }
+  }
 
   for (CeedInt i = 0; i < N - 1; i++) max_idx_row[i] = MaxEntryRow(A, N, i);
 
@@ -309,8 +321,9 @@ CEED_QFUNCTION_HELPER CeedInt Diagonalize(CeedScalar *A, CeedInt N, CeedScalar *
   // Optional: Sort results by eigenvalue.
   SortRows(eval, evec, N, sort_criteria);
 
-  if ((n_iters > max_num_iters) && (N > 1))  // If we exceeded max_num_iters,
-    return 0;                                // indicate an error occured.
+  if ((n_iters > max_num_iters) && (N > 1)) {  // If we exceeded max_num_iters,
+    return 0;                                  // indicate an error occured.
+  }
 
   return n_iters;
 }

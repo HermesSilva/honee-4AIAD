@@ -5,9 +5,9 @@
 
 #include "../qfunctions/diff_flux_projection.h"
 
-#include <petscdmplex.h>
-
 #include <navierstokes.h>
+
+#include <petscdmplex.h>
 
 const char *const DivDiffFluxProjectionMethods[] = {"NONE", "DIRECT", "INDIRECT", "DivDiffFluxProjectionMethod", "DIV_DIFF_FLUX_PROJ_", NULL};
 
@@ -33,9 +33,9 @@ PetscErrorCode DivDiffFluxProjectionCreate(Honee honee, DivDiffFluxProjectionMet
   PetscCall(PetscNew(&projection));
   PetscCall(PetscNew(&diff_flux_proj_));
   *diff_flux_proj_ = (struct DivDiffFluxProjectionData_){
-      .method              = divFdiffproj_method,
-      .num_diff_flux_comps = num_diff_flux_comps,
-      .projection          = projection,
+    .method              = divFdiffproj_method,
+    .num_diff_flux_comps = num_diff_flux_comps,
+    .projection          = projection,
   };
 
   PetscCall(DMClone(honee->dm, &projection->dm));
@@ -375,8 +375,11 @@ PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_pr
         PetscCall(KSPGetPC(projection->ksp, &pc));
         PetscCall(PetscObjectTypeCompare((PetscObject)projection->ksp, KSPPREONLY, &ispreonly));
         PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCJACOBI, &isjacobi));
-        if (ispreonly && isjacobi) PetscCall(PCApply(pc, RHS, DivDiffFlux));
-        else PetscCall(KSPSolve(projection->ksp, RHS, DivDiffFlux));
+        if (ispreonly && isjacobi) {
+          PetscCall(PCApply(pc, RHS, DivDiffFlux));
+        } else {
+          PetscCall(KSPSolve(projection->ksp, RHS, DivDiffFlux));
+        }
       }
       PetscCall(VecViewFromOptions(DivDiffFlux, NULL, "-div_diff_flux_projection_view"));
 
@@ -405,8 +408,11 @@ PetscErrorCode DivDiffFluxProjectionApply(DivDiffFluxProjectionData diff_flux_pr
         PetscCall(KSPGetPC(projection->ksp, &pc));
         PetscCall(PetscObjectTypeCompare((PetscObject)projection->ksp, KSPPREONLY, &ispreonly));
         PetscCall(PetscObjectTypeCompare((PetscObject)pc, PCJACOBI, &isjacobi));
-        if (ispreonly && isjacobi) PetscCall(PCApply(pc, RHS, DiffFlux));
-        else PetscCall(KSPSolve(projection->ksp, RHS, DiffFlux));
+        if (ispreonly && isjacobi) {
+          PetscCall(PCApply(pc, RHS, DiffFlux));
+        } else {
+          PetscCall(KSPSolve(projection->ksp, RHS, DiffFlux));
+        }
       }
       PetscCall(VecViewFromOptions(DiffFlux, NULL, "-div_diff_flux_projection_view"));
 

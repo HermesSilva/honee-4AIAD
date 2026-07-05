@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed.h>
 #include <honee.h>
 #include <petsc_ops.h>
+
+#include <ceed.h>
 
 typedef struct {
   DM                    dm_filter;

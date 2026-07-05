@@ -7,14 +7,16 @@
 
 #include "stg_shur14.h"
 
+#include "../qfunctions/stg_shur14.h"
+#include <navierstokes.h>
+
+#include <petscdm.h>
+
 #include <ceed.h>
 #include <ceed/backend.h>
-#include <math.h>
-#include <petscdm.h>
-#include <stdlib.h>
 
-#include <navierstokes.h>
-#include "../qfunctions/stg_shur14.h"
+#include <math.h>
+#include <stdlib.h>
 
 StgShur14Context global_stg_ctx;
 
@@ -282,15 +284,15 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
 
   PetscCall(PetscNew(&global_stg_ctx));
   *global_stg_ctx = (struct STGShur14Context_){
-      .alpha              = alpha,
-      .u0                 = u0,
-      .is_implicit        = honee->phys->implicit,
-      .prescribe_T        = prescribe_T,
-      .mean_only          = mean_only,
-      .use_fluctuating_IC = use_fluctuating_IC,
-      .theta0             = theta0,
-      .P0                 = P0,
-      .h_scale_factor     = stg_h_scale_factor,
+    .alpha              = alpha,
+    .u0                 = u0,
+    .is_implicit        = honee->phys->implicit,
+    .prescribe_T        = prescribe_T,
+    .mean_only          = mean_only,
+    .use_fluctuating_IC = use_fluctuating_IC,
+    .theta0             = theta0,
+    .P0                 = P0,
+    .h_scale_factor     = stg_h_scale_factor,
   };
 
   if (!use_stgstrong) {  // Calculate dx assuming constant spacing

@@ -4,11 +4,14 @@
 /// @file
 /// Utilities for setting up DM and PetscFE
 
-#include <ceed.h>
-#include <dm-utils.h>
 #include <petsc-ceed-utils.h>
+
 #include <petscdmplex.h>
 #include <petscds.h>
+
+#include <ceed.h>
+
+#include <dm-utils.h>
 
 /**
   @brief Convert `DM` field to `DS` field.
@@ -1190,8 +1193,11 @@ static PetscErrorCode DMGetStratumISAtHeight(DM dm, const char name[], PetscInt 
   PetscCall(DMPlexGetDepthLabel(dm, &depth_label));
   PetscCall(DMLabelGetStratumIS(depth_label, depth - height, &depth_is));
   PetscCall(DMGetStratumIS(dm, name, value, &label_is));
-  if (label_is == NULL || depth_is == NULL) *points = NULL;
-  else PetscCall(ISIntersect(depth_is, label_is, points));
+  if (label_is == NULL || depth_is == NULL) {
+    *points = NULL;
+  } else {
+    PetscCall(ISIntersect(depth_is, label_is, points));
+  }
   PetscCall(ISDestroy(&depth_is));
   PetscCall(ISDestroy(&label_is));
   PetscFunctionReturn(PETSC_SUCCESS);

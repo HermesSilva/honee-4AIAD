@@ -5,13 +5,15 @@
 
 #include "../../qfunctions/spanstats/turbulence.h"
 
-#include <ceed.h>
-#include <petscdmplex.h>
-#include <petscsf.h>
-#include <spanstats.h>
-
 #include <navierstokes.h>
 #include <petsc_ops.h>
+
+#include <petscdmplex.h>
+#include <petscsf.h>
+
+#include <ceed.h>
+
+#include <spanstats.h>
 
 // @brief Create CeedOperator for statistics collection
 static PetscErrorCode CreateStatisticCollectionOperator(Honee honee, SpanStatsCtx spanstats, SpanStatsSetupData stats_data, ProblemData problem) {

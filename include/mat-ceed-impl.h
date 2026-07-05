@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed.h>
 #include <petsc-ceed.h>
+
 #include <petsc/private/petscimpl.h>
 #include <petscdm.h>
 #include <petscmat.h>
+
+#include <ceed.h>
 
 // MatCeed context for applying composite CeedOperator on a DM
 typedef struct MatCeedContext_private *MatCeedContext;

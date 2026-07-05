@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed.h>
 #include <petscdm.h>
 #include <petscksp.h>
+
+#include <ceed.h>
 
 typedef struct OperatorApplyContext_ *OperatorApplyContext;
 struct OperatorApplyContext_ {

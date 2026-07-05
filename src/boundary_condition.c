@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 
 #include <navierstokes.h>
-#include "petscerror.h"
 
 /**
    @brief Add `BCDefinition` to a `PetscSegBuffer`
@@ -202,8 +201,9 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     PetscCall(PetscSegBufferExtractAlloc(bc_defs_seg, &problem->bc_defs));
     PetscCall(PetscSegBufferDestroy(&bc_defs_seg));
 
-    if (problem->num_bc_defs)
+    if (problem->num_bc_defs) {
       PetscCall(PetscPrintf(comm, "WARNING: Legacy style of setting boundary conditions is deprecated and will be removed in the future"));
+    }
 
     // TEMPORARY before major BC refactoring.
     // In future, each natural BC (including example BCs) will have it's own name independent from the bc_def->name.
@@ -389,8 +389,9 @@ PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, 
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ifunc_, "surface qdata", elem_restr_qd, CEED_BASIS_NONE, q_data));
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ifunc_, "x", elem_restr_x, basis_x, x_coord));
   PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ifunc_, "v", elem_restr_q, basis_q, CEED_VECTOR_ACTIVE));
-  if (num_comps_jac_data > 0)
+  if (num_comps_jac_data > 0) {
     PetscCallCeed(ceed, CeedOperatorSetField(sub_op_ifunc_, "surface jacobian data", elem_restr_jac, CEED_BASIS_NONE, jac_data));
+  }
 
   PetscCallCeed(ceed, CeedOperatorCompositeAddSub(op_ifunc, sub_op_ifunc_));
   *sub_op_ifunc = sub_op_ifunc_;

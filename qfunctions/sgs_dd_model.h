@@ -5,13 +5,13 @@
 /// Structs and helper functions to evaluate data-driven subgrid-stress modeling
 /// See 'Invariant data-driven subgrid stress modeling in the strain-rate eigenframe for large eddy simulation' 2022 and 'S-frame discrepancy
 /// correction models for data-informed Reynolds stress closure' 2022
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "sgs_dd_utils.h"
 #include "utils.h"
 #include "utils_eigensolver_jacobi.h"
+
+#include <ceed/types.h>
 
 typedef struct SgsDDContext_ *SgsDDContext;
 struct SgsDDContext_ {
@@ -78,9 +78,9 @@ CEED_QFUNCTION_HELPER int ComputeSgsDDNodal_Fused(void *ctx, CeedInt Q, const Ce
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5]                 = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
     const CeedScalar grad_velo_aniso[3][3] = {
-        {grad_velo[0][0][i], grad_velo[0][1][i], grad_velo[0][2][i]},
-        {grad_velo[1][0][i], grad_velo[1][1][i], grad_velo[1][2][i]},
-        {grad_velo[2][0][i], grad_velo[2][1][i], grad_velo[2][2][i]}
+      {grad_velo[0][0][i], grad_velo[0][1][i], grad_velo[0][2][i]},
+      {grad_velo[1][0][i], grad_velo[1][1][i], grad_velo[1][2][i]},
+      {grad_velo[2][0][i], grad_velo[2][1][i], grad_velo[2][2][i]}
     };
     const CeedScalar km_A_ij[6] = {A_ij_delta[0][i], A_ij_delta[1][i], A_ij_delta[2][i], A_ij_delta[3][i], A_ij_delta[4][i], A_ij_delta[5][i]};
     const CeedScalar delta      = A_ij_delta[6][i];
@@ -122,9 +122,9 @@ CEED_QFUNCTION_HELPER int ComputeSgsDDNodal_Sequential_Inputs(void *ctx, CeedInt
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar qi[5]                 = {q[0][i], q[1][i], q[2][i], q[3][i], q[4][i]};
     const CeedScalar grad_velo_aniso[3][3] = {
-        {grad_velo[0][0][i], grad_velo[0][1][i], grad_velo[0][2][i]},
-        {grad_velo[1][0][i], grad_velo[1][1][i], grad_velo[1][2][i]},
-        {grad_velo[2][0][i], grad_velo[2][1][i], grad_velo[2][2][i]}
+      {grad_velo[0][0][i], grad_velo[0][1][i], grad_velo[0][2][i]},
+      {grad_velo[1][0][i], grad_velo[1][1][i], grad_velo[1][2][i]},
+      {grad_velo[2][0][i], grad_velo[2][1][i], grad_velo[2][2][i]}
     };
     const CeedScalar km_A_ij[6] = {A_ij_delta[0][i], A_ij_delta[1][i], A_ij_delta[2][i], A_ij_delta[3][i], A_ij_delta[4][i], A_ij_delta[5][i]};
     const CeedScalar delta      = A_ij_delta[6][i];

@@ -6,11 +6,12 @@
 
 #include "../qfunctions/advection.h"
 
-#include <ceed.h>
-#include <ceed/backend.h>
+#include <navierstokes.h>
+
 #include <petscdm.h>
 
-#include <navierstokes.h>
+#include <ceed.h>
+#include <ceed/backend.h>
 
 const char *const AdvDifWindTypes[] = {"ROTATION", "TRANSLATION", "BOUNDARY_LAYER", "WindType", "ADVDIF_WIND_", NULL};
 const char *const AdvDifICTypes[]   = {"SPHERE", "CYLINDER", "COSINE_HILL", "SKEW", "WAVE", "BOUNDARY_LAYER", "AdvectionICType", "ADVDIF_IC_", NULL};
@@ -159,8 +160,11 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Direct_AdvDif(Honee honee, 
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    if (honee->op_ifunction) PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_ifunction, &sub_ops));
-    else PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    if (honee->op_ifunction) {
+      PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_ifunction, &sub_ops));
+    } else {
+      PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    }
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &advection_qfctx));
   }
   PetscCallCeed(ceed, CeedOperatorCreateComposite(ceed, op_rhs));
@@ -326,8 +330,11 @@ static PetscErrorCode DivDiffFluxProjectionCreateRHS_Indirect_AdvDif(Honee honee
     CeedOperator *sub_ops;
     PetscInt      sub_op_index = 0;  // will be 0 for the volume op
 
-    if (honee->op_ifunction) PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_ifunction, &sub_ops));
-    else PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    if (honee->op_ifunction) {
+      PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_ifunction, &sub_ops));
+    } else {
+      PetscCallCeed(ceed, CeedOperatorCompositeGetSubList(honee->op_rhs_ctx->op, &sub_ops));
+    }
     PetscCallCeed(ceed, CeedOperatorGetContext(sub_ops[sub_op_index], &advection_qfctx));
   }
   PetscCall(DMPlexCeedElemRestrictionCreate(ceed, honee->dm, DMLABEL_DEFAULT, DMLABEL_DEFAULT_VALUE, PLEXHEIGHT_CELL, 0, &elem_restr_q));

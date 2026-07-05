@@ -4,10 +4,10 @@
 /// @file
 /// Element anisotropy tensor, as defined in 'Invariant data-driven subgrid stress modeling in the strain-rate eigenframe for large eddy simulation'
 /// Prakash et al. 2022
-#include <ceed/types.h>
-
 #include "utils.h"
 #include "utils_eigensolver_jacobi.h"
+
+#include <ceed/types.h>
 
 // @brief Get Anisotropy tensor from xi_{i,j}
 // @details A_ij = \Delta_{ij} / ||\Delta_ij||, \Delta_ij = (xi_{i,j})^(-1/2)
@@ -38,9 +38,9 @@ CEED_QFUNCTION(AnisotropyTensorProjection)(void *ctx, CeedInt Q, const CeedScala
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar wdetJ      = q_data[0][i];
     const CeedScalar dXdx[3][3] = {
-        {q_data[1][i], q_data[2][i], q_data[3][i]},
-        {q_data[4][i], q_data[5][i], q_data[6][i]},
-        {q_data[7][i], q_data[8][i], q_data[9][i]}
+      {q_data[1][i], q_data[2][i], q_data[3][i]},
+      {q_data[4][i], q_data[5][i], q_data[6][i]},
+      {q_data[7][i], q_data[8][i], q_data[9][i]}
     };
 
     CeedScalar km_g_ij[6] = {0.}, A_ij[3][3] = {{0.}}, km_A_ij[6], delta;
@@ -61,9 +61,9 @@ CEED_QFUNCTION(AnisotropyTensorCollocate)(void *ctx, CeedInt Q, const CeedScalar
 
   CeedPragmaSIMD for (CeedInt i = 0; i < Q; i++) {
     const CeedScalar dXdx[3][3] = {
-        {q_data[1][i], q_data[2][i], q_data[3][i]},
-        {q_data[4][i], q_data[5][i], q_data[6][i]},
-        {q_data[7][i], q_data[8][i], q_data[9][i]}
+      {q_data[1][i], q_data[2][i], q_data[3][i]},
+      {q_data[4][i], q_data[5][i], q_data[6][i]},
+      {q_data[7][i], q_data[8][i], q_data[9][i]}
     };
 
     CeedScalar km_g_ij[6] = {0.}, A_ij[3][3] = {{0.}}, km_A_ij[6], delta;

@@ -7,13 +7,15 @@
 /// "Child" refers to the 3D domain where statistics are gathered *from*.
 /// Each quadrature point on the parent plane has several children in the child domain that it performs spanwise averaging with.
 
-#include <ceed.h>
-#include <petscdmplex.h>
-#include <petscsf.h>
-#include <spanstats.h>
-
 #include <navierstokes.h>
 #include <petsc_ops.h>
+
+#include <petscdmplex.h>
+#include <petscsf.h>
+
+#include <ceed.h>
+
+#include <spanstats.h>
 
 PetscErrorCode SpanStatsCtxDestroy(SpanStatsCtx *spanstats) {
   SpanStatsCtx spanstats_ = *spanstats;
@@ -437,8 +439,9 @@ PetscErrorCode SpanwiseStatisticsProcess(Honee honee, SpanStatsCtx spanstats, Ve
   PetscCall(VecGetArrayRead(spanstats->Child_Stats_loc, &child_stats));
   PetscCall(VecGetArray(spanstats->Parent_Stats_loc, &parent_stats));
 
-  if (spanstats->num_comp_stats == 1) unit = MPIU_REAL;
-  else {
+  if (spanstats->num_comp_stats == 1) {
+    unit = MPIU_REAL;
+  } else {
     PetscCallMPI(MPI_Type_contiguous(spanstats->num_comp_stats, MPIU_REAL, &unit));
     PetscCallMPI(MPI_Type_commit(&unit));
   }

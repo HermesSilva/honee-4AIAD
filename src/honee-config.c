@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2017-2026, HONEE contributors.
+// SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
+
 #include <honee.h>
 
 const char *HoneeGitVersion         = HONEE_GIT_VERSION;

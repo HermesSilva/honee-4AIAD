@@ -5,9 +5,9 @@
 
 #include "../qfunctions/velocity_gradient_projection.h"
 
-#include <petscdmplex.h>
-
 #include <navierstokes.h>
+
+#include <petscdmplex.h>
 
 static PetscErrorCode VelocityGradientProjectionCreateDM(NodalProjectionData grad_velo_proj, Honee honee, PetscInt degree) {
   PetscSection section;

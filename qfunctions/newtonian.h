@@ -3,12 +3,12 @@
 
 /// @file
 /// Newtonian fluids operator for HONEE
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "stabilization.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 // *****************************************************************************
 // This QFunction sets a "still" initial condition for generic Newtonian IG problems
@@ -239,8 +239,9 @@ CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *co
     }
 
     CeedScalar divFdiff_i[5] = {0.};
-    if (use_divFdiff)
+    if (use_divFdiff) {
       for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
+    }
 
     // -- Stabilization method: none (Galerkin), SU, or SUPG
     CeedScalar Tau_d[3], stab[5][3], U_dot[5] = {0};
@@ -333,19 +334,22 @@ CEED_QFUNCTION_HELPER int IFunction_Newtonian(void *ctx, CeedInt Q, const CeedSc
     State grad_s[3];
     StatePhysicalGradientFromReference(Q, i, gas, s, state_var, grad_q, dXdx, grad_s);
     CeedScalar divFdiff_i[5] = {0.};
-    if (use_divFdiff)
+    if (use_divFdiff) {
       for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
+    }
 
     CeedScalar v_i[5] = {0.}, grad_v_i[5][3] = {{0.}}, kmstress[6], Tau_d[3], sigma = 0;
     IFunction_Newtonian_Integrand(s, grad_s, s_dot, divFdiff_i, x_i, gas, context, dXdx, v_i, grad_v_i, kmstress, Tau_d);
-    if (context->idl_enable)
+    if (context->idl_enable) {
       InternalDampingLayer_IFunction_Integrand(s, gas, context->idl_amplitude, context->idl_length, context->idl_start, x_i[0], context->idl_pressure,
                                                v_i, &sigma);
+    }
 
     for (CeedInt j = 0; j < 5; j++) v[j][i] = wdetJ * v_i[j];
     for (CeedInt j = 0; j < 5; j++) {
-      for (CeedInt k = 0; k < 3; k++)
+      for (CeedInt k = 0; k < 3; k++) {
         grad_v[k][j][i] = wdetJ * (grad_v_i[j][0] * dXdx[k][0] + grad_v_i[j][1] * dXdx[k][1] + grad_v_i[j][2] * dXdx[k][2]);
+      }
     }
 
     StoredValuesPack(Q, i, 0, 5, q_i, jac_data);
