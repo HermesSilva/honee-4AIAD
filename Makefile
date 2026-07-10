@@ -275,6 +275,9 @@ tidy     : tidy-c
 # Tidy-fix for hard to handle formatting fixes
 TIDY_FIX_OPTS   ?= --quiet --header-filter='$(abspath ./include)/.*' --config-file=.clang-tidy-fix --format-style=file --fix
 tidy-fix.h      := $(shell git ls-files '*.hpp' '*.h' 2> /dev/null)
+ifeq ($(SMARTREDIS_DIR),)
+  tidy-fix.h := $(filter-out include/smartsim-impl.h,$(tidy-fix.h))
+endif
 tidy-fix.c      := $(src.c)
 
 %.tidy-fix : %
