@@ -80,7 +80,7 @@ CEED_QFUNCTION_HELPER int RiemannOutflow(void *ctx, CeedInt Q, const CeedScalar 
     // Save values for Jacobian
     if (is_implicit) {
       StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
-      StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+      StoredValuesPack(Q, i, 5, 6, strain_rate, jac_data_sur);
     } else {  // if called from RHS function (explicit) negate for PETSc/libCEED convention
       for (CeedInt j = 0; j < 5; j++) v[j][i] *= -1;
     }
@@ -118,9 +118,10 @@ CEED_QFUNCTION_HELPER int RiemannOutflow_Jacobian(void *ctx, CeedInt Q, const Ce
     CeedScalar wdetJb, dXdx[2][3], normal[3];
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
 
-    CeedScalar qi[5], kmstress[6], dqi[5];
+    CeedScalar qi[5], kmstress[6], dqi[5], strain_rate[6];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
-    StoredValuesUnpack(Q, i, 5, 6, jac_data_sur, kmstress);
+    StoredValuesUnpack(Q, i, 5, 6, jac_data_sur, strain_rate);
+    NewtonianStress(gas, strain_rate, kmstress);
     for (int j = 0; j < 5; j++) dqi[j] = dq[j][i];
 
     State          s_int  = StateFromQ(gas, qi, state_var);
@@ -221,7 +222,7 @@ CEED_QFUNCTION_HELPER int PressureOutflow(void *ctx, CeedInt Q, const CeedScalar
     // Save values for Jacobian
     if (is_implicit) {
       StoredValuesPack(Q, i, 0, 5, qi, jac_data_sur);
-      StoredValuesPack(Q, i, 5, 6, kmstress, jac_data_sur);
+      StoredValuesPack(Q, i, 5, 6, strain_rate, jac_data_sur);
     }
   }
   return 0;
@@ -259,9 +260,10 @@ CEED_QFUNCTION_HELPER int PressureOutflow_Jacobian(void *ctx, CeedInt Q, const C
     QdataBoundaryUnpack_3D(Q, i, q_data_sur, &wdetJb, dXdx, normal);
     wdetJb *= is_implicit ? -1. : 1.;
 
-    CeedScalar qi[5], kmstress[6], dqi[5];
+    CeedScalar qi[5], kmstress[6], dqi[5], strain_rate[6];
     StoredValuesUnpack(Q, i, 0, 5, jac_data_sur, qi);
-    StoredValuesUnpack(Q, i, 5, 6, jac_data_sur, kmstress);
+    StoredValuesUnpack(Q, i, 5, 6, jac_data_sur, strain_rate);
+    NewtonianStress(gas, strain_rate, kmstress);
     for (int j = 0; j < 5; j++) dqi[j] = dq[j][i];
 
     State s       = StateFromQ(gas, qi, state_var);
