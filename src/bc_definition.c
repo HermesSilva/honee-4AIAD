@@ -31,6 +31,29 @@ static PetscErrorCode BCDefinitionNaturalSetup_None(BCDefinition bc_def, void *c
 }
 
 /**
+  @brief Insert explicitly prescribed essential values at a boundary point.
+
+  Only the components selected by the `BCDefinition` in `ctx` are modified.
+
+  @param[in]  dim              Coordinate dimension
+  @param[in]  time             Evaluation time
+  @param[in]  x                Physical coordinates, size `dim`
+  @param[in]  num_components   Number of solution components
+  @param[out] boundary_values  Boundary values, size `num_components`
+  @param[in]  ctx              `BCDefinition` containing the selected components and scaled values
+**/
+static PetscErrorCode BCDefinitionEssentialBoundaryFunction(PetscInt dim, PetscReal time, const PetscReal x[], PetscInt num_components,
+                                                            PetscScalar boundary_values[], void *ctx) {
+  BCDefinition bc_def = ctx;
+
+  PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 6);
+  PetscAssertPointer(boundary_values, 5);
+  for (PetscInt i = 0; i < bc_def->num_essential_comps; i++) boundary_values[bc_def->essential_comps[i]] = bc_def->essential_values_scaled[i];
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
   @brief Initalize `BCDefinition` class.
 
   Not collective across MPI processes.
@@ -96,6 +119,7 @@ PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def) {
   PetscCall(PetscFree(bc_def_->name));
   PetscCall(PetscFree(bc_def_->label_values));
   PetscCall(PetscFree(bc_def_->essential_comps));
+  PetscCall(PetscFree2(bc_def_->essential_values, bc_def_->essential_values_scaled));
   PetscCall(PetscFree(bc_def_->natural_bc_type));
   PetscCall(DMDestroy(&bc_def_->dm));
   if (bc_def_->DestroyCtx) PetscCall((*bc_def_->DestroyCtx)(&bc_def_->ctx));
@@ -161,6 +185,20 @@ PetscErrorCode BCDefinitionView(BCDefinition bc_def, PetscViewer viewer) {
     }
     PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_TRUE));
 
+    PetscCall(PetscViewerASCIIPrintf(viewer, "Essential Values:"));
+    PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_FALSE));
+    if (bc_def->essential_values) {
+      for (PetscInt i = 0; i < bc_def->num_essential_comps; i++) {
+        PetscCall(PetscViewerASCIIPrintf(viewer, " %g", (double)PetscRealPart(bc_def->essential_values[i])));
+      }
+      PetscCall(PetscViewerASCIIPrintf(viewer, "\n"));
+    } else if (bc_def->num_essential_comps > 0) {
+      PetscCall(PetscViewerASCIIPrintf(viewer, " Set from initial conditions or STG\n"));
+    } else {
+      PetscCall(PetscViewerASCIIPrintf(viewer, " None\n"));
+    }
+    PetscCall(PetscViewerASCIIUseTabs(viewer, PETSC_TRUE));
+
     PetscCall(PetscViewerASCIIPrintf(viewer, "Natural BC Type: %s\n", bc_def->natural_bc_type));
 
     PetscCall(PetscViewerASCIIPopTab(viewer));  // BCDefinition
@@ -211,24 +249,41 @@ PetscErrorCode BCDefinitionGetInfo(BCDefinition bc_def, const char *name[], Pets
    @brief Set `DM_BC_ESSENTIAL` boundary condition values
 
    @param[in,out] bc_def              `BCDefinition` to set values to
-   @param[in]     num_essential_comps Number of components to set
-   @param[in]     essential_comps     Array of components to set, size `num_essential_comps`
+   @param[in]     num_essential_comps Number of components to set; zero unsets the essential components
+   @param[in]     essential_comps     Array of components to set, size `num_essential_comps`; ignored when the count is zero
+   @param[in]     essential_values    Optional array of values to set, size `num_essential_comps`; ignored when the count is zero
 **/
-PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, PetscInt essential_comps[]) {
+PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, const PetscInt essential_comps[],
+                                        const PetscScalar essential_values[]) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   PetscValidLogicalCollectiveInt(bc_def, num_essential_comps, 2);
-  PetscCheck(num_essential_comps > 0, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
-             "Number of essential components must be non-negative. Received %" PetscInt_FMT " for bc_def \"%s\"", num_essential_comps, bc_def->name);
-  if (num_essential_comps) {
-    PetscAssertPointer(essential_comps, 3);
-  } else {
-    PetscCheck(essential_comps == NULL, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
-               "essential_comps must be NULL if num_essential_comps == 0. Failed for bc_def %s", bc_def->name);
+  PetscCheck(num_essential_comps >= 0, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_OUTOFRANGE,
+             "Number of essential components must be nonnegative, received %" PetscInt_FMT " for BCDefinition \"%s\"", num_essential_comps,
+             bc_def->name);
+  if (num_essential_comps) PetscAssertPointer(essential_comps, 3);
+  for (PetscInt i = 0; i < num_essential_comps; i++) {
+    PetscCheck(essential_comps[i] >= 0, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_OUTOFRANGE,
+               "BCDefinition \"%s\" contains invalid negative essential component %" PetscInt_FMT, bc_def->name, essential_comps[i]);
+    for (PetscInt j = 0; j < i; j++) {
+      PetscCheck(essential_comps[i] != essential_comps[j], PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
+                 "BCDefinition \"%s\" repeats essential component %" PetscInt_FMT, bc_def->name, essential_comps[i]);
+    }
+    if (essential_values) {
+      PetscCheck(!PetscIsInfOrNanScalar(essential_values[i]), PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_INCOMP,
+                 "BCDefinition \"%s\" has a non-finite essential value for component %" PetscInt_FMT, bc_def->name, essential_comps[i]);
+    }
   }
+
+  PetscCall(PetscFree(bc_def->essential_comps));
+  PetscCall(PetscFree2(bc_def->essential_values, bc_def->essential_values_scaled));
   bc_def->num_essential_comps = num_essential_comps;
   PetscCall(PetscMalloc1(num_essential_comps, &bc_def->essential_comps));
   PetscCall(PetscArraycpy(bc_def->essential_comps, essential_comps, num_essential_comps));
+  if (essential_values) {
+    PetscCall(PetscMalloc2(num_essential_comps, &bc_def->essential_values, num_essential_comps, &bc_def->essential_values_scaled));
+    PetscCall(PetscArraycpy(bc_def->essential_values, essential_values, num_essential_comps));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 
@@ -237,15 +292,74 @@ PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essent
 
    @param[in]  bc_def              `BCDefinition` to set values to
    @param[out] num_essential_comps Number of components to set
-   @param[out] essential_comps     Array of components to set, size `num_essential_comps`
+   @param[out] essential_comps     Borrowed array of components, size `num_essential_comps`; invalidated when `bc_def` is modified
+   @param[out] essential_values    Optional borrowed array of values, size `num_essential_comps`, or `NULL` if values are set elsewhere;
+                                   invalidated when `bc_def` is modified
 **/
-PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[]) {
+PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[],
+                                        const PetscScalar *essential_values[]) {
   PetscFunctionBeginUser;
   PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
   PetscAssertPointer(num_essential_comps, 2);
   PetscAssertPointer(essential_comps, 3);
   *num_essential_comps = bc_def->num_essential_comps;
   *essential_comps     = bc_def->essential_comps;
+  if (essential_values) {
+    PetscAssertPointer(essential_values, 4);
+    *essential_values = bc_def->essential_values;
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+   @brief Set the function used to scale dimensional essential values
+
+   @param[in,out] bc_def                 `BCDefinition` to update
+   @param[in]     scale_essential_values Function that fills the scaled essential values, or `NULL`; 
+                                         a function is required before adding explicit essential values to a `DM`
+**/
+PetscErrorCode BCDefinitionSetScaleEssentialValues(BCDefinition bc_def, BCDefinitionScaleEssentialValuesFn scale_essential_values) {
+  PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  bc_def->ScaleEssentialValues = scale_essential_values;
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+   @brief Add the essential part of a `BCDefinition` to its `DM`
+
+   @param[in] bc_def        `BCDefinition` to add
+   @param[in] label         `DMLabel` containing the boundary faces
+   @param[in] num_components Number of solution components
+**/
+PetscErrorCode BCDefinitionDMAddBoundaryEssential(BCDefinition bc_def, DMLabel label, PetscInt num_components) {
+  const PetscInt    *essential_comps, *label_values;
+  const PetscScalar *essential_values;
+  PetscInt           num_essential_comps, num_label_values;
+
+  PetscFunctionBeginUser;
+  PetscValidHeaderSpecific(bc_def, BC_DEFINITION_CLASSID, 1);
+  PetscValidHeaderSpecific(label, DMLABEL_CLASSID, 2);
+  PetscValidLogicalCollectiveInt(bc_def, num_components, 3);
+  PetscCheck(bc_def->dm, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_WRONGSTATE, "BCDefinition must have DM set using BCDefinitionSetDM()");
+  PetscCall(BCDefinitionGetEssential(bc_def, &num_essential_comps, &essential_comps, &essential_values));
+  if (!num_essential_comps) PetscFunctionReturn(PETSC_SUCCESS);
+  PetscCall(BCDefinitionGetInfo(bc_def, NULL, &num_label_values, &label_values));
+  for (PetscInt i = 0; i < num_essential_comps; i++) {
+    PetscCheck(essential_comps[i] < num_components, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_USER_INPUT,
+               "BCDefinition \"%s\" contains essential component %" PetscInt_FMT " outside [0, %" PetscInt_FMT ")", bc_def->name, essential_comps[i],
+               num_components);
+  }
+  if (essential_values) {
+    PetscCheck(bc_def->ScaleEssentialValues, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_WRONGSTATE,
+               "BCDefinition \"%s\" has explicit essential values but no scaling function set", bc_def->name);
+    PetscCall((*bc_def->ScaleEssentialValues)(bc_def, bc_def->essential_values_scaled));
+    PetscCall(DMAddBoundary(bc_def->dm, DM_BC_ESSENTIAL, bc_def->name, label, num_label_values, label_values, 0, num_essential_comps, essential_comps,
+                            (PetscVoidFn *)BCDefinitionEssentialBoundaryFunction, NULL, bc_def, NULL));
+  } else {
+    PetscCall(DMAddBoundary(bc_def->dm, DM_BC_ESSENTIAL, bc_def->name, label, num_label_values, label_values, 0, num_essential_comps, essential_comps,
+                            NULL, NULL, NULL, NULL));
+  }
   PetscFunctionReturn(PETSC_SUCCESS);
 }
 

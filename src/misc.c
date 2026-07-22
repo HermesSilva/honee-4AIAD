@@ -7,6 +7,7 @@
 #include <navierstokes.h>
 
 #include <petscdm.h>
+#include <petscdmplex.h>
 #include <petscsf.h>
 #include <petscts.h>
 
@@ -57,6 +58,8 @@ PetscErrorCode SetBCsFromICs(DM dm, Vec Q, Vec Q_loc) {
     PetscCall(VecZeroEntries(Q_loc));
     PetscCall(DMGlobalToLocal(dm, Q, INSERT_VALUES, Q_loc));
     PetscCall(VecAXPY(Qbc, -1., Q_loc));
+    // Replace IC differences with prescribed constants; boundaries without explicit values retain their IC-derived entries.
+    PetscCall(DMPlexInsertBoundaryValues(dm, PETSC_TRUE, Qbc, 0.0, NULL, NULL, NULL));
     PetscCall(DMRestoreNamedLocalVector(dm, "Qbc", &Qbc));
   }
   PetscCall(PetscObjectComposeFunction((PetscObject)dm, "DMPlexInsertBoundaryValues_C", DMPlexInsertBoundaryValues_FromICs));
@@ -80,7 +83,7 @@ PetscErrorCode DMPlexInsertBoundaryValues_FromICs(DM dm, PetscBool insert_essent
   Vec Qbc, boundary_mask;
 
   PetscFunctionBeginUser;
-  // Mask (zero) Strong BC entries
+  // Mask (zero) essential BC entries
   PetscCall(DMGetNamedLocalVector(dm, "boundary mask", &boundary_mask));
   PetscCall(VecPointwiseMult(Q_loc, Q_loc, boundary_mask));
   PetscCall(DMRestoreNamedLocalVector(dm, "boundary mask", &boundary_mask));

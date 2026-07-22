@@ -38,6 +38,7 @@ On this page we provide a summary of the main API changes, new features and exam
 - Add Initial condition boundary layer.
 - Refactor of boundary condition prescribing options
 - Add HONEE, libCEED, and PETSc version information to output and CSV files
+- Add support for strong/essential boundary values.
 
 ### Internal
 - Add `HoneeLoadInitialCondition()` to consolidate initial condition logic

@@ -24,3 +24,4 @@ bc_symmetry:
 bc_wall:
   face_ids: 3,4
   essential_comps: 1,2,3
+  essential_values: 0,0,0

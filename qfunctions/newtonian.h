@@ -185,8 +185,9 @@ CEED_QFUNCTION(RHSFunction_Newtonian)(void *ctx, CeedInt Q, const CeedScalar *co
     }
 
     CeedScalar divFdiff_i[5] = {0.};
-    if (use_divFdiff)
+    if (use_divFdiff) {
       for (int j = 1; j < 5; j++) divFdiff_i[j] = divFdiff[j - 1][i];
+    }
 
     // -- Stabilization method: none (Galerkin), SU, or SUPG
     CeedScalar Tau_d[3], stab[5][3], U_dot[5] = {0};

@@ -882,7 +882,7 @@ The `-stg_use` flag is then used to enable/disable applying STG to those faces.
   -
 
 * - `-stg_strong`
-  - Strongly enforce the STG inflow boundary condition
+  - Strongly enforce the STG inflow boundary condition. Explicit `-bc_{name}_essential_values` are not supported and are rejected when this option is enabled.
   - `false`
   -
 

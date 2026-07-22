@@ -2,12 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0 OR BSD-2-Clause
 #pragma once
 
-#include <ceed/types.h>
-
 #include "newtonian_state.h"
 #include "newtonian_types.h"
 #include "stabilization.h"
 #include "utils.h"
+
+#include <ceed/types.h>
 
 // @brief Computes the residual created by IDL
 CEED_QFUNCTION_HELPER void InternalDampingLayer_Residual(const NewtonianIGProperties gas, const State s, const CeedScalar sigma, CeedScalar damp_Y[5],

@@ -110,6 +110,9 @@ PetscErrorCode NS_EULER_VORTEX(ProblemData problem, DM dm, void *ctx) {
   problem->print_info                   = PRINT_EULER_VORTEX;
 
   problem->num_components = 5;
+  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
+    PetscCall(BCDefinitionSetScaleEssentialValues(problem->bc_defs[i], BCDefinitionScaleEssentialValues_NavierStokes));
+  }
   PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
   for (PetscInt i = 0; i < 5; i++) PetscCall(PetscStrallocpy(component_names[i], &problem->component_names[i]));
 

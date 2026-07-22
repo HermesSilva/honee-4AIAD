@@ -3,6 +3,8 @@
 
 #include <navierstokes.h>
 
+#define ESSENTIAL_BC_MAX_COMPONENTS 16
+
 /**
    @brief Add `BCDefinition` to a `PetscSegBuffer`
 
@@ -72,7 +74,10 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     size_t       len;
     char         buffer[PETSC_MAX_OPTION_NAME];
     char        *cl_prefix;
-    PetscInt     essential_comps[16], num_essential_comps = PETSC_STATIC_ARRAY_LENGTH(essential_comps);
+    PetscInt     essential_comps[ESSENTIAL_BC_MAX_COMPONENTS], num_essential_comps = PETSC_STATIC_ARRAY_LENGTH(essential_comps);
+    PetscScalar  essential_values[ESSENTIAL_BC_MAX_COMPONENTS];
+    PetscInt     num_essential_values = PETSC_STATIC_ARRAY_LENGTH(essential_values);
+    PetscBool    essential_comps_set, essential_values_set;
 
     if (name[0] == '\0') continue;  // skip empty names
     for (PetscInt i = 0; i < b; i++) {
@@ -99,8 +104,19 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
     }
 
     PetscCall(PetscOptionsIntArray("-essential_comps", "An array of constrained component numbers", NULL, essential_comps, &num_essential_comps,
-                                   &flg));
-    if (flg) PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
+                                   &essential_comps_set));
+    PetscCall(PetscOptionsScalarArray("-essential_values", "Values for the constrained components", NULL, essential_values, &num_essential_values,
+                                      &essential_values_set));
+    PetscCheck(!essential_values_set || essential_comps_set, comm, PETSC_ERR_USER_INPUT, "-bc_%s_essential_values requires -bc_%s_essential_comps",
+               name, name);
+    if (essential_values_set) {
+      PetscCheck(num_essential_values == num_essential_comps, comm, PETSC_ERR_USER_INPUT,
+                 "-bc_%s_essential_values has %" PetscInt_FMT " entries, but -bc_%s_essential_comps has %" PetscInt_FMT, name, num_essential_values,
+                 name, num_essential_comps);
+    }
+    if (essential_comps_set) {
+      PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps, essential_values_set ? essential_values : NULL));
+    }
 
     PetscBool is_viscous_wall = PETSC_FALSE;
     PetscCall(PetscOptionsBool("-is_viscous_wall", "Whether to treat the boundaries labeled here as a viscous wall", NULL, is_viscous_wall,
@@ -161,7 +177,7 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
       PetscInt num_essential_comps = 16, essential_comps[16];
 
       PetscCall(PetscOptionsIntArray("-wall_comps", "An array of constrained component numbers", NULL, essential_comps, &num_essential_comps, &flg));
-      PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps));
+      PetscCall(BCDefinitionSetEssential(bc_def, num_essential_comps, essential_comps, NULL));
     }
 
     {  // Symmetry Boundary Conditions
@@ -180,7 +196,7 @@ PetscErrorCode BoundaryConditionSetUp(Honee honee, ProblemData problem, AppCtx a
         if (bc_def) {
           PetscInt essential_comps[1] = {j + 1};
 
-          PetscCall(BCDefinitionSetEssential(bc_def, 1, essential_comps));
+          PetscCall(BCDefinitionSetEssential(bc_def, 1, essential_comps, NULL));
         }
       }
     }

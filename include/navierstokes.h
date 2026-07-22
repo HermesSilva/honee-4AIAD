@@ -220,6 +220,7 @@ PetscErrorCode HoneeBCAddIFunctionOp(BCDefinition bc_def, DMLabel domain_label, 
 PetscErrorCode HoneeBCAddIJacobianOp(BCDefinition bc_def, CeedOperator sub_op_ifunc, DMLabel domain_label, PetscInt label_value,
                                      CeedQFunction qf_ijac, CeedOperator op_ijac);
 PetscErrorCode HoneeCeedQFunctionContextDestroy(void *qfctx);
+PetscErrorCode BCDefinitionScaleEssentialValues_NavierStokes(BCDefinition bc_def, PetscScalar essential_values_scaled[]);
 
 typedef struct {
   CeedQFunctionUser    qf_func_ptr;  // !< QFunction function pointer

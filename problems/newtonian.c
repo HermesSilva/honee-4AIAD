@@ -19,6 +19,123 @@ const char *const StabilizationTypes[] = {"NONE", "SU", "SUPG", "StabilizationTy
 
 static PetscErrorCode UnitTests_Newtonian(Honee honee, NewtonianIGProperties gas);
 
+/**
+  @brief Validate positivity requirements for an explicit Newtonian essential boundary value.
+
+  Primitive pressure and temperature and conservative density and total energy must be positive. Entropy-variable values do not have an equivalent
+  component-wise positivity requirement.
+
+  @param[in] state_var State-variable representation
+  @param[in] comp      Component index in the state vector
+  @param[in] value     Dimensional value to validate
+  @param[in] name      Boundary-condition name used in its options prefix
+  @param[in] comm      MPI communicator used to report invalid input
+**/
+static PetscErrorCode EssentialBCValidatePhysicalValue(StateVariable state_var, PetscInt comp, PetscScalar value, const char name[], MPI_Comm comm) {
+  const char *quantity = NULL;
+
+  PetscFunctionBeginUser;
+  PetscAssertPointer(name, 4);
+  if (state_var == STATEVAR_ENTROPY) PetscFunctionReturn(PETSC_SUCCESS);
+  switch (state_var) {
+    case STATEVAR_PRIMITIVE:
+      if (comp == 0) {
+        quantity = "pressure";
+      } else if (comp == 4) {
+        quantity = "temperature";
+      }
+      break;
+    case STATEVAR_CONSERVATIVE:
+      if (comp == 0) {
+        quantity = "density";
+      } else if (comp == 4) {
+        quantity = "total energy";
+      }
+      break;
+    default:
+      break;
+  }
+  if (quantity) {
+    PetscReal real_value = PetscRealPart(value);
+    PetscCheck(real_value > 0.0, comm, PETSC_ERR_USER_INPUT,
+               "-bc_%s_essential_values requires %s > 0 (component number %" PetscInt_FMT "), received %g", name, quantity, comp, (double)real_value);
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
+/**
+  @brief Scale explicit Newtonian essential values from input units to solver units.
+
+  The state-variable representation and units are obtained from the `HoneeBCStruct` attached to `bc_def`.
+  The scaled values are returned in the same order as the essential components.
+
+  @param[in]  bc_def                   Boundary definition containing the components and dimensional values
+  @param[out] essential_values_scaled  Scaled values, size `bc_def->num_essential_comps`
+**/
+PetscErrorCode BCDefinitionScaleEssentialValues_NavierStokes(BCDefinition bc_def, PetscScalar essential_values_scaled[]) {
+  HoneeBCStruct      honee_bc;
+  Honee              honee;
+  PetscScalar        scales[5];
+  const PetscInt    *essential_comps;
+  const PetscScalar *essential_values;
+  const char        *name;
+  PetscInt           num_essential_comps;
+  Units              units;
+
+  PetscFunctionBeginUser;
+  PetscAssertPointer(bc_def, 1);
+  PetscAssertPointer(essential_values_scaled, 2);
+  PetscCall(BCDefinitionGetContext(bc_def, &honee_bc));
+  PetscCheck(honee_bc && honee_bc->honee, PetscObjectComm((PetscObject)bc_def), PETSC_ERR_ARG_WRONGSTATE,
+             "Boundary condition context does not contain Honee");
+  honee = honee_bc->honee;
+  units = honee->units;
+  PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+  PetscCall(BCDefinitionGetEssential(bc_def, &num_essential_comps, &essential_comps, &essential_values));
+  PetscCheck(essential_values, honee->comm, PETSC_ERR_ARG_WRONGSTATE, "Boundary condition %s does not have explicit essential values", name);
+  switch (honee->phys->state_var) {
+    case STATEVAR_CONSERVATIVE: {
+      const PetscScalar density_scale  = units->kilogram / PetscPowScalarInt(units->meter, 3);
+      const PetscScalar momentum_scale = density_scale * (units->meter / units->second);
+
+      scales[0] = density_scale;
+      scales[1] = scales[2] = scales[3] = momentum_scale;
+      scales[4]                         = units->Pascal;
+      break;
+    }
+    case STATEVAR_PRIMITIVE: {
+      const PetscScalar velocity_scale = units->meter / units->second;
+
+      scales[0] = units->Pascal;
+      scales[1] = scales[2] = scales[3] = velocity_scale;
+      scales[4]                         = units->Kelvin;
+      break;
+    }
+    case STATEVAR_ENTROPY: {
+      const PetscScalar inv_velocity_scale = units->second / units->meter;
+
+      scales[0] = 1.0;
+      scales[1] = scales[2] = scales[3] = inv_velocity_scale;
+      scales[4]                         = PetscSqr(inv_velocity_scale);
+      break;
+    }
+    default:
+      SETERRQ(honee->comm, PETSC_ERR_ARG_OUTOFRANGE, "-bc_%s_essential_values cannot be scaled for unsupported state variable %d", name,
+              (int)honee->phys->state_var);
+  }
+  for (PetscInt j = 0; j < num_essential_comps; j++) {
+    PetscInt comp = essential_comps[j];
+
+    PetscCheck(comp >= 0 && comp < PETSC_STATIC_ARRAY_LENGTH(scales), honee->comm, PETSC_ERR_ARG_OUTOFRANGE,
+               "-bc_%s_essential_comps contains component %" PetscInt_FMT " outside [0, %zu)", name, comp, PETSC_STATIC_ARRAY_LENGTH(scales));
+    PetscCall(EssentialBCValidatePhysicalValue(honee->phys->state_var, comp, essential_values[j], name, honee->comm));
+    essential_values_scaled[j] = essential_values[j] * scales[comp];
+    PetscCheck(!PetscIsInfOrNanScalar(essential_values_scaled[j]), honee->comm, PETSC_ERR_USER_INPUT,
+               "-bc_%s_essential_values for component %" PetscInt_FMT " became non-finite after unit scaling", name, comp);
+  }
+  PetscFunctionReturn(PETSC_SUCCESS);
+}
+
 static PetscErrorCode PRINT_NEWTONIAN(Honee honee, ProblemData problem, AppCtx app_ctx) {
   MPI_Comm                 comm = honee->comm;
   Ceed                     ceed = honee->ceed;
@@ -641,6 +758,9 @@ PetscErrorCode NS_NEWTONIAN_IG(ProblemData problem, DM dm, void *ctx) {
   problem->compute_exact_solution_error = PETSC_FALSE;
   problem->print_info                   = PRINT_NEWTONIAN;
   problem->num_components               = 5;
+  for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
+    PetscCall(BCDefinitionSetScaleEssentialValues(problem->bc_defs[i], BCDefinitionScaleEssentialValues_NavierStokes));
+  }
   PetscCall(PetscMalloc1(problem->num_components, &problem->component_names));
   static const char *const conserv_component_names[] = {"Density", "MomentumX", "MomentumY", "MomentumZ", "TotalEnergy"};
   static const char *const prim_component_names[]    = {"Pressure", "VelocityX", "VelocityY", "VelocityZ", "Temperature"};
