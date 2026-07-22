@@ -86,25 +86,17 @@ PetscErrorCode SetUpDM(DM dm, ProblemData problem, PetscInt degree, PetscInt q_e
     if (use_strongstg) PetscCall(SetupStrongStg(dm, problem, phys));
   }
 
-  {  // Add strong boundary conditions to DM
+  {  // Add essential boundary conditions to DM
     DMLabel label;
     PetscCall(DMGetLabel(dm, "Face Sets", &label));
     PetscCheck(label, PetscObjectComm((PetscObject)dm), PETSC_ERR_SUP, "DM does not have 'Face Sets' label");
     PetscCall(DMPlexLabelComplete(dm, label));
 
     for (PetscInt i = 0; i < problem->num_bc_defs; i++) {
-      BCDefinition    bc_def = problem->bc_defs[i];
-      PetscInt        num_essential_comps, num_label_values;
-      const PetscInt *essential_comps, *label_values;
-      const char     *name;
+      BCDefinition bc_def = problem->bc_defs[i];
 
-      PetscCall(BCDefinitionSetDM(problem->bc_defs[i], dm));
-      PetscCall(BCDefinitionGetEssential(bc_def, &num_essential_comps, &essential_comps));
-      if (essential_comps > 0) {
-        PetscCall(BCDefinitionGetInfo(bc_def, &name, &num_label_values, &label_values));
-        PetscCall(DMAddBoundary(dm, DM_BC_ESSENTIAL, name, label, num_label_values, label_values, 0, num_essential_comps, essential_comps, NULL, NULL,
-                                NULL, NULL));
-      }
+      PetscCall(BCDefinitionSetDM(bc_def, dm));
+      PetscCall(BCDefinitionDMAddBoundaryEssential(bc_def, label, problem->num_components));
     }
   }
 

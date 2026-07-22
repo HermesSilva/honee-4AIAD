@@ -338,7 +338,7 @@ PetscErrorCode SetupStg(const MPI_Comm comm, const DM dm, ProblemData problem, H
 
 // @brief Set STG strongly enforce components using DMAddBoundary
 PetscErrorCode SetupStrongStg(DM dm, ProblemData problem, Physics phys) {
-  DMLabel  label;
+  MPI_Comm comm = PetscObjectComm((PetscObject)dm);
   PetscInt comps[5], num_comps = 4;
 
   PetscFunctionBeginUser;
@@ -359,15 +359,19 @@ PetscErrorCode SetupStrongStg(DM dm, ProblemData problem, Physics phys) {
       break;
   }
 
-  PetscCall(DMGetLabel(dm, "Face Sets", &label));
   for (PetscCount b = 0; b < problem->num_bc_defs; b++) {
-    BCDefinition bc_def = problem->bc_defs[b];
-    const char  *name;
-    PetscBool    is_inflow;
+    BCDefinition       bc_def = problem->bc_defs[b];
+    const PetscInt    *essential_comps;
+    const PetscScalar *essential_values;
+    const char        *name;
+    PetscInt           num_essential_comps;
+    PetscBool          is_inflow;
 
     PetscCall(BCDefinitionGetInfo(bc_def, &name, NULL, NULL));
+    PetscCall(BCDefinitionGetEssential(bc_def, &num_essential_comps, &essential_comps, &essential_values));
+    PetscCheck(!essential_values, comm, PETSC_ERR_USER_INPUT, "-bc_%s_essential_values is not supported with -stg_strong", name);
     PetscCall(PetscStrcmp(name, "inflow", &is_inflow));
-    if (is_inflow) PetscCall(BCDefinitionSetEssential(bc_def, num_comps, comps));
+    if (is_inflow) PetscCall(BCDefinitionSetEssential(bc_def, num_comps, comps, NULL));
   }
   PetscFunctionReturn(PETSC_SUCCESS);
 }

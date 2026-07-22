@@ -272,7 +272,24 @@ bc_inflow:
 
 Essential boundary conditions (i.e. strong, Dirichlet, etc.) are defined by the component indices they constrain in the solution vector.
 They are specified by `-bc_{name}_essential_comps`.
+Constant values can be prescribed for those components using `-bc_{name}_essential_values`.
+The number and order of entries in `essential_values` must match `essential_comps`.
+Component indices must be unique and valid for the selected problem, and all values must be finite.
+Values are expected in dimensional form, i.e. they will be non-dimensionalized according to the units conversion.
+If `essential_values` are not given, then the values at the boundary are fixed to the values in the initial condition.
+However,if `-stg_strong` is enabled, explicit `-bc_{name}_essential_values` are not supported on any boundary and are rejected.
+Note this is a limitation of the current implementation, not a desired design feature.
+For example:
 
+```yaml
+state_var: primitive
+bc_names: wall
+bc_wall:
+    face_ids: 3
+    essential_comps: 1,2,3,4
+    essential_values: 0,0,0,300
+```
+which sets the nodes on boundary id 3 to have zero velocity (set by components 1-3) and a temperature of 300 K.
 :::{note}
 The essential boundary conditions are specified by component indices rather than by their solution component name to inhibit invalid states.
 For example, if the user specifies an essential constraint on velocity and is running with entropy solution variables, that constraint cannot be set, and is thus an invalid state.
@@ -296,6 +313,9 @@ These possibilities are registered by the problem/governing equation and are spe
 
 * - `-bc_{name}_essential_comps`
   - Component indices to apply essential BC on
+
+* - `-bc_{name}_essential_values`
+  - Constant values for the essential BC components
 
 * - `-bc_{name}_natural_type`
   - Type of natural BC to apply (`none`, `freestream`, `outflow`, etc.)

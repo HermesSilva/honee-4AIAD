@@ -10,6 +10,7 @@
 typedef struct _p_BCDefinition *BCDefinition;
 
 typedef PetscErrorCode (*BCDefinitionCreateQFunction)(BCDefinition bc_def, CeedQFunction *qf);
+typedef PetscErrorCode (*BCDefinitionScaleEssentialValuesFn)(BCDefinition bc_def, PetscScalar essential_values_scaled[]);
 typedef PetscErrorCode (*BCDefinitionAddIFunctionOperator)(BCDefinition bc_def, DMLabel orientation_label, PetscInt orientation, CeedQFunction qf,
                                                            CeedOperator op, CeedOperator *sub_op);
 typedef PetscErrorCode (*BCDefinitionAddIJacobianOperator)(BCDefinition bc_def, CeedOperator sub_op_ifunction, DMLabel orientation_label,
@@ -27,7 +28,9 @@ struct _p_BCDefinition {
   PetscInt num_label_values, *label_values, dm_field;
 
   // Essential Boundary information
-  PetscInt num_essential_comps, *essential_comps;
+  PetscInt                           num_essential_comps, *essential_comps;
+  PetscScalar                       *essential_values, *essential_values_scaled;
+  BCDefinitionScaleEssentialValuesFn ScaleEssentialValues;
 
   void                            *ctx;
   PetscCtxDestroyFn               *DestroyCtx;
@@ -61,8 +64,12 @@ PetscErrorCode BCDefinitionView(BCDefinition bc_def, PetscViewer viewer);
 PetscErrorCode BCDefinitionViewFromOptions(BCDefinition bc_def, PetscObject obj, const char name[]);
 PetscErrorCode BCDefinitionDestroy(BCDefinition *bc_def);
 
-PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, PetscInt essential_comps[]);
-PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[]);
+PetscErrorCode BCDefinitionSetEssential(BCDefinition bc_def, PetscInt num_essential_comps, const PetscInt essential_comps[],
+                                        const PetscScalar essential_values[]);
+PetscErrorCode BCDefinitionGetEssential(BCDefinition bc_def, PetscInt *num_essential_comps, const PetscInt *essential_comps[],
+                                        const PetscScalar *essential_values[]);
+PetscErrorCode BCDefinitionSetScaleEssentialValues(BCDefinition bc_def, BCDefinitionScaleEssentialValuesFn scale_essential_values);
+PetscErrorCode BCDefinitionDMAddBoundaryEssential(BCDefinition bc_def, DMLabel label, PetscInt num_components);
 
 PetscErrorCode BCDefinitionSetDM(BCDefinition bc_def, DM dm);
 PetscErrorCode BCDefinitionGetDM(BCDefinition bc_def, DM *dm);

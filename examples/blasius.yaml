@@ -42,6 +42,7 @@ bc_symmetry:
 bc_wall:
   face_ids: 3
   essential_comps: 1,2,3
+  essential_values: 0,0,0
   is_viscous_wall:
 bc_inflow:
   face_ids: 6
