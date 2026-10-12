@@ -12,6 +12,14 @@ workflow:
   auto_cancel:
     on_job_failure: all
 
+variables:
+  FF_ENABLE_BASH_EXIT_CODE_CHECK: "true"
+  NOETHER_CEED_DIR: "/projects/honee/libCEED"
+  NOETHER_CEED_CPU_DIR: "/projects/honee/libCEED-cpu"
+  NOETHER_PETSC_DIR: "/projects/honee/petsc"
+  NOETHER_SMARTREDIS_DIR: "/projects/honee/SmartSim/smartredis/install"
+  NOETHER_SMARTSIM_VENV: "/projects/honee/SmartSim/venv"
+
 .test-basic:
   interruptible: true
   only:
@@ -52,11 +60,22 @@ noether-format:
     - shell
   script:
     - rm -f .SUCCESS
-    - echo "-------------- make format ---------" && export CLANG_FORMAT=clang-format-22 && $CLANG_FORMAT --version
-    - make -j$NPROC_CPU format && git diff --color=always --exit-code
+    - export NPROC_CPU=$(nproc)
+    - echo "NPROC_CPU $NPROC_CPU"
+    # format-c also runs clang-tidy, which needs the dependency compiler flags.
+    - export CEED_DIR="$NOETHER_CEED_DIR"
     - echo "-------------- PETSc ---------------"
-    - export PETSC_DIR=/projects/honee/petsc
-    - export PETSC_ARCH=arch-serial-cpu-clang && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
+    - export PETSC_DIR="$NOETHER_PETSC_DIR"
+    - export PETSC_ARCH=arch-serial-cpu-clang
+    - git -C "$PETSC_DIR" -c safe.directory="$PETSC_DIR" describe
+    - make -C "$PETSC_DIR" info
+    - echo "-------------- make format ---------"
+    - export CLANG_FORMAT=clang-format-22
+    - export CLANG_TIDY=clang-tidy-22
+    - $CLANG_FORMAT --version
+    - $CLANG_TIDY --version
+    - make -j$NPROC_CPU format
+    - git diff --color=always --exit-code
     - echo "-------------- make checkbadSource ---------"
     - make -j$NPROC_CPU checkbadSource
     - touch .SUCCESS
@@ -80,10 +99,10 @@ noether-lint:
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
-    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    - export CEED_DIR=$NOETHER_CEED_DIR && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
     # -- PETSc
     - echo "-------------- PETSc ---------------"
-    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_DIR=$NOETHER_PETSC_DIR
     - export PETSC_ARCH=arch-serial-cuda && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
@@ -117,10 +136,10 @@ noether-memcheck:
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
-    - export CEED_DIR=/projects/honee/libCEED-cpu && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    - export CEED_DIR=$NOETHER_CEED_CPU_DIR && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
     # -- PETSc
     - echo "-------------- PETSc ---------------"
-    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_DIR=$NOETHER_PETSC_DIR
     - export PETSC_ARCH=arch-serial-cpu-clang && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/lib PATH="$PATH:$PETSC_DIR/bin" # cgnsdiff
@@ -135,7 +154,6 @@ noether-memcheck:
     - make -j$NPROC_CPU
     # Test suite
     - echo "-------------- HONEE tests ---------"
-    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Memcheck libCEED CPU backend, serial
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL)) CEED_BACKENDS="/cpu/self/memcheck" JUNIT_BATCH="cpu-serial-memcheck" junit search=navierstokes
     # Report status
@@ -153,7 +171,6 @@ noether-memcheck:
     when: always
     reports:
       junit: build/*.junit
-      performance: performance.json
     expire_in: 28 days
 
 
@@ -177,10 +194,10 @@ noether-cpu:
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
-    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    - export CEED_DIR=$NOETHER_CEED_DIR && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
     # -- PETSc
     - echo "-------------- PETSc ---------------"
-    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_DIR=$NOETHER_PETSC_DIR
     - export PETSC_ARCH=arch-parallel-cuda && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
@@ -190,14 +207,13 @@ noether-cpu:
     - make -j$NPROC_CPU
     # Test suite
     - echo "-------------- HONEE tests ---------"
-    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CPU backend, parallel
     - echo "Parallel tests skipped for now"
     # - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
-    - export SMARTREDIS_DIR=/projects/honee/SmartSim/smartredis/install
+    - export SMARTREDIS_DIR="$NOETHER_SMARTREDIS_DIR"
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search=navierstokes
     # - spack unload py-torch@2.3+cuda && export USE_TORCH=0
-    - source /projects/honee/SmartSim/venv/bin/activate
+    - source "$NOETHER_SMARTSIM_VENV/bin/activate"
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial" junit search="test-smartsim"
     # Report status
     - touch .SUCCESS
@@ -214,7 +230,6 @@ noether-cpu:
     when: always
     reports:
       junit: build/*.junit
-      performance: performance.json
     expire_in: 28 days
 
 
@@ -238,10 +253,10 @@ noether-cpu-int64:
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
-    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    - export CEED_DIR=$NOETHER_CEED_DIR && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
     # -- PETSc
     - echo "-------------- PETSc ---------------"
-    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_DIR=$NOETHER_PETSC_DIR
     - export PETSC_ARCH=arch-serial-cpu-int64 && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
@@ -251,13 +266,12 @@ noether-cpu-int64:
     - make -j$NPROC_CPU
     # Test suite
     - echo "-------------- HONEE tests ---------"
-    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CPU backend, serial
     # - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
-    - export SMARTREDIS_DIR=/projects/honee/SmartSim/smartredis/install
+    - export SMARTREDIS_DIR="$NOETHER_SMARTREDIS_DIR"
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial-int64" junit search=navierstokes
     # - spack unload py-torch@2.3+cuda && export USE_TORCH=0
-    - source /projects/honee/SmartSim/venv/bin/activate
+    - source "$NOETHER_SMARTSIM_VENV/bin/activate"
     - NPROC_TEST=1 make -k -j$((NPROC_CPU / NPROC_POOL / 1)) CEED_BACKENDS="/cpu/self" JUNIT_BATCH="cpu-serial-int64" junit search="test-smartsim"
     # Report status
     - touch .SUCCESS
@@ -274,7 +288,6 @@ noether-cpu-int64:
     when: always
     reports:
       junit: build/*.junit
-      performance: performance.json
     expire_in: 28 days
 
 
@@ -314,7 +327,6 @@ noether-cpu-int64:
 #     - make -j$NPROC_CPU
 #     # Test suite
 #     - echo "-------------- HONEE tests ---------"
-#     - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
 #     # -- Fastest libCEED HIP backend, serial
 #     # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
 #     - NPROC_TEST=1 make -k -j$((NPROC_GPU / NPROC_POOL / 1)) CEED_BACKENDS="/gpu/hip/shared" JUNIT_BATCH="hip-serial" junit search=navierstokes
@@ -338,7 +350,6 @@ noether-cpu-int64:
 #     when: always
 #     reports:
 #       junit: build/*.junit
-#       performance: performance.json
 #     expire_in: 28 days
 
 
@@ -360,10 +371,10 @@ noether-cuda:
     # Libraries
     # -- libCEED
     - echo "-------------- libCEED -------------"
-    - export CEED_DIR=/projects/honee/libCEED && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
+    - export CEED_DIR=$NOETHER_CEED_DIR && git -C $CEED_DIR -c safe.directory=$CEED_DIR describe && make -C $CEED_DIR info
     # -- PETSc
     - echo "-------------- PETSc ---------------"
-    - export PETSC_DIR=/projects/honee/petsc
+    - export PETSC_DIR=$NOETHER_PETSC_DIR
     - export PETSC_ARCH=arch-parallel-cuda && git -C $PETSC_DIR -c safe.directory=$PETSC_DIR describe && make -C $PETSC_DIR info
     - export PETSC_OPTIONS='-malloc_debug no -use_gpu_aware_mpi 0' # faster tests
     - export LD_LIBRARY_PATH=$PETSC_DIR/$PETSC_ARCH/lib PATH="$PATH:$PETSC_DIR/$PETSC_ARCH/bin" # cgnsdiff
@@ -373,7 +384,6 @@ noether-cuda:
     - make -j$NPROC_CPU
     # Test suite
     - echo "-------------- HONEE tests ---------"
-    - echo '[{"subject":"/","metrics":[{"name":"Transfer Size (KB)","value":"19.5","desiredSize":"smaller"},{"name":"Speed Index","value":0,"desiredSize":"smaller"},{"name":"Total Score","value":92,"desiredSize":"larger"},{"name":"Requests","value":4,"desiredSize":"smaller"}]}]' > performance.json
     # -- Fastest libCEED CUDA backend, serial
     # Note: /shared is faster due to /gen JiT time for CeedOperators overwhelming runtime improvements at these problem sizes
     # - source /home/phypid/spack/share/spack/setup-env.sh && spack load py-torch@2.3+cuda && export USE_TORCH=1
@@ -393,7 +403,6 @@ noether-cuda:
     when: always
     reports:
       junit: build/*.junit
-      performance: performance.json
     expire_in: 28 days
 
 
@@ -403,8 +412,7 @@ test-coverage:
   tags:
     - noether
     - shell
-  when: always
-  needs: [noether-memcheck, noether-cpu, noether-cpu-int64, noether-cuda, ]
+  needs: [noether-memcheck, noether-cpu, noether-cpu-int64, noether-cuda]
   script:
     - ls coverage-*
     - mkdir coverage
@@ -438,8 +446,8 @@ docs-review:
     - .test-basic
   interruptible: true
   script:
-    - export PETSC_DIR=/projects/honee/petsc PETSC_ARCH=arch-parallel-cuda CEED_DIR=/projects/honee/libCEED
-    - git -c safe.directory=/builds/phypid/honee submodule update --init
+    - export PETSC_DIR=$NOETHER_PETSC_DIR PETSC_ARCH=arch-parallel-cuda CEED_DIR=$NOETHER_CEED_DIR
+    - git -c safe.directory=$CI_PROJECT_DIR submodule update --init
     - make doc-html pkgconf=true DOXYGENOPTS= SPHINXOPTS=-W
     - mv doc/build/html public
   artifacts:
@@ -462,7 +470,7 @@ pages:  # this job name has special meaning to GitLab
   extends: .docs
   interruptible: false
   script:
-    - git -c safe.directory=/builds/phypid/honee submodule update --init
+    - git -c safe.directory=$CI_PROJECT_DIR submodule update --init
     - make doc-dirhtml pkgconf=true DOXYGENOPTS=
     - mv doc/build/dirhtml public
   only:
