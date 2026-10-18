@@ -1,6 +1,6 @@
 # Getting Started
 
-```{include} ../README.md
+```{include} ../README.upstream.md
 :start-after: "<!-- getting-started -->"
 :end-before: "<!-- citing -->"
 ```

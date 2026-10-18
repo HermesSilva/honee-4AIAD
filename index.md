@@ -1,6 +1,6 @@
 # HONEE: High-Order Navier-stokes Equation Evaluator
 
-```{include} README.md
+```{include} README.upstream.md
 :start-after: "<!-- abstract -->"
 :end-before: "# Getting Started"
 ```
